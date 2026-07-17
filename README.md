@@ -23,6 +23,20 @@ Then, in any project: invoke the **`install-agent-os`** skill (or just ask "inst
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
+## Updating the plugin after repo changes
+
+Installed plugins are **pinned snapshots** — pushing commits to this repo does NOT update installed copies. Two things must happen:
+
+1. **Bump `version` in `.claude-plugin/plugin.json`** with every release (already mandated by this repo's CLAUDE.md extension rules). Claude Code resolves updates by that version string — new commits under an unchanged version are invisible to installed copies.
+2. **Consumers pull the update** (CLI or Desktop, identical behavior):
+   ```
+   claude plugin marketplace update zenosyne     # refresh the marketplace clone
+   claude plugin update agent-operating-kit@zenosyne
+   ```
+   Or enable auto-update once: `/plugin` → Marketplaces → zenosyne → Enable auto-update (off by default for third-party marketplaces).
+
+New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
+
 ## Manual install (no plugin, 3 steps)
 
 1. Copy `templates/docs/agents/` → `<repo>/docs/agents/`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists).
