@@ -1,0 +1,13 @@
+{
+  "name": "zenosyne",
+  "owner": {
+    "name": "Zenosyne Technologies"
+  },
+  "plugins": [
+    {
+      "name": "agent-operating-kit",
+      "source": ".",
+      "description": "Orchestrator + sub-agent operating methodology, installable into any project via the install-agent-os skill."
+    }
+  ]
+}
