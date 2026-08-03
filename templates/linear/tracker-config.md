@@ -16,3 +16,13 @@ Sev labels are canonical; mirror native Priority per this table (on conflict the
 | sev2-high | High |
 | sev3-medium | Medium |
 | sev4-low | Low |
+
+Size labels are canonical; mirror the native estimate per this table (on conflict the label wins):
+
+| Kit label | Linear estimate |
+|---|---|
+| size:xs | 1 |
+| size:s | 2 |
+| size:m | 3 |
+| size:l | 5 |
+| size:xl | 8 |

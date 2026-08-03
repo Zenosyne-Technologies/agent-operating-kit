@@ -9,7 +9,8 @@ A reusable methodology for running AI-assisted software projects with an orchest
 3. **Task lifecycle** — build (worker) → validate (fresh agents: business-analyst + security-analyst personas, never the builder) → document (docs agent) → close the tracker issue with commit refs.
 4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
 5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval.
-6. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
+6. **Sized planning research** — tasks carry `size:xs..xl` t-shirt labels; `size:xl` plans get adversarial plan-validation + solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip research. Findings land as issue comments or md docs and are folded into the plan before building.
+7. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
 
 ## Install as a Claude Code plugin (recommended)
 
@@ -20,7 +21,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo without recreating it. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -58,7 +59,8 @@ templates/
     PROJECT-INFO.md                project meta page for foreign agents / reporting tools (installed to .docs/PROJECT-INFO.md)
   docs/agents/
     briefing.md                    how to write any sub-agent brief
-    label-syntax.md                versioned label registry (dimensions, backfill rule, changelog)
+    label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
+    planning-research.md           size-gated plan-validation + solution research, tier routing
     validation-agent.md            BA + security validator personas, E2E hook
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
