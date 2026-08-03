@@ -8,7 +8,8 @@ Non-negotiables (mirror of the guide — the guide wins on filing workflow; `lab
 - Labels: per the versioned registry `.docs/agents/label-syntax.md` — one label per required dimension (`type:*`, `area:*`, `origin:*`; `sev1..sev4` on defects) on EVERY item you create or edit, epics and stories included. Touching an unlabeled issue → backfill from its description.
 - Severity: sev1 data-loss/security/app-unusable · sev2 feature broken, no workaround · sev3 workaround exists or cosmetic-functional · sev4 polish. Sev labels are canonical; mirror the native field per `tracker-config.md` — on conflict the label wins.
 - Search for duplicates BEFORE filing.
-- Description template: `## Repro / ## Expected / ## Actual / ## Evidence / ## Suspected cause / ## Refs`. Change requests: current vs desired behavior + acceptance criteria.
+- Description template: `## Repro / ## Expected / ## Actual / ## Evidence / ## Suspected cause / ## Refs`. Change requests: current vs desired behavior + acceptance criteria. Feature/story items: `## Scope / ## DoD` — the DoD is verifiable done-statements, written by the planner before build.
 - QA sweeps: one tracking issue ("QA sweep — <scope> <date>"), findings filed as related issues.
+- Comment discipline: any agent that fixes, solves, or catches something on an issue leaves a SHORT summarized comment — what was done or found, the outcome, and refs (commits by issue key, docs, PRs). Outstanding items caught in passing get a comment even when not fixed. Write for the next reader; never a work log.
 
 Filing with fully-prepared content is ponytail (micro-model) work; drafting content from raw findings is default-worker work.

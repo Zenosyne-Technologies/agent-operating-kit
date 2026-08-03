@@ -17,6 +17,8 @@ Escalate after two failures; de-escalate when work turns mechanical.
 
 build (worker) → **validate** (fresh agents, never the builder → `.docs/agents/validation-agent.md`) → **document** (worker → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
 
+No task enters build without a **DoD** — verifiable done-statements written at planning time on the tracker issue (behavior, tests, docs, env wiring). Builders work TO the DoD; validators falsify AGAINST it.
+
 ## Rules cascade
 
 Keep context lean: load a reference ONLY when performing that activity, and cite it in the sub-agent brief instead of inlining its content.
@@ -28,12 +30,13 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Labeling ANY tracker item you create or edit (and backfilling unlabeled ones) → `.docs/agents/label-syntax.md` (versioned registry)
 - Planning milestones/epics or mapping severity to native fields → `.docs/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Planning a `size:l`/`size:xl` task → `.docs/agents/planning-research.md` (plan-validation + solution research, tier-routed by size)
+- Producing any report (digest / close-out / stakeholder) → `.docs/agents/reporting.md` (snapshot first, render second)
 - Micro-tasks → `.docs/agents/ponytail.md`
 
 ## Standing rules
 
-- **Milestone feature branching**: each milestone gets a `milestone/<slug>` branch off the default branch; all task work commits land there; merge back only at milestone close, after validation.
-- **Autocommit**: commit finished work immediately — atomic commit per completed task step, selective `git add <paths>`, no approval round-trips. Every sub-agent brief instructs the agent to commit its own scoped work before its final message; work is never left uncommitted.
+- **Milestone feature branching**: each milestone gets a `milestone/<slug>` branch off the default branch; all task work commits land there; merge back only at milestone close, after validation. At milestone close, dispatch stats collection + the close-out render per `.docs/agents/reporting.md` before archiving the branch.
+- **Autocommit**: commit finished work immediately — atomic commit per completed task step, selective `git add <paths>`, no approval round-trips. When the work belongs to a tracker issue, the commit message STARTS with its issue key (`<KEY>: <message>`) — keys are how commits trace and sync back to the PM tool. Every sub-agent brief instructs the agent to commit its own scoped work before its final message; work is never left uncommitted.
 - **Attribution: none.** Commits, PRs, docs, and code comments carry NO AI attribution of any kind. {{DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION}}
 - Integration-verify at the real boundary: cold-boot the composed/dev stack for milestone-sized work; API-level checks (curl) are NOT browser E2E — browser-smoke any web-facing change.
 - Real bugs → {{DOCS_ISSUE_LOG_PATH}} AND the tracker per `.docs/agents/ticket-filing.md`.
