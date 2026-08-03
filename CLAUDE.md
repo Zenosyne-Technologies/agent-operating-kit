@@ -11,17 +11,18 @@ A change that helps one specific project belongs in that project's installed fil
 
 ## How the kit works
 
-`skills/install-agent-os/SKILL.md` is the main entry point (`skills/project-info/SKILL.md`: create-if-missing / validate-and-auto-fix for `.docs/PROJECT-INFO.md`; `skills/upgrade-agent-os/SKILL.md`: migrate an existing install to the current kit version): it reads `templates/`, resolves placeholders from the target repo's own facts, merges (never overwrites) existing CLAUDE.md/settings, asks the user which supported PM tool to use (Linear | Jira — a selection, never inferred), installs that tool's `tracker-config.md`, and dispatches its `templates/<tracker>/intake-structure-brief.md` to build the tracker structure. `BOOTSTRAP.md` is the same flow as a paste-able prompt for environments without the plugin. Keep the two in lockstep — any flow change edits BOTH.
+`skills/install-agent-os/SKILL.md` is the main entry point (`skills/project-info/SKILL.md`: create-if-missing / validate-and-auto-fix for `.docs/PROJECT-INFO.md`; `skills/upgrade-agent-os/SKILL.md`: migrate an existing install to the current kit version): it reads `templates/`, resolves placeholders from the target repo's own facts, merges (never overwrites) existing CLAUDE.md/settings, asks the user which supported PM tool to use (Linear | Jira — a selection, never inferred), installs that tool's `tracker-config.md`, and dispatches its `templates/<tracker>/intake-structure-brief.md` to build the tracker structure. `BOOTSTRAP.md` is a pointer prompt at the install skill for plugin-less environments — flow changes edit the skill ONLY.
 
 ## Extension rules
 
 1. **New activity rule** → add `templates/docs/agents/<activity>.md` (lean, one activity), add its reference line to the cascade in `templates/CLAUDE.core.md`, update the README inventory.
-2. **New tracker support** (GitHub Issues/…) → new folder `templates/<tracker>/` mirroring the existing ones: intake brief + `tracker-config.md` + `stats-collection-brief.md` (same snapshot schema) (levels vs the kit's 4-level target, virtual-milestone rule if fewer, severity mapping to the native scheme). Taxonomy and template carry over 1:1, sev labels stay canonical; `ticket-filing.md` stays tracker-neutral except its coordinates line; add the tool to the skill's and BOOTSTRAP's selection lists. Intake briefs MUST be idempotent/re-runnable — the upgrade skill re-dispatches them as the label-sync mechanism.
+2. **New tracker support** (GitHub Issues/…) → new folder `templates/<tracker>/` mirroring the existing ones: intake brief + `tracker-config.md` + `stats-collection-brief.md` (same snapshot schema) (levels vs the kit's 4-level target, virtual-milestone rule if fewer, severity mapping to the native scheme). Taxonomy and template carry over 1:1, sev labels stay canonical; `ticket-filing.md` stays tracker-neutral except its coordinates line; add the tool to the skill's selection list. Intake briefs MUST be idempotent/re-runnable — the upgrade skill re-dispatches them as the label-sync mechanism.
 3. **Every template change** → bump `version` in `.claude-plugin/plugin.json`.
 4. **Keep files lean** — the kit's core value is context proportionality. If a template grows past ~40 lines, split it into the cascade instead.
 5. **Validate by installing**: run the `install-agent-os` skill against a scratch repo and check every placeholder resolves and the merge path works.
 6. **No AI attribution** in this repo's commits/PRs (also the default policy the kit ships).
 7. **Label registry changes** → edit `templates/docs/agents/label-syntax.md` only; bump the registry's OWN version and add its changelog row (on top of the plugin version bump). Never define labels anywhere else — briefs and guides reference the registry.
+8. **Every PR must pass `scripts/validate-kit.sh`** (CI runs it; run it locally before pushing). Extend the script's known-placeholder list when a template legitimately introduces a new placeholder — in the same PR.
 
 ## Origin
 
