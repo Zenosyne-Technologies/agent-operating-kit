@@ -6,7 +6,7 @@ Fill the placeholders, then hand this brief verbatim to an agent (works at the d
 
 Create the issue-intake structure for {{PROJECT_NAME}} in Linear. Work synchronously, no sub-agents.
 
-TOOLS: one tool-search call for: list_issue_labels, create_issue_label, save_document, save_issue, list_issue_statuses (Linear MCP).
+TOOLS: one tool-search call for: list_issue_labels, create_issue_label, list_documents, save_document, save_issue, list_issue_statuses (Linear MCP).
 
 TARGET: team "{{TEAM_NAME}}" (key {{TEAM_KEY}}), project "{{PROJECT_NAME}}".
 
