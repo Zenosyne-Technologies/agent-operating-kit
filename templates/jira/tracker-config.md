@@ -8,7 +8,7 @@ Kit target hierarchy: milestone container → feature grouping → work item →
 
 - At milestone kickoff the planner creates the label `milestone:<slug>` and applies it to every epic in that milestone's scope. Planning and filing agents treat the label exactly like a milestone container (JQL: `labels = "milestone:<slug>"`).
 - Milestone membership is encoded ONLY in that label — never in epic names or descriptions — so it stays losslessly convertible.
-- Conversion path: when the connector supports creating releases (v2), convert each `milestone:<slug>` label into a release (fixVersion) on the same issues, then drop the label. Milestones become the native 4th level; epics stay feature groupings.
+- Conversion path: when the connector supports creating releases (v2), dispatch the kit's `convert-milestones` brief (installed alongside this config, or `templates/jira/convert-milestones-brief.md` in the kit) — each `milestone:<slug>` label becomes a release (fixVersion) on the same issues, labels dropped. Milestones become the native 4th level; epics stay feature groupings.
 
 ## Native field usage
 
