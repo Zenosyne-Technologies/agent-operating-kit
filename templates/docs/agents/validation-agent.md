@@ -33,4 +33,4 @@ At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) w
 
 ## Why fresh agents
 
-Builders validate their own mental model, not the artifact. Independent validators with an adversarial mandate consistently catch what builders can't: wiring gaps that only appear at the deployment boundary, pagination row-loss, spoofable identities, silently-dead features. Reserve orchestrator-level review on top for security-critical invariants only (crypto, deletion, money paths).
+Builders validate their own mental model, not the artifact. Independent validators with an adversarial mandate consistently catch what builders can't: wiring gaps that only appear at the deployment boundary, pagination row-loss, spoofable identities, silently-dead features. Beyond the milestone sweep above, reserve extra orchestrator-level review at TASK level for security-critical invariants only (crypto, deletion, money paths).
