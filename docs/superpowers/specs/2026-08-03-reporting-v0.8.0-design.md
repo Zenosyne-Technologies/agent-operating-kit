@@ -87,3 +87,7 @@ Filled both stats briefs against fabricated `PROJECT-INFO.md` frontmatter (jira 
 ### Outcome
 
 DONE_WITH_CONCERNS — one confirmed defect (cross-tabulated render asks vs. flat schema-v1 data) recorded above per instructions; not fixed in this pass.
+
+## Addendum (2026-08-04) — traceability rules
+
+Owner-requested, added pre-release: (1) commit messages start with the tracker issue key (`CLAUDE.core.md` autocommit rule + `briefing.md` brief ingredient) so commits trace and sync to the PM tool; (2) comment discipline — agents leave short summarized comments on issues for anything solved, fixed, or caught (`ticket-filing.md`); (3) planning-research passes mine both code and tracker history — issue keys found via `git log`/`git blame` lead to prior issue comments (`planning-research.md`).
