@@ -8,9 +8,10 @@ A reusable methodology for running AI-assisted software projects with an orchest
 2. **Cascading ruleset** — one always-loaded core file (`CLAUDE.md`) holds only the rules that apply to *every* turn; per-activity rules live in `.docs/agents/*.md` and are *referenced* in briefs, never inlined. Context stays proportional to the task.
 3. **Task lifecycle** — build (worker) → validate (fresh agents: business-analyst + security-analyst personas, never the builder) → document (docs agent) → close the tracker issue with commit refs.
 4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
-5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval.
+5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval; commit messages start with their tracker issue key, so every commit traces and syncs back to the PM tool.
 6. **Sized planning research** — tasks carry `size:xs..xl` t-shirt labels; `size:xl` plans get adversarial plan-validation + solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip research. Findings land as issue comments or md docs and are folded into the plan before building.
 7. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
+8. **Collect-once reporting** — a per-tracker stats brief snapshots every label dimension into versioned JSON under `.docs/reports/`; audience renders (architect digest, milestone close-out at milestone close, internals-free stakeholder page) consume the snapshot, never the tracker.
 
 ## Install as a Claude Code plugin (recommended)
 
@@ -21,7 +22,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -41,7 +42,7 @@ New sessions then load the updated plugin; an already-open CLI session needs `/r
 
 ## Manual install (no plugin, 3 steps)
 
-1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
+1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, its `templates/<tracker>/stats-collection-brief.md` → `<repo>/.docs/agents/stats-collection-brief.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
 2. Fill every `{{PLACEHOLDER}}` in `CLAUDE.md` (project facts, env preamble, tracker coordinates). Delete rules that don't apply; add project-specific "conventions that bite" as you learn them.
 3. Create the tracker structure: give an agent your PM tool's `templates/<tracker>/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
 
@@ -65,18 +66,21 @@ templates/
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
     ponytail.md                    small-model micro-task profile
+    reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
   linear/
     intake-structure-brief.md      agent brief that creates labels + intake guide
     tracker-config.md              4/4 levels native; severity → Linear Priority
+    stats-collection-brief.md      label-dimension stats snapshot (schema v1) to .docs/reports/
   jira/
     intake-structure-brief.md      agent brief that seeds the label taxonomy + intake guide
     tracker-config.md              3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
     convert-milestones-brief.md    dispatchable when the v2 connector adds release creation: milestone labels → releases
+    stats-collection-brief.md      label-dimension stats snapshot (schema v1) to .docs/reports/
 ```
 
 ## Portability notes
 
 - Model names are placeholders — map tiers to whatever is current (`frontier` / `default worker` / `micro`).
-- Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
+- Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md` + `stats-collection-brief.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
 - Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear meets it natively (Project → Milestone → Issue → Sub-issue). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows. The conversion is a prepared brief (`jira/convert-milestones-brief.md`), not just a rule.
 - The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.
