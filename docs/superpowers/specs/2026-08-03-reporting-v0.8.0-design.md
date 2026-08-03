@@ -61,3 +61,37 @@ Snapshots are additive files; nothing existing changes shape. Projects without `
 ## Testing
 
 Scratch-project run per tracker: seed a handful of labeled issues, dispatch collection, verify snapshot keys and counts; render digest and close-out; verify the stakeholder render contains no origin/tier internals.
+
+## Validated
+
+Date: 2026-08-04 · Validator: Task 7 scratch validation (spec Testing section, adapted to no live tracker). Caveat, explicit: no live tracker queries were executed against Jira or Linear — this pass fabricates a schema-v1 snapshot and fabricated `PROJECT-INFO.md` frontmatter, then exercises the render and brief-fill logic against that fixture data. It does not validate the actual JQL/MCP query behavior of `stats-collection-brief.md` against a real tracker.
+
+### Step 1 — Snapshot + render simulation
+
+Fabricated a valid schema-v1 snapshot (`2026-08-04-stats.json`, project `NIM`, milestone slug `v1-launch`) with all 15 top-level keys from `templates/jira/stats-collection-brief.md` step 2, internally consistent counts (`by_type`/`by_area`/`by_origin`/`by_size` each sum to `issues_scanned` = 75; `sev_open` + `sev_closed` = 18 = `by_type.bug`). Produced all three renders per `templates/docs/agents/reporting.md`:
+
+- **Digest**: ends with exactly 3 numbered observations; all cited figures trace to snapshot fields verbatim (no invented percentages or cross-sums). PASS.
+- **Close-out**: covers delivered-vs-planned from `milestones.v1-launch` (34 done / 6 open) as the render brief requires. PASS, with a caveat below.
+- **Stakeholder**: `grep -n -i 'origin:\|size:\|worker\|escalation\|ponytail'` against the rendered file returned zero hits (grep exit 1). PASS.
+
+**Defect found (real, not fixed — recorded per instructions)**: `templates/docs/agents/reporting.md` specifies render content that schema-v1 cannot supply. The digest asks for "where effort went (`by_area × by_size`)" and the close-out asks for "defects by area" and "sizing distribution of shipped work" — all three are cross-tabulations (area × type=bug, area × size, milestone-done × size). `templates/jira/stats-collection-brief.md` step 1 and `templates/linear/stats-collection-brief.md` step 1 both collect only independent per-dimension totals (one count per label value per dimension, plus milestone open/done) — there is no query or output field that joins two dimensions. A render agent following `reporting.md` literally cannot produce "defects by area" or an area×size effort breakdown from a schema-v1 snapshot without recomputing/estimating, which `reporting.md`'s own rule forbids ("Numbers come from the snapshot verbatim — an agent that recomputes or estimates figures is doing it wrong"). During this validation the close-out and digest renders were written to state the limitation explicitly and fall back to the independent totals rather than inventing a join. Fix options for a future task: either drop the cross-tabulated asks from `reporting.md`, or extend the schema/queries to collect the specific joins actually needed (e.g. `by_area_defects`, milestone-scoped `by_size`).
+
+Resolved post-validation in this release: the snapshot schema gains `defects_by_area` (16 top-level keys, still stats_schema 1 — pre-release change) and the digest/close-out wording now names only collected fields; a second fix made explicit that close-outs render from a milestone-scoped snapshot.
+
+### Step 2 — Brief fill check
+
+Filled both stats briefs against fabricated `PROJECT-INFO.md` frontmatter (jira variant: project `Nimbus`/`NIM`; linear variant: team/project `Aurora`/`AUR`). `grep '{{'` against both filled briefs returned zero hits (exit 1) in each case. Every label value the filled briefs' query instructions reference (`type:*`, `area:*`, `origin:*`, `size:*`, `milestone:*` in the jira variant; `type:*`, `area:*`, `origin:*`, `size:*` in the linear variant — correctly omitting `milestone:*` since Linear milestones are native, not label-based per `tracker-config.md`; plus bare `sev1-critical`/`sev2-high` in both) exists in `templates/docs/agents/label-syntax.md` v1.2.0. PASS.
+
+**Minor observation (not blocking)**: the Linear brief needs `TEAM_NAME` and `TEAM_KEY` distinct from `PROJECT_NAME`, but `templates/docs/PROJECT-INFO.md`'s frontmatter has no dedicated team-name/team-key fields — only `project`/`project_key` plus freeform `tracker_coordinates`. Resolution required reading the team identity out of `tracker_coordinates` prose rather than a structured field. This fabrication succeeded, but the mapping is implicit rather than documented.
+
+### Outcome
+
+DONE_WITH_CONCERNS — one confirmed defect (cross-tabulated render asks vs. flat schema-v1 data) recorded above per instructions; not fixed in this pass.
+
+## Addendum (2026-08-04) — traceability rules
+
+Owner-requested, added pre-release: (1) commit messages start with the tracker issue key (`CLAUDE.core.md` autocommit rule + `briefing.md` brief ingredient) so commits trace and sync to the PM tool; (2) comment discipline — agents leave short summarized comments on issues for anything solved, fixed, or caught (`ticket-filing.md`); (3) planning-research passes mine both code and tracker history — issue keys found via `git log`/`git blame` lead to prior issue comments (`planning-research.md`).
+
+## Addendum 2 (2026-08-04) — DoD discipline
+
+Owner-requested, added pre-release: every task gets a planner-authored DoD on the tracker issue before build (`CLAUDE.core.md` lifecycle, `ticket-filing.md` `## Scope / ## DoD` template); build briefs carry the DoD and final messages report per-item met/missed (`briefing.md` ingredient 3); validators falsify against the DoD with explicit per-item pass/fail, running the Playwright (or equivalent) E2E suite and/or driving the browser directly (`validation-agent.md`).
