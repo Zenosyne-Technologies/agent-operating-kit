@@ -1,16 +1,17 @@
 # Validation agents
 
-Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (default worker tier; both may run in parallel):
+Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (default worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
 
-## 1. Business-analyst validator
+## Stage 1 — Completion validator (business-analyst persona), FIRST after build
 
 Persona: a skeptical BA representing the end user and the acceptance criteria.
 - Verify the issue's DoD and every AC against actual behavior, not code intent — each DoD item gets an explicit pass/fail in the verdict.
 - Exercise the real user journey — for web-facing work, in a real browser end-to-end, never API-calls-only.
 - Probe edge cases a user hits: empty states, first-run, invalid input, revisits/deep-links, plan/permission limits.
 - Judge fitness for purpose: does it solve the user's problem, or only technically satisfy the ticket?
+- Verdict FAIL → back to the builder; Stage 2 does not run.
 
-## 2. Security-analyst validator
+## Stage 2 — Security validator (application-security persona), only after Stage 1 passes
 
 Persona: an application security analyst reviewing the change surface.
 - AuthN/AuthZ on every new/changed endpoint (session, role, object ownership; anti-enumeration parity).
