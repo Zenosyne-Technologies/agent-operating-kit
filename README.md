@@ -4,7 +4,7 @@ A reusable methodology for running AI-assisted software projects with an orchest
 
 ## Core ideas
 
-1. **Tier dispatch** — the orchestrator (frontier model) plans, briefs, and verifies; it never bulk-implements. Default workers are mid-tier; mechanical micro-tasks go to a small model ("ponytail" profile). Escalate only after two failures.
+1. **Tier dispatch** — the orchestrator (frontier model — the architect's recommended session model) plans, briefs, and verifies; it never bulk-implements. Execution routes by task size: medium-and-larger work and research to the heavy worker tier, small clearly-defined work to the small worker tier, mechanical micro-tasks to the micro model ("ponytail" profile).
 2. **Cascading ruleset** — one always-loaded core file (`CLAUDE.md`) holds only the rules that apply to *every* turn; per-activity rules live in `.docs/agents/*.md` and are *referenced* in briefs, never inlined. Context stays proportional to the task.
 3. **Task lifecycle** — build (worker) → validate in sequence (completion validator first, security validator only after it passes — fresh agents, never the builder) → document (docs agent) → close the tracker issue with commit refs.
 4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
@@ -84,7 +84,7 @@ templates/
 
 ## Portability notes
 
-- Model names are placeholders — map tiers to whatever is current (`frontier` / `default worker` / `micro`).
+- Model names are placeholders — map tiers to whatever is current (`frontier` / `heavy worker` / `small worker` / `micro`).
 - Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md` + `stats-collection-brief.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
 - Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear meets it natively (Project → Milestone → Issue → Sub-issue). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows. The conversion is a prepared brief (`jira/convert-milestones-brief.md`), not just a rule.
 - The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.
