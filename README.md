@@ -9,7 +9,7 @@ A reusable methodology for running AI-assisted software projects with an orchest
 3. **Task lifecycle** — build (worker) → validate (fresh agents: business-analyst + security-analyst personas, never the builder) → document (docs agent) → close the tracker issue with commit refs.
 4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
 5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval.
-6. **Tracker intake structure** — a label taxonomy (type/area/severity/provenance), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
+6. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
 
 ## Install as a Claude Code plugin (recommended)
 
@@ -54,8 +54,11 @@ BOOTSTRAP.md                       one-shot instantiation prompt
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
+  docs/
+    PROJECT-INFO.md                project meta page for foreign agents / reporting tools (installed to .docs/PROJECT-INFO.md)
   docs/agents/
     briefing.md                    how to write any sub-agent brief
+    label-syntax.md                versioned label registry (dimensions, backfill rule, changelog)
     validation-agent.md            BA + security validator personas, E2E hook
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)

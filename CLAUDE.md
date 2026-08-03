@@ -21,6 +21,7 @@ A change that helps one specific project belongs in that project's installed fil
 4. **Keep files lean** — the kit's core value is context proportionality. If a template grows past ~40 lines, split it into the cascade instead.
 5. **Validate by installing**: run the `install-agent-os` skill against a scratch repo and check every placeholder resolves and the merge path works.
 6. **No AI attribution** in this repo's commits/PRs (also the default policy the kit ships).
+7. **Label registry changes** → edit `templates/docs/agents/label-syntax.md` only; bump the registry's OWN version and add its changelog row (on top of the plugin version bump). Never define labels anywhere else — briefs and guides reference the registry.
 
 ## Origin
 
