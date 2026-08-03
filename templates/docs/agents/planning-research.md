@@ -14,7 +14,7 @@ Tier routing (mandatory — by the task's `size:` label):
 | Size | Researcher tier |
 |---|---|
 | `size:xl` (very complex) | {{ESCALATION_MODEL}} |
-| `size:l` (mid complexity) | {{WORKER_MODEL}} |
+| `size:l` (mid complexity) | {{ESCALATION_MODEL}} |
 | `size:m` and below | no research pass |
 
 Reporting — findings live where the plan lives, both passes alike:

@@ -4,12 +4,12 @@
 
 ## Model-tier dispatch (MANDATORY)
 
-Orchestrator ({{FRONTIER_MODEL}}) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Route to the cheapest capable tier:
+Orchestrator ({{FRONTIER_MODEL}} — the architect's recommended session model) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Route execution by the task's `size:` label:
 
 - **Orchestrator inline**: architecture/ADRs, security-critical design, irreversible ops, QA sign-off, brief authoring, conflict resolution.
-- **{{ESCALATION_MODEL}} subagent**: only after two {{WORKER_MODEL}} failures, or cross-cutting debugging with no clear repro (state why in the brief).
-- **{{WORKER_MODEL}} subagent** (default): features, fixes, validators, tests, QA sweeps, imports, docs.
-- **{{MICRO_MODEL}} subagent** ("ponytail"): mechanical zero-discretion micro-tasks → `.docs/agents/ponytail.md`.
+- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m` and larger executions, all planning-research passes, cross-cutting debugging; also the escalation target after two {{WORKER_MODEL}} failures.
+- **{{WORKER_MODEL}} subagent** (small worker): `size:s` and clearly-defined small executions — validators, tests, QA sweeps, imports, docs.
+- **{{MICRO_MODEL}} subagent** ("ponytail"): `size:xs` mechanical zero-discretion micro-tasks → `.docs/agents/ponytail.md`.
 
 Escalate after two failures; de-escalate when work turns mechanical.
 
