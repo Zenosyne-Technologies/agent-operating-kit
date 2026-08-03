@@ -42,7 +42,7 @@ New sessions then load the updated plugin; an already-open CLI session needs `/r
 
 ## Manual install (no plugin, 3 steps)
 
-1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
+1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, its `templates/<tracker>/stats-collection-brief.md` → `<repo>/.docs/agents/stats-collection-brief.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
 2. Fill every `{{PLACEHOLDER}}` in `CLAUDE.md` (project facts, env preamble, tracker coordinates). Delete rules that don't apply; add project-specific "conventions that bite" as you learn them.
 3. Create the tracker structure: give an agent your PM tool's `templates/<tracker>/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
 
@@ -81,6 +81,6 @@ templates/
 ## Portability notes
 
 - Model names are placeholders — map tiers to whatever is current (`frontier` / `default worker` / `micro`).
-- Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
+- Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md` + `stats-collection-brief.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
 - Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear meets it natively (Project → Milestone → Issue → Sub-issue). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows. The conversion is a prepared brief (`jira/convert-milestones-brief.md`), not just a rule.
 - The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.
