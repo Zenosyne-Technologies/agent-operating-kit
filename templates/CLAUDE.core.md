@@ -7,11 +7,11 @@
 Orchestrator ({{FRONTIER_MODEL}} — the architect's recommended session model) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Route execution by the task's `size:` label:
 
 - **Orchestrator inline**: architecture/ADRs, security-critical design, irreversible ops, QA sign-off, brief authoring, conflict resolution.
-- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m` and larger executions, all planning-research passes, validators (both stages), cross-cutting debugging; also the escalation target after two {{WORKER_MODEL}} failures.
+- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m` and larger executions, all planning-research passes, validators (both stages), cross-cutting debugging.
 - **{{WORKER_MODEL}} subagent** (small worker): `size:s` and clearly-defined small executions — tests, QA sweeps, imports, docs.
 - **{{MICRO_MODEL}} subagent** ("ponytail"): `size:xs` mechanical zero-discretion micro-tasks → `.docs/agents/ponytail.md`.
 
-Escalate after two failures; de-escalate when work turns mechanical.
+After two failed attempts at any tier, escalate to {{FRONTIER_MODEL}} (orchestrator inline or a frontier subagent); de-escalate when work turns mechanical.
 
 ## Task lifecycle (per tracker task)
 
@@ -36,7 +36,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 
 ## Standing rules
 
-- **Milestone feature branching**: each milestone gets a `milestone/<slug>` branch off the default branch; all task work commits land there; merge back only at milestone close, after validation. At milestone close, dispatch stats collection + the close-out render per `.docs/agents/reporting.md` before archiving the branch.
+- **Milestone feature branching**: each milestone gets a `milestone/<slug>` branch off the default branch; all task work commits land there; merge back only after milestone validation ({{FRONTIER_MODEL}} with {{WORKER_MODEL}} sub-agents → `.docs/agents/validation-agent.md`). At milestone close, dispatch stats collection + the close-out render per `.docs/agents/reporting.md` before archiving the branch.
 - **Autocommit**: commit finished work immediately — atomic commit per completed task step, selective `git add <paths>`, no approval round-trips. When the work belongs to a tracker issue, the commit message STARTS with its issue key (`<KEY>: <message>`) — keys are how commits trace and sync back to the PM tool. Every sub-agent brief instructs the agent to commit its own scoped work before its final message; work is never left uncommitted.
 - **Attribution: none.** Commits, PRs, docs, and code comments carry NO AI attribution of any kind. {{DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION}}
 - Integration-verify at the real boundary: cold-boot the composed/dev stack for milestone-sized work; API-level checks (curl) are NOT browser E2E — browser-smoke any web-facing change.

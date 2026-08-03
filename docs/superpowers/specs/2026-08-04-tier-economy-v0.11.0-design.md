@@ -15,6 +15,8 @@ Tier placeholders keep their names (no ripple through the install skill or the g
 - `{{WORKER_MODEL}}` — **small worker**: `size:s` and clearly-defined small executions, tests, QA sweeps, imports, docs.
 
 Review addendum: the independent review found the retired term "default worker" surviving in 10 payload locations; all renamed (validators → "heavy worker tier" per the owner's routing, the rest → "small worker"). No `{{PLACEHOLDER}}` changes.
+
+Owner addendum 2: (a) the after-two-failures escalation target is `{{FRONTIER_MODEL}}` (orchestrator inline or a frontier subagent), not the heavy worker; (b) milestone close gains its own validation mode — the orchestrator (`{{FRONTIER_MODEL}}`) leads the sweep with `{{WORKER_MODEL}}` sub-agents gathering evidence (new section in `validation-agent.md`, wired into the milestone-branching rule). Task-level two-stage validation is unchanged and not re-run at milestone level.
 - `{{MICRO_MODEL}}` — unchanged ponytail (`size:xs` mechanical).
 
 Consequence: `planning-research.md`'s `size:l` research row moves from `{{WORKER_MODEL}}` to `{{ESCALATION_MODEL}}` (research is heavy-worker work).
