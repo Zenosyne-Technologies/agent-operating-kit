@@ -6,7 +6,7 @@ A reusable methodology for running AI-assisted software projects with an orchest
 
 1. **Tier dispatch** — the orchestrator (frontier model) plans, briefs, and verifies; it never bulk-implements. Default workers are mid-tier; mechanical micro-tasks go to a small model ("ponytail" profile). Escalate only after two failures.
 2. **Cascading ruleset** — one always-loaded core file (`CLAUDE.md`) holds only the rules that apply to *every* turn; per-activity rules live in `.docs/agents/*.md` and are *referenced* in briefs, never inlined. Context stays proportional to the task.
-3. **Task lifecycle** — build (worker) → validate (fresh agents: business-analyst + security-analyst personas, never the builder) → document (docs agent) → close the tracker issue with commit refs.
+3. **Task lifecycle** — build (worker) → validate in sequence (completion validator first, security validator only after it passes — fresh agents, never the builder) → document (docs agent) → close the tracker issue with commit refs.
 4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
 5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval; commit messages start with their tracker issue key, so every commit traces and syncs back to the PM tool.
 6. **Sized planning research** — tasks carry `size:xs..xl` t-shirt labels; `size:xl` plans get adversarial plan-validation + solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip research. Findings land as issue comments or md docs and are folded into the plan before building.
@@ -70,6 +70,7 @@ templates/
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
     ponytail.md                    small-model micro-task profile
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
+    security.md                    secrets, dependency vetting, and security-surface discipline
   linear/
     intake-structure-brief.md      agent brief that creates labels + intake guide
     tracker-config.md              4/4 levels native; severity → Linear Priority
