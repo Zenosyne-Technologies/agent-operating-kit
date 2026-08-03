@@ -21,7 +21,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo without recreating it. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 

@@ -11,7 +11,7 @@ A change that helps one specific project belongs in that project's installed fil
 
 ## How the kit works
 
-`skills/install-agent-os/SKILL.md` is the main entry point (`skills/project-info/SKILL.md` is a standalone helper: create-if-missing / validate-only for `.docs/PROJECT-INFO.md`): it reads `templates/`, resolves placeholders from the target repo's own facts, merges (never overwrites) existing CLAUDE.md/settings, asks the user which supported PM tool to use (Linear | Jira — a selection, never inferred), installs that tool's `tracker-config.md`, and dispatches its `templates/<tracker>/intake-structure-brief.md` to build the tracker structure. `BOOTSTRAP.md` is the same flow as a paste-able prompt for environments without the plugin. Keep the two in lockstep — any flow change edits BOTH.
+`skills/install-agent-os/SKILL.md` is the main entry point (`skills/project-info/SKILL.md` is a standalone helper: create-if-missing / validate-and-auto-fix for `.docs/PROJECT-INFO.md`): it reads `templates/`, resolves placeholders from the target repo's own facts, merges (never overwrites) existing CLAUDE.md/settings, asks the user which supported PM tool to use (Linear | Jira — a selection, never inferred), installs that tool's `tracker-config.md`, and dispatches its `templates/<tracker>/intake-structure-brief.md` to build the tracker structure. `BOOTSTRAP.md` is the same flow as a paste-able prompt for environments without the plugin. Keep the two in lockstep — any flow change edits BOTH.
 
 ## Extension rules
 
