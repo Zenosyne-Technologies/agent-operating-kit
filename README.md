@@ -22,7 +22,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief. A fifth skill, **`validate-kit`**, runs the kit's own release gate — the static check script plus three agentic scratch-repo scenarios.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -40,19 +40,22 @@ Installed plugins are **pinned snapshots** — pushing commits to this repo does
 
 New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
 
+Contributors: every PR must pass `bash scripts/validate-kit.sh` — CI enforces it.
+
 ## Manual install (no plugin, 3 steps)
 
 1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, its `templates/<tracker>/stats-collection-brief.md` → `<repo>/.docs/agents/stats-collection-brief.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
 2. Fill every `{{PLACEHOLDER}}` in `CLAUDE.md` (project facts, env preamble, tracker coordinates). Delete rules that don't apply; add project-specific "conventions that bite" as you learn them.
 3. Create the tracker structure: give an agent your PM tool's `templates/<tracker>/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
 
-Or paste `BOOTSTRAP.md` into a Claude session inside the new project — it performs all three steps interactively.
+Or paste `BOOTSTRAP.md` into a Claude session — it is a pointer that walks the session through the install skill directly.
 
 ## Inventory
 
 ```
 README.md                          this file
-BOOTSTRAP.md                       one-shot instantiation prompt
+BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
+scripts/validate-kit.sh              seven-check static release gate (CI runs it on every PR)
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
