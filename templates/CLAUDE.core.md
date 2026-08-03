@@ -15,7 +15,7 @@ Escalate after two failures; de-escalate when work turns mechanical.
 
 ## Task lifecycle (per tracker task)
 
-build (worker) → **validate** (fresh agents, never the builder → `.docs/agents/validation-agent.md`) → **document** (worker → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
+build (worker) → **validate-completion** (fresh BA validator) → **validate-security** (fresh security validator, only after completion passes) — both per `.docs/agents/validation-agent.md`, never the builder → **document** (worker → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
 
 No task enters build without a **DoD** — verifiable done-statements written at planning time on the tracker issue (behavior, tests, docs, env wiring). Builders work TO the DoD; validators falsify AGAINST it.
 
@@ -31,6 +31,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Planning milestones/epics or mapping severity to native fields → `.docs/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Planning a `size:l`/`size:xl` task → `.docs/agents/planning-research.md` (plan-validation + solution research, tier-routed by size)
 - Producing any report (digest / close-out / stakeholder) → `.docs/agents/reporting.md` (snapshot first, render second)
+- Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.docs/agents/security.md`
 - Micro-tasks → `.docs/agents/ponytail.md`
 
 ## Standing rules
