@@ -14,18 +14,40 @@ The kit evolved fast through v0.2.0–v0.6.1 (Linear→Jira migration, `.docs/` 
 4. Tracker-data migrations (relabel sweeps) are possible but gated behind one explicit user confirmation.
 5. Agents size tasks against an objective rubric.
 6. The Jira virtual-milestone→release conversion is a prepared, dispatchable brief.
+7. PROJECT-INFO carries its structured facts in machine-parseable YAML frontmatter.
 
 ## Non-goals
 
-- Reporting/statistics consumers of the label dimensions (future release).
-- Kit self-validation CI, GitHub Issues tracker support, PROJECT-INFO structured frontmatter (future releases).
+- Reporting/statistics consumers of the label dimensions (v0.8.0, own spec).
+- Kit self-validation CI + validate-kit skill + BOOTSTRAP pointer (v0.9.0, own spec).
+- GitHub Issues tracker support (unscheduled).
 - A BOOTSTRAP-style paste-able upgrade prompt (upgrade is plugin-only for now; parity later if needed).
 
 ## Design
 
-### 1. Version stamping
+### 1. Version stamping + structured PROJECT-INFO
 
-`templates/docs/PROJECT-INFO.md` gains one field: `- **Kit version**: {{KIT_VERSION}}` (label-syntax version field already exists). The install skill resolves it from the plugin's `.claude-plugin/plugin.json` at install time; `upgrade-agent-os` rewrites it after every migration; the `project-info` skill validates both version fields as part of its fact checks. PROJECT-INFO.md remains the single machine-read surface for "what is installed here."
+`templates/docs/PROJECT-INFO.md` is restructured as **YAML frontmatter + markdown body**. The frontmatter carries every structured fact — the machine contract for foreign agents, frameworks, and the kit's own skills:
+
+```yaml
+---
+project: {{PROJECT_NAME}}
+description: {{ONE_SENTENCE_DESCRIPTION}}
+owner: {{OWNER_ORG_OR_PERSON}}
+pm_tool: {{PM_TOOL}}            # linear | jira | none
+tracker_coordinates: {{TRACKER_COORDINATES}}
+project_key: {{PROJECT_KEY_OR_NA}}
+hierarchy_levels: {{LEVELS}}     # "4/4" | "3/4-virtual-milestones"
+intake_guide_url: {{TRACKER_GUIDE_URL}}
+stack: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
+dev_command: {{DEV_COMMAND_AND_PORTS}}
+docs_location: {{DOCS_LOCATION}}
+kit_version: {{KIT_VERSION}}
+label_syntax_version: {{LABEL_SYNTAX_VERSION}}
+---
+```
+
+The markdown body keeps the human overview (prose, pointers into `.docs/agents/`), no longer duplicating every field — frontmatter is the source of truth for facts; the body explains. The install skill resolves `kit_version` from the plugin's `.claude-plugin/plugin.json`; `upgrade-agent-os` rewrites the version keys after every migration; the `project-info` skill validates frontmatter keys against the repo (and adds missing keys via its fix sub-agent). One file, so facts can never drift against their own document.
 
 ### 2. `upgrade-agent-os` skill (new — third skill, `skills/upgrade-agent-os/SKILL.md`)
 
@@ -78,9 +100,9 @@ New `templates/jira/convert-milestones-brief.md` — prepared now, dispatched wh
 | File | Change |
 |---|---|
 | `skills/upgrade-agent-os/SKILL.md` | new |
-| `skills/install-agent-os/SKILL.md` | resolve `{{KIT_VERSION}}` stamp into PROJECT-INFO |
-| `skills/project-info/SKILL.md` | validate Kit version field |
-| `templates/docs/PROJECT-INFO.md` | add Kit version field |
+| `skills/install-agent-os/SKILL.md` | resolve frontmatter incl. `kit_version` stamp into PROJECT-INFO |
+| `skills/project-info/SKILL.md` | validate frontmatter keys (incl. versions) against the repo |
+| `templates/docs/PROJECT-INFO.md` | restructure: YAML frontmatter (facts) + md body (overview) |
 | `templates/docs/agents/label-syntax.md` | v1.2.0: sizing rubric + changelog row |
 | `templates/linear/intake-structure-brief.md` | idempotent guide handling; created/updated/skipped final message |
 | `templates/jira/intake-structure-brief.md` | search-first seed issue + guide; created/updated/skipped final message |
@@ -93,7 +115,7 @@ New `templates/jira/convert-milestones-brief.md` — prepared now, dispatched wh
 
 ## Compatibility
 
-- Pre-0.7.0 installs: handled by the heuristic branch of detection, exactly once — after the first upgrade they are stamped.
+- Pre-0.7.0 installs: handled by the heuristic branch of detection, exactly once — after the first upgrade they are stamped. A pre-0.7.0 PROJECT-INFO.md (list-style, no frontmatter) is converted to the frontmatter form by the upgrade skill (or the project-info fix sub-agent), preserving project-specific extras in the body.
 - The intake-brief idempotency changes are backwards-compatible: first runs behave as today.
 - No changes to consumer-facing rule semantics; only additions (rubric, stamp) and mechanics (idempotency).
 
