@@ -7,6 +7,8 @@ For each qualifying task, the planner dispatches two research passes, in order, 
 1. **Plan-validation research** — a fresh agent adversarially checks the plan against the actual codebase: hidden dependencies, breaking-change surface, wrong assumptions, missing acceptance criteria, sequencing risks.
 2. **Solution research** — after validation findings are reconciled into the plan: research implementation approaches — viable options with trade-offs, a recommended approach with reasons, and references (code, docs, prior art).
 
+Both passes search the CODE and the PM TOOL: `git log`/`git blame` the touched files and methods for issue keys in earlier commits (commit messages start with their key), fetch those issues, and read their comments — prior findings and solutions often answer current questions. Cite the relevant issues in Refs.
+
 Tier routing (mandatory — by the task's `size:` label):
 
 | Size | Researcher tier |
