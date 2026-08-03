@@ -21,3 +21,13 @@ Kit target hierarchy: milestone container → feature grouping → work item →
 | sev2-high | High | Significant |
 | sev3-medium | Medium | Moderate |
 | sev4-low | Low | Minor |
+
+- Size labels are canonical; mirror native Story Points per this table when the field exists (on conflict the label wins):
+
+| Kit label | Jira Story Points |
+|---|---|
+| size:xs | 1 |
+| size:s | 2 |
+| size:m | 3 |
+| size:l | 5 |
+| size:xl | 8 |

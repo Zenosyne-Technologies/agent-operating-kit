@@ -27,6 +27,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Creating/updating tracker issues → `.docs/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide")
 - Labeling ANY tracker item you create or edit (and backfilling unlabeled ones) → `.docs/agents/label-syntax.md` (versioned registry)
 - Planning milestones/epics or mapping severity to native fields → `.docs/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
+- Planning a `size:l`/`size:xl` task → `.docs/agents/planning-research.md` (plan-validation + solution research, tier-routed by size)
 - Micro-tasks → `.docs/agents/ponytail.md`
 
 ## Standing rules

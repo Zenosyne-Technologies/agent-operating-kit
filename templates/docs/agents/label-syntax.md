@@ -1,4 +1,4 @@
-# Label syntax registry — v1.0.0
+# Label syntax registry — v1.1.0
 
 Self-contained and versioned: ANY change to this registry bumps the version above and adds a changelog row. This file is the single source of truth for labels; the in-tracker guide summarizes it and loses on label conflicts.
 
@@ -17,14 +17,16 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 | `area:` | every item | {{AREA_1}} · {{AREA_2}} · {{AREA_3}} · infra · docs (project components, e.g. ui, core) |
 | `sev1..sev4` | defects only | sev1-critical · sev2-high · sev3-medium · sev4-low (definitions in `ticket-filing.md`) |
 | `origin:` | every item | user-request (end users) · architect-request (the human managing the agent sessions) · agent-qa (QA sweeps, validators) · agent-dev (found by an agent while building) · roadmap (planned milestone work) |
+| `size:` | stories/tasks, at planning time | xs · s · m · l · xl — t-shirt scale for combined effort + complexity; drives the planning-research tier routing (`planning-research.md`); native estimate mapping in `tracker-config.md` |
 | `milestone:<slug>` | epics on 3-level trackers | virtual milestone container per `tracker-config.md` |
 
 ## Reporting intent
 
-type = work mix · area = component load · sev = quality posture · origin = demand source (users vs architect vs agents) · milestone = scope progress.
+type = work mix · area = component load · sev = quality posture · origin = demand source (users vs architect vs agents) · size = effort/complexity mix · milestone = scope progress.
 
 ## Changelog
 
 | Version | Change |
 |---|---|
+| 1.1.0 | Adds `size:` dimension (t-shirt scale xs..xl, required on stories/tasks at planning time); sizes gate the planning-research tier routing. |
 | 1.0.0 | Initial registry. Adds `type:feature` and `origin:*` (supersedes `found-by:*`: agent-qa → origin:agent-qa, owner → origin:architect-request). Labeling extended from intake-only to every created/edited item; backfill-on-touch rule introduced. |
