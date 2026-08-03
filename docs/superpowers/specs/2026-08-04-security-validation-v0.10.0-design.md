@@ -56,3 +56,23 @@ New item 4 (after DoD; items renumber to 1–10): **Security surface** — the b
 ## Testing
 
 Manual release sweep (JSON, no plugin-root leak, ≤45-line budgets, registry header unchanged at v1.2.0) — the v0.9.0 CI gate re-checks everything once both branches land. Coherence walk: brief ingredient ↔ security.md surfaces section ↔ validation order ↔ lifecycle line all reference each other consistently; secrets rule names the PM-tool surfaces that v0.8.0 introduced (comments, snapshots).
+
+## Validated
+
+2026-08-04.
+
+**Sweep (hard gate, all passed):**
+- `python3 -m json.tool .claude-plugin/plugin.json` → json-ok.
+- `grep -rn CLAUDE_PLUGIN_ROOT templates/` → no-leak.
+- Template line budgets: every file under `templates/` ≤45 lines (no file exceeded the cap).
+- `head -1 templates/docs/agents/label-syntax.md` → `# Label syntax registry — v1.2.0` (unchanged).
+- `grep -c "security.md" README.md templates/CLAUDE.core.md` → 1 each (≥1 satisfied).
+- `.claude-plugin/plugin.json` version → `0.10.0`.
+
+**Coherence-walk outcomes:**
+- Briefing item 4 → security.md: RESOLVES. `briefing.md` item 4 ("Security surface … citing `security.md`") is answered by security.md's Surfaces section, which points back explicitly ("Build briefs name the task's security surface (`briefing.md` ingredient)").
+- Validation stage order, three sources: RESOLVES, all three state the same order (completion → security). `security.md` Surfaces: "Validation is two-stage (`validation-agent.md`): completion first, security second — security review never runs on incomplete work" (post micro-fix). `validation-agent.md`: "run in SEQUENCE — completion first, security only after completion passes"; Stage 2 heading: "only after Stage 1 passes." `CLAUDE.core.md` lifecycle: "build (worker) → **validate-completion** (fresh BA validator) → **validate-security** (fresh security validator, only after completion passes)."
+- Secrets rule naming v0.8.0 surfaces: RESOLVES. security.md's Secrets bullet names "issue comments, report snapshots, tracker docs, and PR bodies" as shared surfaces requiring scrubbing. Git history confirms `report snapshots` and the close-out `comment: <url>` FINAL MESSAGE convention were both introduced by the v0.8.0 reporting release (`a221f9d` "feat: reporting cascade — collect-once render-many", folded into `d26641f` "feat: v0.8.0 — reporting release").
+- ponytail.md exclusion vs. CLAUDE.core orchestrator-inline rule vs. security.md: CONSISTENT, not contradicted. `ponytail.md` excludes "security-adjacent code" from the micro tier entirely; `CLAUDE.core.md`'s orchestrator-inline rule reserves only "security-critical design (crypto, deletion, money paths, authZ models)" for the orchestrator; `security.md`'s Surfaces section states the same orchestrator-inline carve-out. The three-way split (micro tier: none; worker tier: security-surface-constrained builds; orchestrator: critical design only) has no gap or overlap.
+
+**Caveat:** this sweep and coherence walk were run manually against the working tree on the `claude/security-validation-v0.10.0` branch. The v0.9.0 CI gate (landing on its own branch) re-checks all of the above automatically once both branches merge — this record does not substitute for that automated re-check.
