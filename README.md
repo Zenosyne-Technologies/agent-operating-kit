@@ -1,6 +1,6 @@
 # Agent Operating Kit
 
-A reusable methodology for running AI-assisted software projects with an orchestrator + sub-agent system: model-tier dispatch, a cascading ruleset that keeps context lean, adversarial validation personas, post-task documentation agents, and a Linear issue-intake structure. Battle-tested on a full 7-milestone SaaS build (37 agent-built tasks, every one independently validated).
+A reusable methodology for running AI-assisted software projects with an orchestrator + sub-agent system: model-tier dispatch, a cascading ruleset that keeps context lean, adversarial validation personas, post-task documentation agents, and a Jira issue-intake structure. Battle-tested on a full 7-milestone SaaS build (37 agent-built tasks, every one independently validated).
 
 ## Core ideas
 
@@ -19,7 +19,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@zenosyne
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, and optionally creates the Linear intake structure via a sub-agent.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, and optionally creates the Jira intake structure via a sub-agent.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -41,7 +41,7 @@ New sessions then load the updated plugin; an already-open CLI session needs `/r
 
 1. Copy `templates/docs/agents/` → `<repo>/docs/agents/`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists).
 2. Fill every `{{PLACEHOLDER}}` in `CLAUDE.md` (project facts, env preamble, tracker coordinates). Delete rules that don't apply; add project-specific "conventions that bite" as you learn them.
-3. Create the tracker structure: give an agent `templates/linear/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
+3. Create the tracker structure: give an agent `templates/jira/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
 
 Or paste `BOOTSTRAP.md` into a Claude session inside the new project — it performs all three steps interactively.
 
@@ -59,12 +59,13 @@ templates/
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
     ponytail.md                    small-model micro-task profile
-  linear/
-    intake-structure-brief.md      agent brief that creates labels + intake guide + sweep convention
+  jira/
+    intake-structure-brief.md      agent brief that seeds the label taxonomy + intake guide + hierarchy conventions
 ```
 
 ## Portability notes
 
 - Model names are placeholders — map tiers to whatever is current (`frontier` / `default worker` / `micro`).
-- Linear-specific parts are confined to `ticket-filing.md` + `linear/`; swap for Jira/GitHub Issues by rewriting only those two files (taxonomy and template carry over 1:1).
+- Jira-specific parts are confined to `ticket-filing.md` + `jira/`; swap for Linear/GitHub Issues by rewriting only those two files (taxonomy and template carry over 1:1).
+- Hierarchy levels: the current Jira MCP connector cannot create releases, so the kit runs 3 levels (Epic → Story → Task/Sub-task) with epics carrying milestone scope. When the v2 connector adds release creation, milestones move to releases (fixVersions) — restoring the 4-level setup the kit used on Linear (project → milestone → issue → sub-issue).
 - The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.

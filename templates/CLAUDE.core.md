@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}} — orchestrator core rules
 
-{{ONE_PARAGRAPH_PROJECT_FACTS: stack, monorepo layout, env preamble for shell commands, dev-stack command + ports, docs location, tracker team/project.}}
+{{ONE_PARAGRAPH_PROJECT_FACTS: stack, monorepo layout, env preamble for shell commands, dev-stack command + ports, docs location, tracker site + project key.}}
 
 ## Model-tier dispatch (MANDATORY)
 
