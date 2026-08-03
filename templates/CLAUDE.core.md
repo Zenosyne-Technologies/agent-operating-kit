@@ -17,6 +17,8 @@ Escalate after two failures; de-escalate when work turns mechanical.
 
 build (worker) → **validate** (fresh agents, never the builder → `.docs/agents/validation-agent.md`) → **document** (worker → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
 
+No task enters build without a **DoD** — verifiable done-statements written at planning time on the tracker issue (behavior, tests, docs, env wiring). Builders work TO the DoD; validators falsify AGAINST it.
+
 ## Rules cascade
 
 Keep context lean: load a reference ONLY when performing that activity, and cite it in the sub-agent brief instead of inlining its content.

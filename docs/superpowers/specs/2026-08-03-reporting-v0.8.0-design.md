@@ -91,3 +91,7 @@ DONE_WITH_CONCERNS — one confirmed defect (cross-tabulated render asks vs. fla
 ## Addendum (2026-08-04) — traceability rules
 
 Owner-requested, added pre-release: (1) commit messages start with the tracker issue key (`CLAUDE.core.md` autocommit rule + `briefing.md` brief ingredient) so commits trace and sync to the PM tool; (2) comment discipline — agents leave short summarized comments on issues for anything solved, fixed, or caught (`ticket-filing.md`); (3) planning-research passes mine both code and tracker history — issue keys found via `git log`/`git blame` lead to prior issue comments (`planning-research.md`).
+
+## Addendum 2 (2026-08-04) — DoD discipline
+
+Owner-requested, added pre-release: every task gets a planner-authored DoD on the tracker issue before build (`CLAUDE.core.md` lifecycle, `ticket-filing.md` `## Scope / ## DoD` template); build briefs carry the DoD and final messages report per-item met/missed (`briefing.md` ingredient 3); validators falsify against the DoD with explicit per-item pass/fail, running the Playwright (or equivalent) E2E suite and/or driving the browser directly (`validation-agent.md`).
