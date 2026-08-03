@@ -1,15 +1,24 @@
+---
+project: {{PROJECT_NAME}}
+description: {{ONE_SENTENCE_DESCRIPTION}}
+owner: {{OWNER_ORG_OR_PERSON}}
+pm_tool: {{PM_TOOL}}
+tracker_coordinates: {{TRACKER_COORDINATES}}
+project_key: {{PROJECT_KEY_OR_NA}}
+hierarchy_levels: {{LEVELS}}
+intake_guide_url: {{TRACKER_GUIDE_URL}}
+stack: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
+dev_command: {{DEV_COMMAND_AND_PORTS}}
+docs_location: {{DOCS_LOCATION}}
+kit_version: {{KIT_VERSION}}
+label_syntax_version: {{LABEL_SYNTAX_VERSION}}
+---
+
 # {{PROJECT_NAME}} — project information
 
-Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Facts only — operating rules live in `CLAUDE.md` and `.docs/agents/`. Any agent that changes a fact below updates this file in the same change.
+Meta overview for foreign agents, agentic OS frameworks, and reporting tools. The YAML frontmatter above is the machine contract and the source of truth for facts; this body is the human overview. Any agent that changes a fact below updates the frontmatter in the same change. Facts only — operating rules live in `CLAUDE.md` and `.docs/agents/`.
 
-- **Name**: {{PROJECT_NAME}}
-- **Description**: {{ONE_SENTENCE_DESCRIPTION}}
-- **Owner**: {{OWNER_ORG_OR_PERSON}}
-- **Repository layout**: {{MONOREPO_OR_SINGLE + one-line top-level map}}
-- **Tech stack**: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
-- **Dev stack**: {{DEV_COMMAND_AND_PORTS}}
-- **PM tool**: {{PM_TOOL: Linear | Jira | none}} — {{TRACKER_COORDINATES}}; project key: {{PROJECT_KEY_OR_NA}}
-- **Hierarchy**: {{LEVELS: 4/4 native | 3/4 + virtual milestones}} — details in `.docs/agents/tracker-config.md`
-- **Intake guide**: {{TRACKER_GUIDE_URL}}
-- **Label syntax**: `.docs/agents/label-syntax.md` — {{LABEL_SYNTAX_VERSION}}
-- **Docs**: {{DOCS_LOCATION}}; agent rules cascade in `.docs/agents/`
+- Repository layout: {{MONOREPO_OR_SINGLE + one-line top-level map}}
+- Hierarchy details, virtual milestones, severity/size native mappings: `.docs/agents/tracker-config.md`
+- Label registry: `.docs/agents/label-syntax.md` · Filing rules: `.docs/agents/ticket-filing.md`
+- Operating rules: `CLAUDE.md` + the `.docs/agents/` rules cascade

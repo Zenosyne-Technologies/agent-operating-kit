@@ -21,7 +21,7 @@ claude plugin marketplace add zenosyne-technologies/agent-operating-kit
 claude plugin install agent-operating-kit@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -56,7 +56,7 @@ templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
   docs/
-    PROJECT-INFO.md                project meta page for foreign agents / reporting tools (installed to .docs/PROJECT-INFO.md)
+    PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .docs/PROJECT-INFO.md)
   docs/agents/
     briefing.md                    how to write any sub-agent brief
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
@@ -71,11 +71,12 @@ templates/
   jira/
     intake-structure-brief.md      agent brief that seeds the label taxonomy + intake guide
     tracker-config.md              3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
+    convert-milestones-brief.md    dispatchable when the v2 connector adds release creation: milestone labels → releases
 ```
 
 ## Portability notes
 
 - Model names are placeholders — map tiers to whatever is current (`frontier` / `default worker` / `micro`).
 - Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/<tracker>/` (currently `linear/` and `jira/`). Adding a PM tool = one new folder (intake brief + `tracker-config.md`) plus an entry in the skill's selection list; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
-- Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear meets it natively (Project → Milestone → Issue → Sub-issue). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows.
+- Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear meets it natively (Project → Milestone → Issue → Sub-issue). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows. The conversion is a prepared brief (`jira/convert-milestones-brief.md`), not just a rule.
 - The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.
