@@ -64,3 +64,31 @@ CI is factory-only — consumers see nothing. BOOTSTRAP users need the repo clon
 ## Testing
 
 The validator validates itself: run `scripts/validate-kit.sh` against the repo at this release (must pass), then against a deliberately broken fixture branch (each check must fire once).
+
+## Validated
+
+Date: 2026-08-04
+
+The release tree passes all seven static checks (`bash scripts/validate-kit.sh`):
+- ✓ placeholders
+- ✓ line-budget
+- ✓ json
+- ✓ registry
+- ✓ inventory
+- ✓ tracker-folders
+- ✓ plugin-root-leak
+
+Exit code 0; git diff main..HEAD --stat -- templates/ shows zero modifications.
+
+All seven negative-firing scenarios from Task 1 (scratch-repo isolation) confirmed:
+1. placeholders — appended `{{BOGUS_PLACEHOLDER}}` to `templates/CLAUDE.core.md` → caught with FAIL [placeholders]
+2. line-budget — padded `templates/CLAUDE.core.md` to 83 lines → caught with FAIL [line-budget]
+3. json — set `.claude-plugin/plugin.json` version to `"x.y"` (non-semver) → caught with FAIL [json]
+4. registry — bumped `templates/docs/agents/label-syntax.md` H1 to v9.9.9 without changelog row → caught with FAIL [registry]
+5. inventory — deleted `briefing.md` line from README inventory → caught with FAIL [inventory]
+6. tracker-folders — removed `templates/jira/tracker-config.md` → caught with FAIL [tracker-folders]
+7. plugin-root-leak — appended `${CLAUDE_PLUGIN_ROOT}/foo` to `templates/CLAUDE.core.md` → caught with FAIL [plugin-root-leak]
+
+Each negative test fired independently; all others remained `ok`. Scratch copy isolated via `cp -r` and cleaned (`rm -rf`) post-testing.
+
+Note: the agentic scenarios (fresh install, legacy upgrade, idempotency) ship as the `validate-kit` skill and were exercised for v0.7.0; a full re-run is deferred to the next release that touches install/upgrade flows.
