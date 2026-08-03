@@ -11,14 +11,15 @@ TOOLS: one tool-search call for: list_issue_labels, create_issue_label, save_doc
 TARGET: team "{{TEAM_NAME}}" (key {{TEAM_KEY}}), project "{{PROJECT_NAME}}".
 
 1. LABELS (team-scoped; list existing first, skip any that already exist; red-ish for sev1 descending to grey for sev4):
-   type:bug, type:change-request, type:investigation, type:tech-debt,
+   type:feature, type:bug, type:change-request, type:investigation, type:tech-debt,
    area:{{AREA_1}}, area:{{AREA_2}}, area:{{AREA_3}}, area:infra, area:docs,
    sev1-critical, sev2-high, sev3-medium, sev4-low,
-   found-by:agent-qa, found-by:owner
-2. DOCUMENT: create a Linear document "Issue Intake & Triage Guide" in the project. Content (markdown): the label taxonomy with one-line meaning each; severity definitions (sev1 data-loss/security/app-unusable; sev2 feature broken no workaround; sev3 workaround exists or cosmetic-functional; sev4 polish); filing rules — every issue gets exactly one type:, one area:, one sev label + provenance label; team + project + status Backlog; ALWAYS search for duplicates before filing; description template: "## Repro / ## Expected / ## Actual / ## Evidence (console/network/logs) / ## Suspected cause / ## Refs"; QA sweeps: one tracking issue titled "QA sweep — <scope> <date>", findings filed as separate issues related to it; change requests use type:change-request and describe current vs desired behavior + acceptance criteria.
+   size:xs, size:s, size:m, size:l, size:xl,
+   origin:user-request, origin:architect-request, origin:agent-qa, origin:agent-dev, origin:roadmap
+2. DOCUMENT: create a Linear document "Issue Intake & Triage Guide" in the project. Content (markdown): the label taxonomy with one-line meaning each; severity definitions (sev1 data-loss/security/app-unusable; sev2 feature broken no workaround; sev3 workaround exists or cosmetic-functional; sev4 polish); hierarchy — Project → Milestone → Issue → Sub-issue, all native (the kit's full 4-level target; milestones are created directly on the project); filing rules — labels follow the repo's versioned registry `.docs/agents/label-syntax.md` ({{LABEL_SYNTAX_VERSION}}): EVERY item created or edited (milestone-level work included) gets one label per required dimension (type:, area:, origin:; sev on defects; size on stories/tasks at planning, mirrored to the native estimate per tracker-config), and agents touching an unlabeled item backfill labels from its description; sev labels are canonical — mirror native Priority from them (sev1→Urgent, sev2→High, sev3→Medium, sev4→Low), on conflict the label wins; team + project + status Backlog; ALWAYS search for duplicates before filing; description template: "## Repro / ## Expected / ## Actual / ## Evidence (console/network/logs) / ## Suspected cause / ## Refs"; QA sweeps: one tracking issue titled "QA sweep — <scope> <date>", findings filed as separate issues related to it; change requests use type:change-request and describe current vs desired behavior + acceptance criteria.
 
 FINAL MESSAGE (machine-consumed): `labels: <created N>/<skipped M>`, `doc: <title>|<url>`, then any failures. Nothing else.
 
 ---
 
-After it completes: paste the document URL into `docs/agents/ticket-filing.md` ({{TRACKER_GUIDE_URL}} placeholder).
+After it completes: paste the document URL into `.docs/agents/ticket-filing.md` ({{TRACKER_GUIDE_URL}} placeholder).
