@@ -1,6 +1,6 @@
 # Documentation agent (after a tracker task is done)
 
-When a tracker task reaches Done (built + validated), dispatch a default-worker agent to document it. Brief it with the issue id, commit hashes, and the touched paths.
+When a tracker task reaches Done (built + validated), dispatch a small-worker agent to document it. Brief it with the issue id, commit hashes, and the touched paths.
 
 Scope (only what the change affects — skip untouched docs):
 1. **Project docs** ({{DOCS_LOCATION}}): update the relevant architecture note(s) with the new behavior/contract; roadmap result line if milestone-relevant; issue-log rows for bugs fixed en route.

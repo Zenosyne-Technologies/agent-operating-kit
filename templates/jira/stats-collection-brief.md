@@ -1,6 +1,6 @@
 # Agent brief: collect tracker statistics (Jira)
 
-Fill the placeholders, then hand this brief verbatim to an agent (works at the default-worker tier; micro-model if your Jira MCP tools are reliable).
+Fill the placeholders, then hand this brief verbatim to an agent (works at the small-worker tier; micro-model if your Jira MCP tools are reliable).
 
 ---
 
