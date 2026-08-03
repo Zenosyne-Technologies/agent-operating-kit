@@ -6,7 +6,7 @@ Fill the placeholders, then hand this brief verbatim to an agent (works at the d
 
 Create the issue-intake structure for {{PROJECT_NAME}} in Jira. Work synchronously, no sub-agents.
 
-TOOLS: one tool-search call for: getVisibleJiraProjects, getJiraProjectIssueTypesMetadata, createJiraIssue, editJiraIssue, searchJiraIssuesUsingJql, getConfluenceSpaces, createConfluencePage (Atlassian MCP).
+TOOLS: one tool-search call for: getVisibleJiraProjects, getJiraProjectIssueTypesMetadata, createJiraIssue, editJiraIssue, searchJiraIssuesUsingJql, getConfluenceSpaces, searchConfluenceUsingCql, createConfluencePage, updateConfluencePage (Atlassian MCP).
 
 TARGET: Jira site {{JIRA_SITE_URL}}, project "{{PROJECT_NAME}}" (key {{PROJECT_KEY}}).
 
