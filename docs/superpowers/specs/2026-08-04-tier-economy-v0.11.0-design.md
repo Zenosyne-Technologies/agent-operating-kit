@@ -11,8 +11,10 @@ Anthropic's new pricing/usage system pools Fable and Opus under one "other/all m
 Tier placeholders keep their names (no ripple through the install skill or the gate's known-list); their SEMANTICS change, and the `size:` label becomes the dispatch key:
 
 - `{{FRONTIER_MODEL}}` — orchestrator; explicitly the architect's recommended session model.
-- `{{ESCALATION_MODEL}}` — reframed as the **heavy worker**: `size:m` and larger executions, ALL planning-research passes, cross-cutting debugging; remains the escalation target after two small-worker failures.
-- `{{WORKER_MODEL}}` — **small worker**: `size:s` and clearly-defined small executions, validators, tests, QA sweeps, imports, docs.
+- `{{ESCALATION_MODEL}}` — reframed as the **heavy worker**: `size:m` and larger executions, ALL planning-research passes, validators (both stages — owner-directed), cross-cutting debugging; remains the escalation target after two small-worker failures.
+- `{{WORKER_MODEL}}` — **small worker**: `size:s` and clearly-defined small executions, tests, QA sweeps, imports, docs.
+
+Review addendum: the independent review found the retired term "default worker" surviving in 10 payload locations; all renamed (validators → "heavy worker tier" per the owner's routing, the rest → "small worker"). No `{{PLACEHOLDER}}` changes.
 - `{{MICRO_MODEL}}` — unchanged ponytail (`size:xs` mechanical).
 
 Consequence: `planning-research.md`'s `size:l` research row moves from `{{WORKER_MODEL}}` to `{{ESCALATION_MODEL}}` (research is heavy-worker work).

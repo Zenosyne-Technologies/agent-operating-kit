@@ -1,6 +1,6 @@
 # Validation agents
 
-Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (default worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
+Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (heavy worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
 
 ## Stage 1 — Completion validator (business-analyst persona), FIRST after build
 
