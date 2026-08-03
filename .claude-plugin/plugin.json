@@ -1,8 +1,8 @@
 {
   "name": "agent-operating-kit",
   "description": "Orchestrator + sub-agent operating methodology: model-tier dispatch, cascading ruleset, adversarial validation personas, documentation agents, and tracker intake structure — installable into any project via the install-agent-os skill.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
-    "name": "Zenosyne Technologies"
+    "name": "Emprove Services Kft. (Emprove)"
   }
 }

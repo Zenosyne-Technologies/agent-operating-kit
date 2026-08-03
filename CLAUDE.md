@@ -16,7 +16,7 @@ A change that helps one specific project belongs in that project's installed fil
 ## Extension rules
 
 1. **New activity rule** → add `templates/docs/agents/<activity>.md` (lean, one activity), add its reference line to the cascade in `templates/CLAUDE.core.md`, update the README inventory.
-2. **New tracker support** (Linear/GitHub Issues/…) → new folder `templates/<tracker>/` mirroring `templates/jira/`; taxonomy and template carry over 1:1; `ticket-filing.md` stays tracker-neutral except its coordinates block.
+2. **New tracker support** (Linear/GitHub Issues/…) → new folder `templates/<tracker>/` mirroring `templates/jira/` (intake brief + `severity-mapping.md` to the tracker's native scheme); taxonomy and template carry over 1:1, sev labels stay canonical; `ticket-filing.md` stays tracker-neutral except its coordinates block.
 3. **Every template change** → bump `version` in `.claude-plugin/plugin.json`.
 4. **Keep files lean** — the kit's core value is context proportionality. If a template grows past ~40 lines, split it into the cascade instead.
 5. **Validate by installing**: run the `install-agent-os` skill against a scratch repo and check every placeholder resolves and the merge path works.
