@@ -1,4 +1,4 @@
-# Label syntax registry — v1.1.0
+# Label syntax registry — v1.2.0
 
 Self-contained and versioned: ANY change to this registry bumps the version above and adds a changelog row. This file is the single source of truth for labels; the in-tracker guide summarizes it and loses on label conflicts.
 
@@ -24,9 +24,20 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 
 type = work mix · area = component load · sev = quality posture · origin = demand source (users vs architect vs agents) · size = effort/complexity mix · milestone = scope progress.
 
+## Sizing rubric
+
+- `size:xs` — single-file, mechanical, zero unknowns (ponytail-eligible).
+- `size:s` — a few files, established pattern, no design decisions.
+- `size:m` — multi-file feature slice, minor unknowns, contained blast radius.
+- `size:l` — cross-cutting change OR real unknowns (new integration, unclear repro, schema touch).
+- `size:xl` — architectural impact, multiple `area:*` values, significant unknowns or irreversible ops.
+
+When torn between two sizes, take the larger — under-sizing skips the research pass that would have caught the unknowns.
+
 ## Changelog
 
 | Version | Change |
 |---|---|
+| 1.2.0 | Adds the sizing rubric (objective xs..xl criteria; round up when torn). No dimension/value changes. |
 | 1.1.0 | Adds `size:` dimension (t-shirt scale xs..xl, required on stories/tasks at planning time); sizes gate the planning-research tier routing. |
 | 1.0.0 | Initial registry. Adds `type:feature` and `origin:*` (supersedes `found-by:*`: agent-qa → origin:agent-qa, owner → origin:architect-request). Labeling extended from intake-only to every created/edited item; backfill-on-touch rule introduced. |
