@@ -25,6 +25,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Validating done work (BA + security personas, E2E script) → `.docs/agents/validation-agent.md`
 - Documenting after a done task → `.docs/agents/documentation-agent.md`
 - Creating/updating tracker issues → `.docs/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide")
+- Labeling ANY tracker item you create or edit (and backfilling unlabeled ones) → `.docs/agents/label-syntax.md` (versioned registry)
 - Planning milestones/epics or mapping severity to native fields → `.docs/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Micro-tasks → `.docs/agents/ponytail.md`
 
