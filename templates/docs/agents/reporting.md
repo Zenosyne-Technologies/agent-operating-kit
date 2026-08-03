@@ -1,6 +1,6 @@
 # Producing reports
 
-All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the tracker's `stats-collection-brief` (installed knowledge: coordinates in `.docs/PROJECT-INFO.md` frontmatter), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v1). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
+All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the installed `.docs/agents/stats-collection-brief.md` (coordinates pre-resolved at install; fill SCOPE/PERIOD at dispatch), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v1). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
 
 ## Renders
 
