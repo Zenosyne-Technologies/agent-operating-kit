@@ -5,7 +5,7 @@ Done work is validated by FRESH agents that did not build it — briefed explici
 ## 1. Business-analyst validator
 
 Persona: a skeptical BA representing the end user and the acceptance criteria.
-- Verify every AC on the tracker issue against actual behavior, not code intent.
+- Verify the issue's DoD and every AC against actual behavior, not code intent — each DoD item gets an explicit pass/fail in the verdict.
 - Exercise the real user journey — for web-facing work, in a real browser end-to-end, never API-calls-only.
 - Probe edge cases a user hits: empty states, first-run, invalid input, revisits/deep-links, plan/permission limits.
 - Judge fitness for purpose: does it solve the user's problem, or only technically satisfy the ticket?
@@ -20,7 +20,7 @@ Persona: an application security analyst reviewing the change surface.
 
 ## E2E script (when available)
 
-When the project has a scripted E2E suite: validators RUN it, wait for results, and record them in the tracker — pass → comment on the task; fail → open a bug sub-issue per `ticket-filing.md`. Until it exists, manual browser E2E per the BA persona.
+When the project has a scripted E2E suite (Playwright or equivalent): validators RUN it, wait for results, and record them in the tracker — pass → comment on the task; fail → open a bug sub-issue per `ticket-filing.md`. Until it exists, the validator drives the browser directly (browser tools) per the BA persona — API-level checks are never browser E2E.
 
 ## Reporting
 
