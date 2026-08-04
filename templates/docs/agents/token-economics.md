@@ -27,11 +27,11 @@ Model name prefix → kit tier, mirrors the pricing table's own prefixes:
 
 ## Pricing
 
-Never stored per event. Cost derives at query time from the telemetry DB's `pricing` table (provider × model × model-version, effective-dated): join against the rate in force at `events.ts` (latest `effective_from` ≤ ts), longest-prefix model match. A reported cost figure always carries its `effective_from` date.
+Never stored per event. Cost derives at query time from the telemetry DB's `pricing` table (provider × model × model-version, effective-dated): join against the rate in force at `events.ts` (latest `effective_from` ≤ ts), longest-prefix model match. A reported cost figure always carries its `effective_from` date. Seed rows carry `effective_from = 0` — render them as "seed rates (undated)", never as a 1970 date.
 
 ## Context sidecar
 
-When telemetry is enabled, write `.claude/telemetry-context.json` at tracker-task start and rewrite it on every task switch:
+When telemetry is enabled, write the repo-root `.claude/telemetry-context.json` at tracker-task start and rewrite it on every task switch:
 
 ```json
 {"issue_key": "<KEY>", "project": "<name>", "size": "<size>", "summary": "<one sentence>"}
@@ -41,7 +41,7 @@ Delete it when leaving tracker work (no active task). Capture stamps these field
 
 ## Snapshot `tokens` object
 
-Stats snapshots (schema v2) carry a `tokens` key, null when telemetry is absent — every consumer must handle both. Keys: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/small/micro → `{out, est_cost}`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`.
+Stats snapshots (schema v2) carry a `tokens` key, null when telemetry is absent — every consumer must handle both. Keys: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/small/micro → `{out, est_cost_usd}`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`.
 
 ## Secrets
 
