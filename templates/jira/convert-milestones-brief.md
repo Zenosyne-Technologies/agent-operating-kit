@@ -1,6 +1,6 @@
 # Agent brief: convert virtual milestones to Jira releases
 
-Dispatch ONLY when the Jira MCP connector supports creating releases (v2). Fill the placeholders, then hand this brief verbatim to an agent (default-worker tier).
+Dispatch ONLY when the Jira MCP connector supports creating releases (v2). Fill the placeholders, then hand this brief verbatim to an agent (small-worker tier).
 
 ---
 

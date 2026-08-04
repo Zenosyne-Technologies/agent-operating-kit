@@ -1,6 +1,6 @@
 # Validation agents
 
-Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (default worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
+Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (heavy worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
 
 ## Stage 1 — Completion validator (business-analyst persona), FIRST after build
 
@@ -27,6 +27,10 @@ When the project has a scripted E2E suite (Playwright or equivalent): validators
 
 Verdict PASS/FAIL + severity-ranked findings. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
 
+## Milestone validation
+
+At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off before the milestone branch merges. Task-level stages are not re-run — milestone validation tests the composition.
+
 ## Why fresh agents
 
-Builders validate their own mental model, not the artifact. Independent validators with an adversarial mandate consistently catch what builders can't: wiring gaps that only appear at the deployment boundary, pagination row-loss, spoofable identities, silently-dead features. Reserve orchestrator-level review on top for security-critical invariants only (crypto, deletion, money paths).
+Builders validate their own mental model, not the artifact. Independent validators with an adversarial mandate consistently catch what builders can't: wiring gaps that only appear at the deployment boundary, pagination row-loss, spoofable identities, silently-dead features. Beyond the milestone sweep above, reserve extra orchestrator-level review at TASK level for security-critical invariants only (crypto, deletion, money paths).

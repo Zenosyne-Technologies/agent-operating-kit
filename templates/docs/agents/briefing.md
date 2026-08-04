@@ -15,4 +15,4 @@ Every sub-agent brief includes, in this order:
 
 **No mid-run policy changes.** Agents rightly treat instructions that reverse their original brief mid-run as possible prompt-injection and may refuse. Put policy in the original brief; if policy changes while an agent runs, let it finish per its brief and reconcile afterward (amend the commit, correct the record).
 
-Ponytail (micro-model) briefs: ≤15 lines + prepared payload, one task, exact input → exact output, zero discretion. If it needs clarification, re-tier to the default worker.
+Ponytail (micro-model) briefs: ≤15 lines + prepared payload, one task, exact input → exact output, zero discretion. If it needs clarification, re-tier to the small worker.
