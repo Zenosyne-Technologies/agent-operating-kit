@@ -10,6 +10,7 @@ intake_guide_url: {{TRACKER_GUIDE_URL}}
 stack: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
 dev_command: {{DEV_COMMAND_AND_PORTS}}
 docs_location: {{DOCS_LOCATION}}
+telemetry: {{TELEMETRY}}
 kit_version: {{KIT_VERSION}}
 label_syntax_version: {{LABEL_SYNTAX_VERSION}}
 ---
