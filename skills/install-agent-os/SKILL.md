@@ -18,7 +18,7 @@ Install the kit from this plugin's templates into the current project. Template 
 7. **Map model tiers** to currently available models and write the concrete names into CLAUDE.md's dispatch table. Current recommendation (re-check at install time — usage economics move): frontier orchestrator = Fable (advise the architect to run their own sessions on it), heavy worker = Opus (`size:m`+ executions, research, validators), small worker = Sonnet (small clearly-defined executions), micro = Haiku (ponytail).
 8. **Tracker structure** — for the selected tool: fill `${CLAUDE_PLUGIN_ROOT}/templates/<tracker>/intake-structure-brief.md` and dispatch it as a sub-agent; paste the resulting guide URL into `.docs/agents/ticket-filing.md`. If the user chose none, note it in CLAUDE.md as pending and keep the file-based issue log as the sole log.
 9. **Commit** the added files per the attribution policy chosen in step 6 — commit directly, do not ask for approval (autocommit is kit policy; the installed rules apply it to all future work too).
-10. **Report**: what was installed, the selected PM tool + its level configuration, the label-syntax registry version, the PROJECT-INFO.md location, the tier mapping, tracker structure status, and any placeholder you could not resolve.
+10. **Report**: what was installed, the selected PM tool + its level configuration, the label-syntax registry version, the PROJECT-INFO.md location, the tier mapping, tracker structure status, telemetry opt-in status, and any placeholder you could not resolve.
 
 From then on, operate by the installed CLAUDE.md's dispatch and lifecycle rules.
 
