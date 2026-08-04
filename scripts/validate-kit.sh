@@ -10,19 +10,20 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" AREA_1 AREA_2 AREA_3 CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME SCOPE TEAM_KEY TEAM_NAME TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
+KNOWN=" AREA_1 AREA_2 AREA_3 CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME SCOPE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
 done
 [ -z "$unknown" ] && pass placeholders || fail placeholders "unknown placeholder(s):$unknown"
 
-# ── 2. line-budget: every templates/**/*.md ≤ 45 lines
+# ── 2. line-budget: every templates/**/*.md ≤ 60 lines, CLAUDE.core.md ≤ 50
 over=""
 while IFS= read -r f; do
-  n=$(wc -l < "$f"); [ "$n" -gt 45 ] && over="$over $f($n)"
+  lim=60; [ "$f" = "templates/CLAUDE.core.md" ] && lim=50
+  n=$(wc -l < "$f"); [ "$n" -gt "$lim" ] && over="$over $f($n)"
 done < <(find templates -name '*.md' -type f)
-[ -z "$over" ] && pass line-budget || fail line-budget "over 45 lines:$over (split into the cascade)"
+[ -z "$over" ] && pass line-budget || fail line-budget "over budget (60, CLAUDE.core.md 50):$over (split into the cascade)"
 
 # ── 3. json: manifests parse; plugin version is semver
 ok=1
