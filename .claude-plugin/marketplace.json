@@ -8,6 +8,11 @@
       "name": "agent-operating-kit",
       "source": ".",
       "description": "Orchestrator + sub-agent operating methodology, installable into any project via the install-agent-os skill."
+    },
+    {
+      "name": "token-telemetry",
+      "source": { "source": "github", "repo": "Zenosyne-Technologies/agent-token-telemetry" },
+      "description": "Zero-token-overhead usage telemetry with kit-aware cost reporting — companion to agent-operating-kit."
     }
   ]
 }

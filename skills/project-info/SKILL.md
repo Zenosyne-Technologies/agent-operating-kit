@@ -17,7 +17,7 @@ Template source of truth: `${CLAUDE_PLUGIN_ROOT}/templates/docs/PROJECT-INFO.md`
 
 Do NOT overwrite, regenerate, or restructure the existing file.
 
-1. **Validate**: the YAML frontmatter parses and contains every template key (extra project-specific keys are fine — leave them); each frontmatter fact checked against the repo — `stack`, `dev_command`, `tracker_coordinates`/`project_key`/`hierarchy_levels` (vs `tracker-config.md`), `intake_guide_url`, `label_syntax_version` (vs the registry H1), `docs_location`; body statements must not contradict frontmatter.
+1. **Validate**: the YAML frontmatter parses and contains every template key (extra project-specific keys are fine — leave them); each frontmatter fact checked against the repo — `stack`, `dev_command`, `tracker_coordinates`/`project_key`/`hierarchy_levels` (vs `tracker-config.md`), `intake_guide_url`, `label_syntax_version` (vs the registry H1), `docs_location`, `telemetry` (`enabled` iff `.claude/telemetry` exists, else `disabled`); body statements must not contradict frontmatter.
 
    **Legacy page (no frontmatter)**: treat every missing key as a discrepancy — the fix sub-agent adds the frontmatter block from the template (facts lifted from the existing list) and keeps project-specific extras in the body; the file is converted, never regenerated.
 2. **Fix automatically**: if there are discrepancies, dispatch ONE sub-agent (micro tier — mechanical zero-discretion work; brief per the installed ponytail profile where available) with the prepared corrections as its payload: exact line-level edits only (`field → new value`), add missing template fields, never touch correct lines or project-specific extras. The sub-agent commits its fix (autocommit policy, attribution per the project's settings).

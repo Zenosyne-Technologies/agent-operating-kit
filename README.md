@@ -11,7 +11,7 @@ A reusable methodology for running AI-assisted software projects with an orchest
 5. **Git discipline** — each milestone works on a `milestone/<slug>` feature branch, merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval; commit messages start with their tracker issue key, so every commit traces and syncs back to the PM tool.
 6. **Sized planning research** — tasks carry `size:xs..xl` t-shirt labels; `size:xl` plans get adversarial plan-validation + solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip research. Findings land as issue comments or md docs and are folded into the plan before building.
 7. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
-8. **Collect-once reporting** — a per-tracker stats brief snapshots every label dimension into versioned JSON under `.docs/reports/`; audience renders (architect digest, milestone close-out at milestone close, internals-free stakeholder page) consume the snapshot, never the tracker.
+8. **Collect-once reporting** — a per-tracker stats brief snapshots every label dimension into versioned JSON under `.docs/reports/`; audience renders (architect digest, milestone close-out at milestone close, internals-free stakeholder page) consume the snapshot, never the tracker; with the token-telemetry companion plugin, snapshots and renders carry token/dollar economics and closed issues get a cost comment.
 
 ## Install as a Claude Code plugin (recommended)
 
@@ -25,6 +25,8 @@ claude plugin install agent-operating-kit@emprove
 Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief. A fifth skill, **`validate-kit`**, runs the kit's own release gate — the static check script plus three agentic scratch-repo scenarios.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
+
+**Cost-aware operations suite**: for token/dollar cost visibility on top of the methodology, also install the companion **`token-telemetry`** plugin from this same marketplace (`claude plugin install token-telemetry@emprove`). It is optional — every kit workflow degrades gracefully without it — but installing both plugins together turns on cost-aware operations: reporting snapshots and renders carry token/dollar economics, and closed tracker issues get a cost comment. See `templates/docs/agents/token-economics.md` for the contract.
 
 ## Updating the plugin after repo changes
 
@@ -71,6 +73,7 @@ templates/
     ponytail.md                    small-model micro-task profile
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
     security.md                    secrets, dependency vetting, and security-surface discipline
+    token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
   linear/
     intake-structure-brief.md      agent brief that creates labels + intake guide
     tracker-config.md              4/4 levels native; severity → Linear Priority
