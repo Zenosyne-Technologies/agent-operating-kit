@@ -71,6 +71,7 @@ templates/
     ponytail.md                    small-model micro-task profile
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
     security.md                    secrets, dependency vetting, and security-surface discipline
+    token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
   linear/
     intake-structure-brief.md      agent brief that creates labels + intake guide
     tracker-config.md              4/4 levels native; severity → Linear Priority
