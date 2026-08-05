@@ -1,9 +1,9 @@
 ---
 name: upgrade-agent-os
-description: Upgrade an existing Agent Operating Kit install in the current project to the plugin's current version — migrates files (docs/ → .docs/, new cascade docs), re-syncs tracker labels via the idempotent intake brief, offers gated relabel sweeps for label supersessions, and restamps versions in PROJECT-INFO frontmatter. Use when the user asks to upgrade/update/migrate the agent operating kit in a repo.
+description: Upgrade an existing Marvin (Agent Operating Kit) install in the current project to the plugin's current version — migrates files (docs/ → .docs/, new cascade docs), re-syncs tracker labels via the idempotent intake brief, offers gated relabel sweeps for label supersessions, and restamps versions in PROJECT-INFO frontmatter. Use when the user asks to upgrade/update/migrate the agent operating kit in a repo.
 ---
 
-# Upgrade the Agent Operating Kit install
+# Upgrade a Marvin (Agent Operating Kit) install
 
 Current templates: `${CLAUDE_PLUGIN_ROOT}/templates/`. Never overwrite project-specific content — same merge discipline as install.
 

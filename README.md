@@ -40,7 +40,7 @@ Installed plugins are **pinned snapshots** — pushing commits to this repo does
 2. **Consumers pull the update** (CLI or Desktop, identical behavior):
    ```
    claude plugin marketplace update emprove     # refresh the marketplace clone
-   claude plugin update agent-operating-kit@emprove
+   claude plugin update marvin@emprove
    ```
    Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable auto-update (off by default for third-party marketplaces).
 
