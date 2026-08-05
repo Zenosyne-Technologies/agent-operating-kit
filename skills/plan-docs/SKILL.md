@@ -1,0 +1,15 @@
+---
+name: plan-docs
+description: Plan and backfill missing product documentation — the orchestrator surveys the codebase and handbooks for gaps, collects the must-mention details and statements, creates a documentation epic with per-unit tasks in the PM tool, and hands its findings to documentation agents through the issues. Use when the user asks to plan, backfill, or bootstrap the documentation/handbooks, or when handbooks are missing for existing functionality.
+---
+
+# Plan the documentation
+
+Orchestrator-level work (frontier session): the survey and the collected findings ARE the value — do the thinking inline, delegate only the page-writing.
+
+1. **Ground yourself**: read `.docs/agents/handbooks.md` (the system: logical units, audience voices, discovery, framework-default exclusion), the three `.docs/handbooks/*/INDEX.md` files, `.docs/PROJECT-INFO.md` frontmatter, and `.docs/agents/tracker-config.md`. If the handbooks folders don't exist, run the kit install/upgrade first — this skill plans content, it doesn't install structure.
+2. **Survey the project** — project-introduced logic ONLY, framework defaults excluded: walk the codebase and define or refresh the logical unit map (business logic / feature / module groupings; the orchestrator owns this map per `handbooks.md`). For each unit × audience (developer / user / admin), classify coverage: current · stale (`sources` drifted from the code) · missing.
+3. **Collect the handover payload** while surveying — never skip or delegate this step: for each unit, record the interesting and must-mention material — nuanced behaviors and the WHY behind them, non-obvious flows/steps/rules, gotchas and what-to-be-aware-of statements for end users, the key `sources` paths, and any exact statements worth preserving verbatim. Frontier judgment applied once here spares every documentation agent from re-deriving it — and getting it wrong.
+4. **Create the epic**: one epic ("Product documentation — <scope>") in the PM tool per `ticket-filing.md` and `label-syntax.md` (type:feature, area:docs, origin per the requester, epic and tasks sized per the rubric). Under it, one task per unit — split per unit×audience only when the unit is large. Each task's issue description carries `## Scope / ## DoD` (DoD: the named pages created or amended, registered in their INDEX, `sources` and `updated` current, audience voice respected) and a `## Findings` section holding step 3's payload for that unit.
+5. **Hand over and dispatch**: documentation agents run per the normal lifecycle (`documentation-agent.md` + `handbooks.md` discovery); each brief cites its issue — the findings travel IN the issue description, so any future agent inherits them, not only this batch. Sequence tasks by unit dependency; wiki-links between units resolve as their pages land.
+6. **Report**: epic key, the unit map (units × audience × coverage status), tasks created with sizes, and every candidate you deliberately excluded as framework-default (name them — exclusion is a decision, not an omission).
