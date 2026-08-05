@@ -3,7 +3,7 @@ name: install-agent-os
 description: Install Marvin — The Agentic Operating System (orchestrator persona + sub-agent methodology) into the current project — writes CLAUDE.md core rules, .docs/agents/ cascade, attribution settings, and creates the intake structure in the PM tool the user selects (Linear or Jira). Use when the user asks to install/bootstrap the agent operating kit, agent operating model, or orchestration methodology into a repo.
 ---
 
-# Install the Agent Operating Kit
+# Install Marvin — The Agentic Operating System
 
 Install the kit from this plugin's templates into the current project. Template source of truth: `${CLAUDE_PLUGIN_ROOT}/templates/`.
 

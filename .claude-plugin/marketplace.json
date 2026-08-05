@@ -12,7 +12,7 @@
     {
       "name": "token-telemetry",
       "source": { "source": "github", "repo": "Zenosyne-Technologies/agent-token-telemetry" },
-      "description": "Zero-token-overhead usage telemetry with kit-aware cost reporting — companion to agent-operating-kit."
+      "description": "Zero-token-overhead usage telemetry with kit-aware cost reporting — companion to marvin (the Agentic Operating System)."
     }
   ]
 }
