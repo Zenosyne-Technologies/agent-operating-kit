@@ -1,6 +1,6 @@
-# Agent Operating Kit
+# Marvin — The Agentic Operating System
 
-A reusable methodology for running AI-assisted software projects with an orchestrator + sub-agent system: size-routed model-tier dispatch, a cascading ruleset that keeps context lean, DoD-gated task lifecycles with sequenced adversarial validation (completion, then security), security and secrets discipline, a versioned label registry feeding collect-once reporting — and, with the companion **token-telemetry** plugin, full token/dollar cost visibility down to the individual tracker issue. Battle-tested on a full 7-milestone SaaS build (37 agent-built tasks, every one independently validated), and self-hosting: this kit and its companion are built and operated under their own rules.
+**Marvin** is a reusable agentic operating system for AI-assisted software projects: an orchestrator persona (smart, thorough, snappy, questions everything that does not add up) with self-managed project memory, running an orchestrator + sub-agent methodology — size-routed model-tier dispatch, a cascading ruleset that keeps context lean, DoD-gated task lifecycles with sequenced adversarial validation (completion, then security), security and secrets discipline, a versioned label registry feeding collect-once reporting — and, with the companion **token-telemetry** plugin, full token/dollar cost visibility down to the individual tracker issue. Battle-tested on a full 7-milestone SaaS build (37 agent-built tasks, every one independently validated), and self-hosting: this kit and its companion are built and operated under their own rules.
 
 ## Core ideas
 
@@ -15,6 +15,7 @@ A reusable methodology for running AI-assisted software projects with an orchest
 9. **Security discipline** — secrets are never committed and never pasted into PM-tool surfaces (issue comments, snapshots, PR bodies; a leaked secret is a sev1: rotate first); dependency changes are sized `m`+ with advisory checks and pinned versions; every brief names the task's security surface; security-critical design stays orchestrator-inline.
 10. **Token economics (optional suite)** — with the token-telemetry companion plugin, a context sidecar ties every captured token to its issue key, task size, and a one-sentence summary; effective-dated pricing turns usage into dollars at query time; snapshots, digests, milestone close-outs, and the stakeholder page carry cost, and closed issues get a one-line cost comment. `token-economics.md` is the contract; everything degrades silently when telemetry is absent.
 11. **Living handbooks** — three Obsidian-compatible wikis under `.docs/handbooks/` (developer: the software's logic, the WHY behind nuanced behavior, and how modules connect; user and admin: plain-language per-module guides with what-to-be-aware-of notes). Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds affected pages with one grep and amends instead of duplicating; every page registers in its folder's `INDEX.md`, and milestone validation checks coverage.
+12. **Marvin himself** — the orchestrator has a name, a personality, and a memory: in character for the project's lifetime, noteworthy findings written to `.docs/marvin/MEMORY.md` before they can be lost to context compaction, tidied by Marvin so it never rots.
 
 ## Install as a Claude Code plugin (recommended)
 
@@ -22,10 +23,10 @@ This repo is itself a Claude Code plugin (and its own marketplace):
 
 ```
 claude plugin marketplace add zenosyne-technologies/agent-operating-kit
-claude plugin install agent-operating-kit@emprove
+claude plugin install marvin@emprove
 ```
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief. A fifth skill, **`validate-kit`**, runs the kit's own release gate — the static check script plus three agentic scratch-repo scenarios. A sixth skill, **`plan-docs`**, backfills missing handbooks: the orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic whose issue descriptions carry those findings, and dispatches documentation agents against them. The **`/agent-operating-kit:info`** command shows the plugin version and this project's install state (installed kit version, PM tool, telemetry, structure health) — read-only.
+Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira — a user selection, never inferred), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief. A fifth skill, **`validate-kit`**, runs the kit's own release gate — the static check script plus three agentic scratch-repo scenarios. A sixth skill, **`plan-docs`**, backfills missing handbooks: the orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic whose issue descriptions carry those findings, and dispatches documentation agents against them. A seventh skill, **`stress-test`**, plans and executes beyond-comfort performance tests — every scale dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. The **`/marvin:info`** command shows the plugin version and this project's install state (installed kit version, PM tool, telemetry, structure health) — read-only.
 
 Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, .claude-plugin/, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
 
@@ -39,11 +40,13 @@ Installed plugins are **pinned snapshots** — pushing commits to this repo does
 2. **Consumers pull the update** (CLI or Desktop, identical behavior):
    ```
    claude plugin marketplace update emprove     # refresh the marketplace clone
-   claude plugin update agent-operating-kit@emprove
+   claude plugin update marvin@emprove
    ```
    Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable auto-update (off by default for third-party marketplaces).
 
 New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
+
+Renamed from agent-operating-kit at v0.15.0: existing users run `claude plugin uninstall agent-operating-kit@emprove` then `claude plugin install marvin@emprove` — installed projects are untouched; run the upgrade-agent-os skill to bring them to the current version.
 
 Contributors: every PR must pass `bash scripts/validate-kit.sh` — CI enforces it.
 
@@ -66,6 +69,8 @@ templates/
   settings.json                    disables AI attribution on commits/PRs (optional policy)
   docs/
     PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .docs/PROJECT-INFO.md)
+  docs/marvin/
+    MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .docs/marvin/MEMORY.md)
   docs/agents/
     briefing.md                    how to write any sub-agent brief
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
