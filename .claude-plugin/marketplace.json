@@ -5,14 +5,14 @@
   },
   "plugins": [
     {
-      "name": "agent-operating-kit",
+      "name": "marvin",
       "source": ".",
-      "description": "Orchestrator + sub-agent operating methodology, installable into any project via the install-agent-os skill."
+      "description": "Marvin — The Agentic Operating System: orchestrator persona + sub-agent methodology, installable into any project via the install-agent-os skill."
     },
     {
       "name": "token-telemetry",
       "source": { "source": "github", "repo": "Zenosyne-Technologies/agent-token-telemetry" },
-      "description": "Zero-token-overhead usage telemetry with kit-aware cost reporting — companion to agent-operating-kit."
+      "description": "Zero-token-overhead usage telemetry with kit-aware cost reporting — companion to marvin (the Agentic Operating System)."
     }
   ]
 }
