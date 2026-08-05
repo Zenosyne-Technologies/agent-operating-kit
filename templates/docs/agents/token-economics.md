@@ -4,7 +4,7 @@ The single description of the seam between the kit and the token-telemetry plugi
 
 ## Source
 
-SQLite DB at `~/.claude/telemetry/usage.db` (override: `$TOKEN_TELEMETRY_DB`), tables `events`/`sessions`/`projects`/`models`/`pricing`. Available when the file exists AND a `projects` row's path matches this repo's root. **Absent → every consumer omits its token output silently; nothing fails, nothing warns.**
+SQLite DB at `~/.claude/telemetry/usage.db` (override: `$TOKEN_TELEMETRY_DB`), tables `events`/`sessions`/`projects`/`models`/`pricing`. Available when the file exists AND a `projects` row's path matches this repo's root. Projects on project-folder storage also keep a local mirror DB, but the central DB stays complete and authoritative — consumers read central. **Absent → every consumer omits its token output silently; nothing fails, nothing warns.**
 
 ## Scoping recipes
 
