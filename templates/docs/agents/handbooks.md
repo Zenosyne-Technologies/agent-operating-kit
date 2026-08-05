@@ -27,7 +27,7 @@ Body: Obsidian wikilinks (`[[Page Name]]`) between pages; kebab-case filenames; 
 
 1. Read all three INDEX.md files.
 2. Grep the handbooks for every touched path: `grep -rl "<path>" .docs/handbooks/`.
-3. A match → AMEND that page, never create a near-duplicate.
+3. Matches → AMEND, never create a near-duplicate. Multiple hits are NORMAL: exclude `INDEX.md` rows, then treat every remaining page as an amend candidate — a changed source may need its developer page AND its user/admin pages updated, each in its own voice.
 4. No match → create only when no existing page owns the module.
 5. On every create or rename: update `sources`, `updated`, `related`, and the folder's INDEX row. On rename: fix every wikilink that pointed at the old title.
 
