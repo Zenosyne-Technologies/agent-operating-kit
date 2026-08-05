@@ -29,7 +29,7 @@ Verdict PASS/FAIL + severity-ranked findings. Real defects: file per `ticket-fil
 
 ## Milestone validation
 
-At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off before the milestone branch merges. Task-level stages are not re-run — milestone validation tests the composition.
+At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues, handbook coverage — each shipped epic's functionality has current pages in all three audiences) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off before the milestone branch merges. Task-level stages are not re-run — milestone validation tests the composition.
 
 ## Why fresh agents
 
