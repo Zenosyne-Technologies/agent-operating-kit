@@ -1,8 +1,8 @@
 ---
-description: Show the Agent Operating Kit version and this project's install state and active settings
+description: Show Marvin (the Agentic Operating System) version and this project's install state and active settings
 ---
 
-Report the kit's state for this project, compactly:
+Report Marvin's state for this project, compactly:
 
 1. **Plugin**: read `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` — name + version.
 2. **Project install**: read `.docs/PROJECT-INFO.md` frontmatter if present — installed `kit_version`, `pm_tool` + `tracker_coordinates` + `project_key`, `hierarchy_levels`, `telemetry`, `label_syntax_version`. Compare installed `kit_version` against the plugin version: if older, say so and point at the `upgrade-agent-os` skill.
