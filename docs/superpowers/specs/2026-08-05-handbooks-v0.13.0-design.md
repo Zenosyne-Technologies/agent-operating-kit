@@ -68,3 +68,11 @@ Additive; existing installs receive it via `upgrade-agent-os`. Handbook content 
 ## Testing
 
 Gate (CI) + coherence walk (cascade line ↔ handbooks.md ↔ documentation-agent ↔ validation-agent ↔ install/upgrade skeleton steps) + a live smoke: apply to the telemetry repo (create skeletons + seed one developer page for `capture.py` following the discovery rule end-to-end, verifying grep-by-source finds it afterward).
+
+## Addendum (owner refinement, pre-merge)
+
+Pages are per LOGICAL unit set by the orchestrator — never per code file (hundreds of files collapse into a handful of units). Units that outgrow one page become subfolders: `<unit>/<unit>.md` main page carrying the unit's full `sources` list, topic sub-files with narrower `sources`, all wiki-linked; the subfolder registers its main page in INDEX. Scope excludes framework defaults (e.g., Laravel stock structure) — only project-introduced logic is documented. User/admin handbooks structure by what a layman searches for: business capability, menu item, or screen/function. `related` frontmatter links are quoted for Obsidian-valid YAML.
+
+## Validated
+
+2026-08-05. Gate: all 7 checks pass on the release tree; budgets handbooks.md 43/60, CLAUDE.core.md 46/50; no placeholders in the two new templates. Coherence: cascade line ↔ handbooks.md ↔ documentation-agent item 6 ↔ validation-agent milestone coverage ↔ install/upgrade/validate-kit steps all cross-resolve (final review, full depth — no scoped reviews were run for this compact release, the whole-branch review covered task depth). Live smoke on agent-token-telemetry (commit 74503f3): three handbooks seeded, one page per audience written for the capture-pipeline logical unit; developer page's seven logic claims verified against capture.py; discovery loop proven (grep-by-source finds the pages; second-touch resolves to AMEND). The smoke's friction finding (multi-hit greps) drove the discovery-rule fix; the final review's four minors: quoted-wikilink fixed pre-merge, prose-match limitation accepted as mitigated, two consumer-repo nits deferred.
