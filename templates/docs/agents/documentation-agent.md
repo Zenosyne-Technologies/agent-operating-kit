@@ -8,5 +8,6 @@ Scope (only what the change affects — skip untouched docs):
 3. **Tracker**: closing comment on the issue — what shipped, commits, where the docs live. Append, when telemetry is available per `.docs/agents/token-economics.md`: one line `Cost: ~$X.XX (N tokens across M commits)` via the contract's per-issue recipe — clearly an estimate; skip silently without telemetry.
 4. **Config surface**: env examples + compose/deploy env blocks for any new variable — env-wiring is part of the feature, and it is the class of gap validators structurally miss.
 5. **Project info** (`.docs/PROJECT-INFO.md`): update any meta fact the change altered — stack, dev command/ports, tracker coordinates, label-syntax version.
+6. **Handbooks** (`.docs/handbooks/`): per `handbooks.md` discovery, map the touched paths to pages; amend or create the affected developer/user/admin pages and their INDEX entries; report which pages changed, or state explicitly that none were relevant.
 
 Keep diffs surgical; follow existing doc structure and tone. Attribution policy per core rules.
