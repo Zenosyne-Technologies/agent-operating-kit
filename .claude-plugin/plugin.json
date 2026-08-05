@@ -1,7 +1,7 @@
 {
-  "name": "agent-operating-kit",
-  "description": "Orchestrator + sub-agent operating methodology: model-tier dispatch, cascading ruleset, adversarial validation personas, documentation agents, and tracker intake structure — installable into any project via the install-agent-os skill.",
-  "version": "0.14.0",
+  "name": "marvin",
+  "description": "Marvin — The Agentic Operating System: orchestrator persona + sub-agent methodology (size-routed dispatch, DoD lifecycle, sequenced validation, handbooks, cost-aware reporting), installable into any project via the install-agent-os skill.",
+  "version": "0.15.0",
   "author": {
     "name": "Emprove Services Kft. (Emprove)"
   }
