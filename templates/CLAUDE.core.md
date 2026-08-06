@@ -23,7 +23,7 @@ After two failed attempts at any tier, escalate to {{FRONTIER_MODEL}} (orchestra
 
 ## Task lifecycle (per tracker task)
 
-build (`marvin:developer` / `marvin:developer-small` by size) → **validate-completion** (fresh `marvin:validator-completion`) → **validate-security** (fresh `marvin:validator-security`, only after completion passes) — both per `.docs/agents/validation-agent.md`, never the builder → **document** (`marvin:documenter` → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
+build (`marvin:developer` / `marvin:developer-small` by size) → **validate-completion** (fresh `marvin:validator-completion`) → **validate-security** (fresh `marvin:validator-security`) → **document** (`marvin:documenter`) → close the tracker issue with commit refs. Every arrow is a GATE: a stage starts only once the previous one PASSED — security only after completion passes, **documentation only after BOTH validators pass, and close only after documentation lands**. Validators per `.docs/agents/validation-agent.md` and never the builder; documentation per `.docs/agents/documentation-agent.md`. Any FAIL returns the task to its build tier with the findings and re-enters at validate-completion — never at document, never at close. A task is Done only when both validators passed AND its documentation landed.
 
 No task enters build without a **DoD** — verifiable done-statements written at planning time on the tracker issue (behavior, tests, docs, env wiring). Builders work TO the DoD; validators falsify AGAINST it.
 
