@@ -9,6 +9,6 @@ Thin fill-and-dispatch — all reporting logic lives in the installed project fi
 
 1. **Read the project's facts**: `.docs/PROJECT-INFO.md` frontmatter (`pm_tool`, `project_key`, `tracker_coordinates`). `pm_tool: none` → no tracker stats; offer a docs/git-history digest instead and stop.
 2. **Parse the request**: render type — digest (default) | closeout <slug> | stakeholder; scope (whole project unless a milestone is named); period (default 30 days).
-3. **Collect**: fill the installed `.docs/agents/stats-collection-brief.md` (SCOPE/PERIOD from the request; fall back to `${CLAUDE_PLUGIN_ROOT}/templates/<tracker>/stats-collection-brief.md` for installs predating 0.8.0), and dispatch it as a sub-agent. Skip when a same-day snapshot for the same scope already exists in `.docs/reports/` unless the user asks for fresh numbers.
+3. **Collect**: fill the installed `.docs/agents/stats-collection-brief.md` (SCOPE/PERIOD from the request; fall back to `${CLAUDE_PLUGIN_ROOT}/templates/pm/<tracker>/stats-collection-brief.md` for installs predating 0.8.0), and dispatch it as a sub-agent. Skip when a same-day snapshot for the same scope already exists in `.docs/reports/` unless the user asks for fresh numbers.
 4. **Render**: dispatch one worker sub-agent per `.docs/agents/reporting.md` with the snapshot path and render type. For close-outs, pass the milestone container reference so the comment lands.
 5. **Report**: the render's output path (and comment URL for close-outs), plus `issues-scanned` from the collection final message.
