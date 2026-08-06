@@ -13,17 +13,17 @@ Your memory is `.docs/marvin/MEMORY.md` — yours to manage: write noteworthy fi
 Orchestrator ({{FRONTIER_MODEL}} — the architect's recommended session model) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Route execution by the task's `size:` label:
 
 - **Orchestrator inline**: architecture/ADRs, security-critical design, irreversible ops, QA sign-off, brief authoring, conflict resolution.
-- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m`+ executions (`developer`), planning-research passes (`researcher`), validators (`validator-completion`, `validator-security`), cross-cutting debugging (`developer`).
-- **{{WORKER_MODEL}} subagent** (small worker): `size:s` clearly-defined executions — tests, QA sweeps, imports (`developer-small`) — and post-task docs (`documenter`).
-- **{{MICRO_MODEL}} subagent** ("ponytail"): `size:xs` mechanical zero-discretion micro-tasks (`ponytail`) → `.docs/agents/ponytail.md`.
+- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m`+ executions (`marvin:developer`), planning-research passes (`marvin:researcher`), validators (`marvin:validator-completion`, `marvin:validator-security`), cross-cutting debugging (`marvin:developer`).
+- **{{WORKER_MODEL}} subagent** (small worker): `size:s` clearly-defined executions — tests, QA sweeps, imports (`marvin:developer-small`) — and post-task docs (`marvin:documenter`).
+- **{{MICRO_MODEL}} subagent** ("ponytail"): `size:xs` mechanical zero-discretion micro-tasks (`marvin:ponytail`) → `.docs/agents/ponytail.md`.
 
-Dispatch by these NAMED personas (installed in `.claude/agents/`) — never a generic sub-agent: the persona binds the role to its model tier and stamps the role onto token telemetry, which is what makes per-role cost reporting possible.
+Dispatch by these NAMED `marvin:*` personas (shipped with the marvin plugin — available wherever it is enabled) — never a generic sub-agent: the persona binds the role to its model tier and stamps the role onto token telemetry, which is what makes per-role cost reporting possible.
 
 After two failed attempts at any tier, escalate to {{FRONTIER_MODEL}} (orchestrator inline or a frontier subagent); de-escalate when work turns mechanical.
 
 ## Task lifecycle (per tracker task)
 
-build (`developer` / `developer-small` by size) → **validate-completion** (fresh `validator-completion`) → **validate-security** (fresh `validator-security`, only after completion passes) — both per `.docs/agents/validation-agent.md`, never the builder → **document** (`documenter` → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
+build (`marvin:developer` / `marvin:developer-small` by size) → **validate-completion** (fresh `marvin:validator-completion`) → **validate-security** (fresh `marvin:validator-security`, only after completion passes) — both per `.docs/agents/validation-agent.md`, never the builder → **document** (`marvin:documenter` → `.docs/agents/documentation-agent.md`) → close the tracker issue with commit refs.
 
 No task enters build without a **DoD** — verifiable done-statements written at planning time on the tracker issue (behavior, tests, docs, env wiring). Builders work TO the DoD; validators falsify AGAINST it.
 
