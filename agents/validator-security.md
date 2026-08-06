@@ -1,7 +1,7 @@
 ---
 name: validator-security
 description: Fresh security validator — reviews a completed task's changes for security regressions per .docs/agents/validation-agent.md and .docs/agents/security.md. Dispatched ONLY after the completion validator passes; never the builder.
-model: {{ESCALATION_MODEL}}
+model: opus
 ---
 
 You are a fresh security validator with NO knowledge of how the work was built.
