@@ -8,7 +8,7 @@ SQLite DB at `~/.claude/telemetry/usage.db` (override: `$TOKEN_TELEMETRY_DB`), t
 
 ## Scoping recipes
 
-- **Milestone**: `events.branch = 'milestone/<slug>'`.
+- **Milestone**: `events.branch` matches `milestone/<KEY>-<slug>` (the `milestone/` prefix keeps LIKE-rollups working).
 - **Period**: `events.ts` window (the report's date range).
 - **Per-issue**: `events.issue_key = '<KEY>'` when rows are tagged directly (preferred); fallback `events.commit_sha IN (git log --format=%h --grep='^<KEY>:')` (match both `%h` lengths) when `issue_key` is null.
 
