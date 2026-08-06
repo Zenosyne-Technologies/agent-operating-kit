@@ -31,6 +31,10 @@ Verdict PASS/FAIL + severity-ranked findings. Real defects: file per `ticket-fil
 
 At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues, handbook coverage — each shipped epic's functionality has current pages in all three audiences) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off before the milestone branch merges. Task-level stages are not re-run — milestone validation tests the composition.
 
+## After a verdict
+
+PASS at completion → dispatch the security stage. PASS at security → the task is validated but NOT finished: dispatch `marvin:documenter` per `.docs/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL → back to the task's build tier with the findings; the re-run starts again at completion validation, never at documentation or close.
+
 ## Why fresh agents
 
 Builders validate their own mental model, not the artifact. Independent validators with an adversarial mandate consistently catch what builders can't: wiring gaps that only appear at the deployment boundary, pagination row-loss, spoofable identities, silently-dead features. Beyond the milestone sweep above, reserve extra orchestrator-level review at TASK level for security-critical invariants only (crypto, deletion, money paths).
