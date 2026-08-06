@@ -1,7 +1,7 @@
 {
   "name": "marvin",
   "description": "Marvin \u2014 The Agentic Operating System: orchestrator persona + sub-agent methodology (size-routed dispatch, DoD lifecycle, sequenced validation, handbooks, cost-aware reporting), installable into any project via the install-agent-os skill.",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "author": {
     "name": "Emprove Services Kft. (Emprove)"
   }
