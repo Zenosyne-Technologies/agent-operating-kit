@@ -52,11 +52,11 @@ for b in $inv; do
 done
 [ -z "$miss_inv" ] && [ -z "$miss_repo" ] && pass inventory || fail inventory "not in README:$miss_inv | in README but not tracked:$miss_repo"
 
-# ── 6. tracker-folders: every templates/<tracker>/ ships the full required set
+# ── 6. tracker-folders: every templates/pm/<tracker>/ ships the full required set
 req="intake-structure-brief.md tracker-config.md stats-collection-brief.md"
 bad=""
-for d in templates/*/; do
-  case "$d" in templates/docs/) continue;; esac
+for d in templates/pm/*/; do
+  [ -d "$d" ] || continue                       # skip non-directories (e.g. templates/pm/INSTALL.md)
   for r in $req; do [ -f "$d$r" ] || bad="$bad $d$r"; done
 done
 [ -z "$bad" ] && pass tracker-folders || fail tracker-folders "missing:$bad"
