@@ -35,7 +35,7 @@ Body follows `ticket-filing.md`: `## Scope / ## DoD` (defects use the repro temp
 
 ## Native field usage
 
-- The `labels:` list is the ONLY dimension carrier — values are identical to the tracker labels in
+- The `labels:` list is the canonical dimension carrier (the `type:` frontmatter field mirrors the `type:*` label for fast reads — on conflict the LABEL wins) — values are identical to the tracker labels in
   `label-syntax.md`. There are no native mirrors here (as with GitHub): no priority field, no
   estimate field, do not invent any. `status:` is workflow state, not a label.
 - `milestone:<slug>` labels are UNNECESSARY — the `milestone:` field is the real container.
