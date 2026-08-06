@@ -1,6 +1,6 @@
 # Documentation agent (after a tracker task is done)
 
-When a tracker task reaches Done (built + validated), dispatch a small-worker agent to document it. Brief it with the issue id, commit hashes, and the touched paths.
+Dispatch `marvin:documenter` once — and only once — BOTH validators have PASSED; the task is not Done until this step lands, and the tracker issue is never closed before it. Brief the agent with the issue id, commit hashes, and the touched paths. A failed validation goes back to the builder instead: nothing is documented until the work actually holds.
 
 Scope (only what the change affects — skip untouched docs):
 1. **Project docs** ({{DOCS_LOCATION}}): update the relevant architecture note(s) with the new behavior/contract; roadmap result line if milestone-relevant; issue-log rows for bugs fixed en route.
