@@ -23,6 +23,7 @@ A change that helps one specific project belongs in that project's installed fil
 6. **No AI attribution** in this repo's commits/PRs (also the default policy the kit ships).
 7. **Label registry changes** → edit `templates/docs/agents/label-syntax.md` only; bump the registry's OWN version and add its changelog row (on top of the plugin version bump). Never define labels anywhere else — briefs and guides reference the registry.
 8. **Every PR must pass `scripts/validate-kit.sh`** (CI runs it; run it locally before pushing). Extend the script's known-placeholder list when a template legitimately introduces a new placeholder — in the same PR.
+9. **Every release adds `upgrades/v<version>.md`** — ≤15 lines, ONLY the consumer-visible deltas from the previous version as mechanical steps; factory-only releases state "No consumer-visible changes". The upgrade skill walks these files in order; CI enforces the current version's file exists.
 
 ## Origin
 

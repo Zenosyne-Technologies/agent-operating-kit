@@ -68,6 +68,9 @@ else
   pass plugin-root-leak
 fi
 
+# ── 8. upgrade-files: the current version's upgrades/v<version>.md must exist
+[ -f "upgrades/v$ver.md" ] && pass upgrade-files || fail upgrade-files "upgrades/v$ver.md missing (add it — see CLAUDE.md extension rule 9)"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
