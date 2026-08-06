@@ -207,17 +207,10 @@ README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 scripts/validate-kit.sh              eight-check static release gate (CI runs it on every PR)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
+agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
-  agents/
-    developer.md                   heavy build persona — named sub-agent, tier-bound model, telemetry records the role
-    developer-small.md             small-tier build persona for size:s tasks
-    validator-completion.md        fresh BA completion validator persona
-    validator-security.md          fresh security validator persona (after completion passes)
-    researcher.md                  planning-research persona (memo only, no code)
-    documenter.md                  post-task documentation persona
-    ponytail.md                    micro-tier zero-discretion persona
   docs/
     PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .docs/PROJECT-INFO.md)
   docs/marvin/
