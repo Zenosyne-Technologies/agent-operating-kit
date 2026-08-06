@@ -1,64 +1,200 @@
 # Marvin — The Agentic Operating System
 
-**Marvin** is a reusable agentic operating system for AI-assisted software projects: an orchestrator persona (smart, thorough, snappy, questions everything that does not add up) with self-managed project memory, running an orchestrator + sub-agent methodology — size-routed model-tier dispatch, a cascading ruleset that keeps context lean, DoD-gated task lifecycles with sequenced adversarial validation (completion, then security), security and secrets discipline, a versioned label registry feeding collect-once reporting — and, with the companion **token-telemetry** plugin, full token/dollar cost visibility down to the individual tracker issue. Battle-tested on a full 7-milestone SaaS build (37 agent-built tasks, every one independently validated), and self-hosting: this kit and its companion are built and operated under their own rules.
+**Marvin** is a reusable agentic operating system for AI-assisted software projects. Install it into a repo and that repo gets an orchestrator with a name, a personality and a memory — one who plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements. Around the persona comes the machinery that makes agent work auditable: size-routed model-tier dispatch, a cascading ruleset that keeps context proportional to the task, DoD-gated task lifecycles with two sequenced adversarial validators, a versioned label registry feeding collect-once reporting, three living product handbooks, and — with the companion **token-telemetry** plugin — token and dollar cost visibility down to the individual tracker issue. It is for anyone running real software delivery through Claude Code and tired of "done" without evidence.
 
-## Core ideas
+**At a glance** — a Claude Code plugin · four supported PM tools · seven skills and one command · installs a lean, self-contained payload into any repo · battle-tested on a full 7-milestone SaaS build with 37 agent-built, independently validated tasks · self-hosting: this kit is built and operated under its own rules.
 
-1. **Tier dispatch** — the orchestrator (frontier model — the architect's recommended session model) plans, briefs, and verifies; it never bulk-implements. Execution routes by task size: medium-and-larger work and research to the heavy worker tier, small clearly-defined work to the small worker tier, mechanical micro-tasks to the micro model ("ponytail" profile). After two failed attempts at any tier, escalation goes to the frontier model; milestone close is validated by the orchestrator itself working with small-worker sub-agents.
-2. **Cascading ruleset** — one always-loaded core file (`CLAUDE.md`) holds only the rules that apply to *every* turn; per-activity rules live in `.docs/agents/*.md` and are *referenced* in briefs, never inlined. Context stays proportional to the task.
-3. **Task lifecycle** — no task enters build without a planner-authored DoD on the tracker issue (`## Scope / ## DoD`, verifiable done-statements); build (worker, TO the DoD) → validate in sequence (completion validator falsifies the DoD per item first — Playwright or direct browser driving for web-facing work — then the security validator, only after completion passes; fresh agents, never the builder) → document (docs agent) → close the tracker issue with commit refs.
-4. **Brief discipline** — env preamble, exact scope, ownership boundaries, milestone-branch + autocommit instructions, idempotency, machine-consumed final messages, no mid-run policy changes.
-5. **Git discipline** — each milestone works on a `milestone/<KEY>-<slug>` feature branch (the container issue key in the name), merged back only after validation; agents (orchestrator and sub-agents alike) autocommit finished work — atomic, selectively staged, never awaiting approval; commit messages start with their tracker issue key, so every commit traces and syncs back to the PM tool.
-6. **Sized planning research** — tasks carry `size:xs..xl` t-shirt labels; `size:xl` plans get adversarial plan-validation + solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip research. Findings land as issue comments or md docs and are folded into the plan before building.
-7. **Tracker intake structure** — a systematic label registry (`label-syntax.md`, self-contained and versioned: type/area/severity/origin dimensions on every item agents create or edit, with backfill-on-touch for unlabeled issues — built for statistics and reporting), a filing template, dedupe rules, and QA-sweep conventions, stored as a document *inside* the tracker so agents and humans share one source of truth. Each supported PM tool ships a `tracker-config.md`: levels available vs the kit's 4-level target (milestone → epic → work item → sub-item), a virtual-milestone rule where only 3 exist, and the severity mapping to the native scheme (the kit's sev labels stay canonical).
-8. **Collect-once reporting** — a per-tracker stats brief snapshots every label dimension into versioned JSON under `.docs/reports/`; audience renders (architect digest, milestone close-out at milestone close, internals-free stakeholder page) consume the snapshot, never the tracker.
-9. **Security discipline** — secrets are never committed and never pasted into PM-tool surfaces (issue comments, snapshots, PR bodies; a leaked secret is a sev1: rotate first); dependency changes are sized `m`+ with advisory checks and pinned versions; every brief names the task's security surface; security-critical design stays orchestrator-inline.
-10. **Token economics (optional suite)** — with the token-telemetry companion plugin, a context sidecar ties every captured token to its issue key, task size, and a one-sentence summary; effective-dated pricing turns usage into dollars at query time; snapshots, digests, milestone close-outs, and the stakeholder page carry cost, and closed issues get a one-line cost comment. `token-economics.md` is the contract; everything degrades silently when telemetry is absent.
-11. **Living handbooks** — three Obsidian-compatible wikis under `.docs/handbooks/` (developer: the software's logic, the WHY behind nuanced behavior, and how modules connect; user and admin: plain-language per-module guides with what-to-be-aware-of notes). Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds affected pages with one grep and amends instead of duplicating; every page registers in its folder's `INDEX.md`, and milestone validation checks coverage.
-12. **Marvin himself** — the orchestrator has a name, a personality, and a memory: in character for the project's lifetime, noteworthy findings written to `.docs/marvin/MEMORY.md` before they can be lost to context compaction, tidied by Marvin so it never rots.
+## Contents
 
-## Install as a Claude Code plugin (recommended)
+- [What you get](#what-you-get)
+- [Quickstart](#quickstart)
+- [How it works](#how-it-works)
+- [Marvin himself](#marvin-himself)
+- [PM tools](#pm-tools)
+- [Skills and commands](#skills-and-commands)
+- [The discipline stack](#the-discipline-stack)
+- [Updating and migrating](#updating-and-migrating)
+- [Manual install](#manual-install)
+- [Contributing](#contributing)
+- [Inventory](#inventory)
+- [Portability notes](#portability-notes)
 
-This repo is a Claude Code plugin, served by the standalone **emprove** marketplace ([Zenosyne-Technologies/emprove-marketplace](https://github.com/Zenosyne-Technologies/emprove-marketplace)):
+## What you get
 
-```
+| | |
+|---|---|
+| **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. Two failures at any tier escalate to the frontier model. |
+| **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
+| **A cascading ruleset** | One always-loaded core file holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
+| **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
+| **Collect-once reporting** | One stats snapshot per collection run, three audience renders on top of it: architect digest, milestone close-out, internals-free stakeholder page. Renders never re-query the tracker. |
+| **Three living handbooks** | Developer, user and admin wikis under the project's docs, Obsidian-compatible, each page naming the code paths it documents so the docs agent amends instead of duplicating. |
+| **Security discipline** | Secrets never committed and never pasted into tracker surfaces, dependency changes vetted and pinned, every brief naming its security surface, security-critical design kept orchestrator-inline. |
+| **Tracker structure in your PM tool** | A labelled, deduped intake structure created for you in Linear, Jira, GitHub Issues — or a fully self-contained markdown tracker inside the repo. |
+| **Cost visibility, optional** | With the token-telemetry companion installed: dollars per issue, per milestone, per tier, wired into the same snapshots and reports. Everything degrades silently without it. |
+
+## Quickstart
+
+Marvin is served by the standalone **emprove** marketplace ([Zenosyne-Technologies/emprove-marketplace](https://github.com/Zenosyne-Technologies/emprove-marketplace)):
+
+```bash
+# 1. add the marketplace (one time)
 claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace
+
+# 2. install Marvin, plus the optional cost-telemetry companion
 claude plugin install marvin@emprove
+claude plugin install token-telemetry@emprove
 ```
 
-Previously added the marketplace from this repo (registered as `zenosyne` or `emprove`)? Switch once: `claude plugin marketplace remove zenosyne` (or `emprove`), then add it from the new repo above — `claude plugin marketplace list` shows what you have.
+**3. In any project, just ask: "install the agent operating kit into this project"** — or invoke the `install-agent-os` skill directly. It reads the repo's own facts to resolve every placeholder, merges with what already exists instead of overwriting it, asks which PM tool the project uses, proves that tool is reachable from the session before installing anything for it, and dispatches a sub-agent to build the tracker's intake structure.
 
-Then, in any project: invoke the **`install-agent-os`** skill (or just ask "install the agent operating kit into this project"). A second skill, **`project-info`**, creates `.docs/PROJECT-INFO.md` standalone — or, when it already exists, validates it against the repo and auto-fixes discrepancies via a sub-agent, without ever recreating the file. It resolves placeholders from the target repo's own facts, merges with existing CLAUDE.md/settings, asks which supported PM tool the project uses (Linear | Jira | GitHub Issues | Local — a user selection, never inferred; the tool is sensechecked for reachability before anything is installed, and Local is a fully self-contained markdown tracker in the repo), and creates that tool's intake structure via a sub-agent. A third skill, **`upgrade-agent-os`**, migrates an existing install to the current kit version — file moves, new cascade docs, tracker label re-sync, and (gated behind one confirmation) relabel sweeps for superseded labels, walking the per-version upgrade files. A fourth skill, **`report`**, produces an architect digest, milestone close-out, or stakeholder page from tracker statistics via the installed stats-collection brief. A fifth skill, **`validate-kit`**, runs the kit's own release gate — the static check script plus three agentic scratch-repo scenarios. A sixth skill, **`plan-docs`**, backfills missing handbooks: the orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic whose issue descriptions carry those findings, and dispatches documentation agents against them. A seventh skill, **`stress-test`**, plans and executes beyond-comfort performance tests — every scale dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. The **`/marvin:info`** command shows the plugin version and this project's install state (installed kit version, PM tool, telemetry, structure health) — read-only.
+That is it. Ask `/marvin:info` at any time for a read-only report of the plugin version, this project's install state and its active settings.
 
-Repo layout note: `templates/` is the payload that gets installed into consumer projects; everything else (skills/, commands/, upgrades/, .claude-plugin/plugin.json, this README, CLAUDE.md) is kit machinery — see `CLAUDE.md` for the rules agents must follow when extending the kit itself.
+## How it works
 
-**Cost-aware operations suite**: for token/dollar cost visibility on top of the methodology, also install the companion **`token-telemetry`** plugin from this same marketplace (`claude plugin install token-telemetry@emprove`). It is optional — every kit workflow degrades gracefully without it. Together they close the loop: the kit's orchestrator writes a repo-root `.claude/telemetry-context.json` sidecar at tracker-task start (issue key, project, `size:`, one-sentence summary); telemetry's Stop/SubagentStop hooks capture per-turn usage with zero model-token overhead and stamp the sidecar context onto each event; the kit's conventions make the joins free (`milestone/<KEY>-<slug>` branches → cost per milestone, `<KEY>:` commit prefixes → cost per issue, model prefixes → cost per tier); an effective-dated `pricing` table (agent-refreshable weekly from Anthropic's published pricing) turns tokens into dollars at query time; and the kit's reporting reads it all back — schema-v2 snapshots with a `tokens` section, cost in the digest/close-out/stakeholder renders, and a `Cost: ~$X.XX` line on every closed issue. Contract: `templates/docs/agents/token-economics.md` (kit side) ↔ `docs/TELEMETRY-CONTRACT.md` (telemetry side).
+Three loops carry most of the weight: the lifecycle every task walks, the router that decides who does the work, and the cost loop that prices all of it.
 
-## Updating the plugin after repo changes
+<!-- Maintainers: the inventory check in scripts/validate-kit.sh scans lines that are exactly three backticks, so the fence style used in this README is load-bearing. Re-run the gate after adding or removing any code block here. -->
 
-Installed plugins are **pinned snapshots** — pushing commits to this repo does NOT update installed copies. Two things must happen:
+```mermaid
+flowchart LR
+    P["Plan the task<br/>Scope + DoD on the tracker issue"] --> B["Build<br/>worker at the routed tier, TO the DoD"]
+    B --> VC{"validate-completion<br/>fresh BA validator"}
+    VC -->|falsified| B
+    VC -->|passes| VS{"validate-security<br/>fresh security validator"}
+    VS -->|falsified| B
+    VS -->|passes| D["Document<br/>handbook pages amended, issue log updated"]
+    D --> C["Close the issue<br/>with commit refs and a cost line"]
+```
 
-1. **Bump `version` in `.claude-plugin/plugin.json`** with every release (already mandated by this repo's CLAUDE.md extension rules). Claude Code resolves updates by that version string — new commits under an unchanged version are invisible to installed copies.
-2. **Consumers pull the update** (CLI or Desktop, identical behavior):
-   ```
-   claude plugin marketplace update emprove     # refresh the marketplace clone
-   claude plugin update marvin@emprove
-   ```
-   Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable auto-update (off by default for third-party marketplaces).
+**The task lifecycle.** Nothing enters build without a DoD — verifiable done-statements covering behavior, tests, docs and env wiring, written at planning time onto the tracker issue. Builders work *to* the DoD; validators work *against* it, per item, and they are always fresh agents rather than the builder marking its own homework. Completion validation runs first — Playwright or direct browser driving for anything web-facing, because an API-level curl check is not browser E2E — and only once it passes does the security validator get its turn. See `validation-agent.md` for both personas.
 
-New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
+```mermaid
+flowchart TD
+    O["Orchestrator, frontier tier<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
+    R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
+    R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs"]
+    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, both validators"]
+    MI --> X{"Two failed attempts?"}
+    SM --> X
+    HV --> X
+    X -->|yes| ES["Escalate to the frontier model"]
+    X -->|no| DN["Task complete"]
+    ES --> O
+    DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
+```
 
-Renamed from agent-operating-kit at v0.15.0: existing users run `claude plugin uninstall agent-operating-kit@emprove` then `claude plugin install marvin@emprove` — installed projects are untouched; run the upgrade-agent-os skill to bring them to the current version.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` plan gets adversarial plan-validation plus solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip it — findings land as issue comments or docs and get folded into the plan before a line is built. De-escalate again as soon as work turns mechanical.
 
-Contributors: every PR must pass `bash scripts/validate-kit.sh` — CI enforces it.
+```mermaid
+flowchart LR
+    K["Orchestrator writes the context sidecar<br/>issue key, project, size, one-sentence summary"] --> H["Telemetry capture hooks<br/>per-turn usage, zero model-token overhead"]
+    G["Git conventions<br/>milestone branches and issue-key commit prefixes"] --> H
+    H --> DB[("Central telemetry database<br/>events plus effective-dated pricing")]
+    DB --> S["Stats snapshot<br/>label dimensions plus a tokens section"]
+    S --> R1["Architect digest · milestone close-out · stakeholder page"]
+    S --> R2["One-line cost comment on every closed issue"]
+```
 
-## Manual install (no plugin, 3 steps)
+**The cost loop.** With the companion plugin installed, the orchestrator writes a repo-root sidecar at tracker-task start and rewrites it on every switch; telemetry's Stop and SubagentStop hooks stamp that context onto each captured event, so cost joins to issues, milestones and tiers for free. Pricing is never stored per event — an effective-dated table turns tokens into dollars at query time, and every reported figure carries the date of the rate it used. `token-economics.md` is the whole contract, and every consumer of it omits its cost output silently when telemetry is absent.
 
-1. Copy `templates/docs/agents/` → `<repo>/.docs/agents/`, your PM tool's `templates/pm/<tracker>/tracker-config.md` → `<repo>/.docs/agents/tracker-config.md`, its `templates/pm/<tracker>/stats-collection-brief.md` → `<repo>/.docs/agents/stats-collection-brief.md`, `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`, `templates/settings.json` → `<repo>/.claude/settings.json` (merge if one exists). Upgrading an older install that used `docs/agents/`? `git mv` the kit's files to `.docs/agents/` and fix the CLAUDE.md references.
-2. Fill every `{{PLACEHOLDER}}` in `CLAUDE.md` (project facts, env preamble, tracker coordinates). Delete rules that don't apply; add project-specific "conventions that bite" as you learn them.
-3. Create the tracker structure: give an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled (works as a small-model task).
+## Marvin himself
+
+Named for the Hitchhiker's android — the brain the size of a planet is canon, the depression is not. Smart, thorough, a keen eye for detail and management; young and snappy; questions everything that does not add up: a brief that contradicts the code, a "done" without evidence, a number that appears from nowhere.
+
+His memory is his own to manage. Noteworthy findings — decisions, surprises, hard-won gotchas — go into `MEMORY.md` as they happen and *before* context compaction can lose them; he consults it when a session starts and tidies it at milestone close so it never rots. Nothing goes in that the repo, the tracker or the handbooks already record.
+
+## PM tools
+
+The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
+
+| Tool | Hierarchy | Native mirroring | Notes |
+|---|---|---|---|
+| **Linear** | 4/4 native: Project → Milestone → Issue → Sub-issue | severity → Linear Priority | Labels and the in-tracker intake guide are created by the intake brief. |
+| **Jira** | 3/4 + virtual milestones: a `milestone:<slug>` label on every epic | severity → Jira Priority, or JSM Impact | The milestone encoding is losslessly convertible — `convert-milestones-brief.md` is prepared and dispatchable the moment the connector can create releases. |
+| **GitHub Issues** | 4/4 native: Milestone → parent issue → issue → task list | no priority or estimate field to mirror | Labels seeded through the `gh` CLI; the intake guide lives as a pinned issue. |
+| **Local** | 4/4 via files: milestone file → epic issue with `children:` → issue file → task-list checkbox | no native fields to mirror; labels live in frontmatter | A fully self-contained markdown tracker inside the repo. No external service, no auth. |
+
+Which tool a project uses is always a **user selection, never inferred** — even when exactly one tracker happens to be connected. The install skill sensechecks the choice immediately, before installing anything for it: MCP tools resolving plus one cheap authenticated read for Linear and Jira, `gh auth status` plus a repo lookup for GitHub, nothing needed for Local. If the check fails you are told plainly and offered three ways forward — pick another tool, connect it and install later, or fall back to Local now and adopt the external tool later via an upgrade plus an intake re-run. The fallback is never silent.
+
+## Skills and commands
+
+| Skill | Use it when |
+|---|---|
+| `install-agent-os` | Installing Marvin into a repo for the first time. Resolves placeholders, merges rather than overwrites, selects and sensechecks the PM tool, creates the intake structure. |
+| `upgrade-agent-os` | Bringing an existing install up to the plugin's current version — file migrations, new cascade docs, tracker label re-sync, and relabel sweeps gated behind one confirmation. |
+| `project-info` | Creating the project meta page standalone — or, when it already exists, validating it against the repo and auto-fixing discrepancies without ever recreating it. |
+| `report` | Asking for an architect digest, a milestone close-out or a stakeholder page. Fills and dispatches the installed stats brief, then renders. |
+| `plan-docs` | Handbooks are missing or stale. The orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic carrying those findings, and dispatches documentation agents against it. |
+| `stress-test` | Verifying the project holds past demo scale — every growth dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. |
+| `validate-kit` | Releasing a new kit version. Runs the static gate plus three agentic scratch-repo scenarios: fresh install, legacy upgrade, no-op re-run. |
+
+| Command | What it does |
+|---|---|
+| `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, and whether the companion plugin is present. Never modifies anything. |
+
+## The discipline stack
+
+**Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.docs/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
+
+**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, milestone-branch and autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
+
+**Labels as infrastructure.** `label-syntax.md` is a self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus a backfill-on-touch rule for unlabeled legacy issues. Any change bumps the registry's own version and adds a changelog row. An unlabeled item is invisible to reporting, which is the whole reason the discipline exists. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide *inside* the tracker, so agents and humans share one source of truth.
+
+**Collect once, render many.** A per-tracker stats brief snapshots every label dimension into versioned JSON under the project's reports folder. The three renders read that snapshot verbatim — an agent that recomputes a figure is doing it wrong — and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: no size or origin labels, no tiers, no agent names, product progress only.
+
+**Traceability by convention.** Each milestone works on a `milestone/<KEY>-<slug>` feature branch carrying its container issue key, merged back only after milestone validation. Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. Those two conventions are what let commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
+
+**Definition of Done as the contract.** The DoD is written by the planner, onto the issue, before build starts. It is the thing the builder targets, the thing two independent validators attack, the thing the documentation agent documents against, and the thing quoted in the close comment. Everything else in the lifecycle hangs off it.
+
+**Security and secrets.** Secrets are never committed and never pasted into PM-tool surfaces — issue comments, snapshots, PR bodies. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized `m` or larger and get advisory checks with pinned versions. Every brief names the task's security surface, and security-critical design stays with the orchestrator rather than being delegated.
+
+**Handbooks that stay alive.** Three audiences, three wikis: the developer handbook explains the software's logic, the WHY behind nuanced behavior and how modules connect; the user and admin handbooks give plain-language per-module guides with what-to-be-aware-of notes. Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds every affected page with one grep and amends it rather than writing a duplicate. Every page registers in its folder's `INDEX.md`, and milestone validation checks coverage.
+
+**Token economics.** With telemetry present, cost stops being a mystery: usage ties to issue key, task size and a one-sentence summary of what was being attempted; snapshots, digests, close-outs and the stakeholder page all carry money; closed issues get a one-line cost figure. Without it, every one of those paths silently omits its cost content. Nothing fails, nothing warns.
+
+## Updating and migrating
+
+Installed plugins are **pinned snapshots** — pushing commits to this repo does *not* update installed copies. Two things have to happen:
+
+1. **The plugin version gets bumped** in the plugin manifest with every release, which this repo's own rules mandate. Claude Code resolves updates by that version string; new commits under an unchanged version are invisible to installed copies.
+2. **Consumers pull the update** (CLI and Desktop behave identically):
+
+```
+claude plugin marketplace update emprove     # refresh the marketplace clone
+claude plugin update marvin@emprove
+```
+
+Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable auto-update, which is off by default for third-party marketplaces. New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
+
+Updating the *plugin* does not touch projects you already installed into — run the `upgrade-agent-os` skill in each repo to bring its installed files to the current version. That skill walks the per-release notes under `upgrades/` in order, so a project several versions behind still gets every migration step applied.
+
+**Renamed from agent-operating-kit.** Existing users switch once with `claude plugin uninstall agent-operating-kit@emprove` followed by `claude plugin install marvin@emprove`. Installed projects are untouched by the rename.
+
+**Marketplace moved** to its own repo. If you added it from this repo before — registered as `zenosyne` or `emprove` — remove it once with `claude plugin marketplace remove zenosyne` (or `emprove`) and add it from the address in [Quickstart](#quickstart). `claude plugin marketplace list` shows what you currently have.
+
+## Manual install
+
+No plugin, three steps:
+
+1. **Copy the payload.** `templates/docs/agents/` → `<repo>/.docs/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.docs/agents/`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used the old `docs/agents/` location? `git mv` the kit's files to `.docs/agents/` and fix the references.
+2. **Fill every `{{PLACEHOLDER}}`** in the core file — project facts, env preamble, tracker coordinates. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
+3. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
 Or paste `BOOTSTRAP.md` into a Claude session — it is a pointer that walks the session through the install skill directly.
+
+## Contributing
+
+`templates/` is the payload that gets installed into consumer projects; everything else — skills, commands, upgrade notes, the plugin manifest, this README — is kit machinery. Never blur the two: a change that helps one specific project belongs in that project's installed files, and only lessons that generalise get promoted into templates. `CLAUDE.md` holds the full extension rules — new activity docs, new tracker support, template line budgets, and the version and changelog bumps each change owes.
+
+Every PR must pass the static release gate, which CI runs on every push:
+
+```
+bash scripts/validate-kit.sh
+```
+
+Its eight checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist.
 
 ## Inventory
 
@@ -111,7 +247,7 @@ templates/
 
 ## Portability notes
 
-- Model names are placeholders — map tiers to whatever is current (`frontier` / `heavy worker` / `small worker` / `micro`).
-- Tracker-specific parts are confined to `ticket-filing.md`'s coordinates line + `templates/pm/<tracker>/` (currently `linear/`, `jira/`, `github/`, and `local/`; `templates/pm/INSTALL.md` holds the tool-neutral selection, sensecheck, and project-key flow the skills follow). Adding a PM tool = one new folder (intake brief + `tracker-config.md` + `stats-collection-brief.md`) plus an entry in `INSTALL.md`'s selection and sensecheck tables; taxonomy and template carry over 1:1, sev1..sev4 labels stay canonical everywhere.
-- Hierarchy levels: the kit targets 4 (milestone → epic/feature grouping → work item → sub-item). Linear, GitHub, and Local meet it natively (Linear: Project → Milestone → Issue → Sub-issue; GitHub: native Milestone → parent issue → issue → task list; Local: milestone file → epic issue with `children:` → issue file → task-list checkbox). Tools exposing only 3 — Jira until its MCP connector can create releases (v2) — use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a release/milestone/equivalent once the tool or connector allows. The conversion is a prepared brief (`pm/jira/convert-milestones-brief.md`), not just a rule.
-- The attribution policy (no AI co-author lines) is an owner preference — delete `settings.json` and the CLAUDE.md line to keep default attribution.
+- Model names are placeholders — map the tiers (`frontier` / `heavy worker` / `small worker` / `micro`) to whatever is current.
+- Tracker-specific parts are confined to the coordinates line in `ticket-filing.md` plus `templates/pm/<tracker>/` (currently `linear/`, `jira/`, `github/` and `local/`; `templates/pm/INSTALL.md` holds the tool-neutral selection, sensecheck and project-key flow the skills follow). Adding a PM tool is one new folder — intake brief, `tracker-config.md`, `stats-collection-brief.md` — plus an entry in that reference's selection and sensecheck tables. Taxonomy and filing template carry over 1:1; sev1..sev4 labels stay canonical everywhere.
+- Tools exposing only three hierarchy levels use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a native release or milestone once the tool or its connector allows. The conversion ships as a prepared brief, not just a rule.
+- The attribution policy — no AI co-author lines anywhere — is an owner preference. Delete `settings.json` and the matching core rule to keep default attribution.
