@@ -237,6 +237,8 @@ templates/
   marvin/agents/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
+    information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
+    information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
     planning-research.md           size-gated plan-validation + solution research, tier routing
     validation-agent.md            BA + security validator personas, E2E hook
