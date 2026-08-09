@@ -247,8 +247,14 @@ templates/
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
-  docs/handbooks/
-    index.md                       generic handbook ToC skeleton (installed ×3: developer/user/admin)
+  docs/                            the .docs/ taxonomy seeds — every folder gets one lowercase index.md
+    index.md                       root index: crawl entry point, sub-folder table, where-a-new-document-goes rule
+    plans/index.md                 decided work not yet finished
+    researches/index.md            what investigations established
+    refactor/index.md              identified technical debt and the cleanup it calls for
+    future/index.md                deliberately deferred ideas
+    information/index.md           the project's dynamic rule system (adds severity + relevance columns)
+    handbooks/index.md             generic handbook ToC skeleton (installed ×3: developer/user/admin)
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/
