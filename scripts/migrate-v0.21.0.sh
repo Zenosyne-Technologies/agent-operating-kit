@@ -8,15 +8,15 @@
 # own. Every guard below is a safety control, each one there because its absence was
 # reproduced losing consumer data. scripts/test-migrations.sh pins them.
 #
-# Usage: bash migrate-v0.21.0.sh [--check | --no-commit]
-#   --check      dry run: print the exact plan, change nothing at all
+# Usage: bash migrate-v0.21.0.sh [--check | --no-commit]      (the two flags are exclusive)
+#   --check      dry run: print the exact plan, change nothing at all — works on ANY tree
 #   --no-commit  perform + stage the changes, leave them uncommitted for inspection
 #
 # Exit codes:
 #   0  success (including a clean no-op re-run)
-#   2  refused: working tree was not clean
+#   2  dirty working tree: a real run refuses to start; `--check` still printed its plan
 #   3  completed, but destination collisions need reconciling by hand
-#   4  usage error / not a git work tree
+#   4  usage error (unknown or mutually exclusive flags) / not a git work tree
 #   5  a planned change failed to apply
 set -euo pipefail
 
@@ -60,14 +60,17 @@ FAILURES=""       # src<TAB>dst
 MOVED=""          # src<TAB>dst
 REWRITTEN=""      # path
 STAGE=()
+SED_ARGS=()
 COMMIT_SHA="none"
+DIRTY=""
 
 usage() {
   cat <<EOF
 Usage: bash ${SELF}.sh [--check | --no-commit]
   (no flag)    migrate, stage by explicit path, commit as ONE atomic commit
-  --check      dry run — print the plan, change nothing
+  --check      dry run — print the plan, change nothing (valid on a dirty tree too)
   --no-commit  migrate and stage, but do not commit
+The two flags are mutually exclusive: anything containing --check must not modify the repo.
 EOF
 }
 
@@ -96,16 +99,41 @@ count()         { if [ -z "$1" ]; then echo 0; else printf '%s\n' "$1" | grep -c
 # untracked destination that an index-only guard walks straight past; `git mv` then either
 # aborts the whole run or nests the source into `.marvin/agents/agents/`.
 dst_occupied_real() { tracked_exact "$1" || [ -e "$1" ]; }
-# CASE-ONLY handbook rename: index ONLY, never the disk test. `INDEX.md` and `index.md` are the
-# same inode on a case-insensitive filesystem, so `[ -e … ]` is already true before the rename
-# and would skip it silently — shipping `INDEX.md` and breaking case-sensitive checkouts.
+# CASE-ONLY handbook rename: index ONLY. This guard must contain NO filesystem-existence test.
+# `INDEX.md` and `index.md` are the same inode on a case-insensitive filesystem, so `[ -e … ]`
+# is already true before the rename and would skip it silently — shipping `INDEX.md` and
+# breaking case-sensitive checkouts. On a case-sensitive filesystem that mistake is invisible
+# at runtime, so test-migrations.sh pins this line STRUCTURALLY as well as behaviourally.
 dst_occupied_case() { tracked_exact "$1"; }
 
+planned_dst_source() {   # first source already planning a move to $1, if any
+  [ -n "$PLAN_MOVE" ] || return 0
+  printf '%s\n' "$PLAN_MOVE" | grep . | awk -F"$TAB" -v d="$1" '$2==d {print $1; exit}'
+}
+
+drop_planned_dst() {     # remove every planned move targeting $1
+  local kept
+  kept=$(printf '%s\n' "$PLAN_MOVE" | grep . | awk -F"$TAB" -v d="$1" '$2!=d' || true)
+  PLAN_MOVE=""
+  [ -n "$kept" ] && PLAN_MOVE="${kept}"$'\n'
+  return 0
+}
+
 plan_real_move() {
-  local src="$1" dst="$2"
+  local src="$1" dst="$2" prev
   tracked_exact "$src" || return 0
   if dst_occupied_real "$dst"; then
     add_collision "$src" "$dst" "destination already exists — reconcile by hand"
+    return 0
+  fi
+  # Two source roots can target one destination (a repo carrying both `docs/agents/` and
+  # `.docs/agents/`). Neither is authoritative, and letting the plan promise both moves means
+  # the second `git mv` fails mid-run. Detect it here and decline BOTH.
+  prev=$(planned_dst_source "$dst")
+  if [ -n "$prev" ]; then
+    drop_planned_dst "$dst"
+    add_collision "$prev" "$dst" "another source targets the same destination: $src"
+    add_collision "$src" "$dst" "another source targets the same destination: $prev"
     return 0
   fi
   add_move "$src" "$dst"
@@ -156,20 +184,68 @@ build_plan() {
 }
 
 # ── reference rewrite ────────────────────────────────────────────────────────────────────────
-# `INDEX.md` -> `index.md` is anchored to `.docs/handbooks/…` paths ONLY. A blanket pass
-# corrupts a Local-tracker install: its `tracker-config.md` carries `.docs/project-management/
-# INDEX.md` references that STAY uppercase — lowercase them and the filing agent finds no
-# index, creates one at `next_issue: 1`, and starts overwriting existing issue files.
-rewrite_to() {
-  LC_ALL=C sed -E \
-    -e 's#\.docs/agents/#.marvin/agents/#g' \
-    -e 's#(^|[^A-Za-z0-9._-])docs/agents/#\1.marvin/agents/#g' \
-    -e 's#\.docs/PROJECT-INFO\.md#.marvin/PROJECT-INFO.md#g' \
-    -e 's#(^|[^A-Za-z0-9._-])docs/PROJECT-INFO\.md#\1.marvin/PROJECT-INFO.md#g' \
-    -e 's#\.docs/marvin/#.marvin/#g' \
-    -e 's#(\.docs/handbooks/[A-Za-z0-9._-]+/)INDEX\.md#\1index.md#g' \
-    "$1"
+# Two scoping rules, both learned the hard way:
+#  · `INDEX.md` -> `index.md` is anchored to `.docs/handbooks/…` paths ONLY. A blanket pass
+#    corrupts a Local-tracker install: its `tracker-config.md` carries `.docs/project-
+#    management/INDEX.md` references that STAY uppercase — lowercase them and the filing agent
+#    finds no index, creates one at `next_issue: 1`, and overwrites existing issue files.
+#  · A reference to a file the allowlist DECLINED to move must keep pointing at that file. The
+#    directory-level rule would otherwise retarget a consumer's `.docs/agents/oncall-runbook.md`
+#    at a `.marvin/agents/` path that will never exist — the same locations-vs-references
+#    inconsistency the atomic commit exists to prevent, inside an otherwise successful run.
+re_escape()   { printf '%s' "$1" | sed 's|[][\.*^$#]|\\&|g'; }
+repl_escape() { printf '%s' "$1" | sed 's|[\&#]|\\&|g'; }
+
+# Paths that did NOT move are protected by substituting a sentinel BEFORE the retargeting rules
+# and restoring it after, so no forward rule can touch them. Keying the protection on the
+# original path (not on the destination) keeps it exact even when two source roots collapse
+# onto one destination.
+PRE_ARGS=(); POST_ARGS=(); SENTINEL_N=0
+protect_path() {
+  local p="$1" esc rep sent
+  SENTINEL_N=$((SENTINEL_N+1))
+  sent=$'\001'"MARVINKEEP${SENTINEL_N}"$'\001'
+  esc=$(re_escape "$p"); rep=$(repl_escape "$p")
+  PRE_ARGS[${#PRE_ARGS[@]}]="-e"
+  case "$p" in
+    .*) PRE_ARGS[${#PRE_ARGS[@]}]="s#${esc}#${sent}#g";;
+    *)  PRE_ARGS[${#PRE_ARGS[@]}]="s#(^|[^A-Za-z0-9._-])${esc}#\\1${sent}#g";;
+  esac
+  POST_ARGS[${#POST_ARGS[@]}]="-e"
+  POST_ARGS[${#POST_ARGS[@]}]="s#${sent}#${rep}#g"
 }
+
+build_rewrite_rules() {
+  local p fwd
+  PRE_ARGS=(); POST_ARGS=(); SENTINEL_N=0
+  # 1. protect everything the run declined or collided on — it is still at its original path.
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    protect_path "$p"
+  done < <(printf '%s\n' "$DECLINED" | grep . | cut -f1 || true)
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    case "$p" in *__index.tmp) p="${p%/__index.tmp}/INDEX.md";; esac
+    protect_path "$p"
+  done < <(printf '%s\n' "$COLLISIONS" | grep . | cut -f1 | sort -u || true)
+  # 2. the retargeting rules themselves
+  fwd=(-e 's#\.docs/PROJECT-INFO\.md#.marvin/PROJECT-INFO.md#g'
+       -e 's#(^|[^A-Za-z0-9._-])docs/PROJECT-INFO\.md#\1.marvin/PROJECT-INFO.md#g'
+       -e 's#\.docs/marvin/#.marvin/#g'
+       -e 's#(\.docs/handbooks/[A-Za-z0-9._-]+/)INDEX\.md#\1index.md#g')
+  # The cascade-directory rules apply only where `.marvin/agents/` is (or is about to be) real.
+  if [ -e .marvin/agents ] || printf '%s' "$PLAN_MOVE" | grep -q '\.marvin/agents/'; then
+    fwd[${#fwd[@]}]="-e"; fwd[${#fwd[@]}]='s#\.docs/agents/#.marvin/agents/#g'
+    fwd[${#fwd[@]}]="-e"; fwd[${#fwd[@]}]='s#(^|[^A-Za-z0-9._-])docs/agents/#\1.marvin/agents/#g'
+  fi
+  SED_ARGS=(-E)
+  [ ${#PRE_ARGS[@]}  -gt 0 ] && SED_ARGS=("${SED_ARGS[@]}" "${PRE_ARGS[@]}")
+  SED_ARGS=("${SED_ARGS[@]}" "${fwd[@]}")
+  [ ${#POST_ARGS[@]} -gt 0 ] && SED_ARGS=("${SED_ARGS[@]}" "${POST_ARGS[@]}")
+  return 0
+}
+
+rewrite_to() { LC_ALL=C sed "${SED_ARGS[@]}" "$1"; }
 
 needs_rewrite() {
   [ -f "$1" ] || return 1
@@ -201,7 +277,7 @@ prune_dirs() {
   return 0
 }
 
-emit_list() {  # emit_list <label> <tsv-blob> <fmt-fields>
+emit_list() {  # emit_list <label> <tsv-blob>
   local label="$1" blob="$2" a b c
   [ -n "$blob" ] || return 0
   printf '%s\n' "$blob" | grep . | while IFS="$TAB" read -r a b c; do
@@ -236,48 +312,45 @@ report() {
   return 0
 }
 
-final_result() {
-  if [ -n "$FAILURES" ]; then echo failed
-  elif [ -n "$COLLISIONS" ]; then echo collisions
-  else echo ok; fi
-}
-
 finish() {
-  report "$(final_result)"
-  if [ -n "$FAILURES" ]; then exit 5; fi
-  if [ -n "$COLLISIONS" ]; then exit 3; fi
+  if [ -n "$FAILURES" ]; then report failed; exit 5; fi
+  if [ -n "$COLLISIONS" ]; then report collisions; exit 3; fi
+  report ok
   exit 0
 }
 
 # ── argument parsing ─────────────────────────────────────────────────────────────────────────
+# The flags are mutually exclusive and "last one wins" is not an option: an invocation
+# containing --check must never modify the repository, whatever else is on the line.
+saw_check=0; saw_nocommit=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check)     MODE="check";;
-    --no-commit) MODE="no-commit";;
+    --check)     saw_check=1;;
+    --no-commit) saw_nocommit=1;;
     -h|--help)   usage; exit 0;;
-    *)           usage >&2; exit 4;;
+    *)           say "unknown option: $1"; usage >&2; exit 4;;
   esac
   shift
 done
+if [ "$saw_check" = 1 ] && [ "$saw_nocommit" = 1 ]; then
+  say "--check and --no-commit are mutually exclusive — refusing (nothing was changed)"
+  usage >&2
+  exit 4
+fi
+[ "$saw_check" = 1 ] && MODE="check"
+[ "$saw_nocommit" = 1 ] && MODE="no-commit"
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { say "not a git work tree — refusing"; exit 4; }
 cd "$(git rev-parse --show-toplevel)"
 
-# ── precondition: clean tree ─────────────────────────────────────────────────────────────────
-# "git-revertible" — the justification for running this unattended — is FALSE on a dirty tree:
-# the consumer's WIP and untracked files land in the migration commit, and the `git revert`
-# this step advertises then destroys them. Never stash on their behalf: a stash the script
-# creates is a stash the user does not know to pop.
-if [ -n "$(git status --porcelain)" ]; then
-  say "REFUSED — the working tree is not clean. Commit or stash these yourself, then re-run:"
-  git status --short
-  report dirty-refused
-  exit 2
-fi
-
+DIRTY=$(git status --porcelain)
 build_plan
 
+# ── dry run ──────────────────────────────────────────────────────────────────────────────────
+# A dry run changes nothing, so it is available on ANY tree — deciding whether the cleanup is
+# worth it is exactly when a preview is useful. It reports the dirty state as part of the plan.
 if [ "$MODE" = "check" ]; then
+  build_rewrite_rules
   say "plan (dry run — nothing will be changed):"
   if [ -n "$PLAN_MOVE" ]; then
     printf '%s\n' "$PLAN_MOVE" | grep . | while IFS="$TAB" read -r a b; do
@@ -302,7 +375,25 @@ if [ "$MODE" = "check" ]; then
     fi
   done
   if [ -z "$PLAN_MOVE$PLAN_CASE$REWRITTEN" ]; then echo "  (nothing to do)"; fi
+  if [ -n "$DIRTY" ]; then
+    say "the working tree is NOT clean — a real run will refuse to start until you clear it:"
+    git status --short
+    report plan-only-tree-dirty
+    exit 2
+  fi
   finish
+fi
+
+# ── precondition: clean tree ─────────────────────────────────────────────────────────────────
+# "git-revertible" — the justification for running this unattended — is FALSE on a dirty tree:
+# the consumer's WIP and untracked files land in the migration commit, and the `git revert`
+# this step advertises then destroys them. Never stash on their behalf: a stash the script
+# creates is a stash the user does not know to pop.
+if [ -n "$DIRTY" ]; then
+  say "REFUSED — the working tree is not clean. Commit or stash these yourself, then re-run:"
+  git status --short
+  report dirty-refused
+  exit 2
 fi
 
 # ── apply: real path moves ───────────────────────────────────────────────────────────────────
@@ -345,6 +436,7 @@ prune_dirs
 # ── apply: reference rewrite ─────────────────────────────────────────────────────────────────
 # CLAUDE.md plus the migrated files at their NEW paths. Nothing else is touched: the script's
 # entire blast radius is those four locations and CLAUDE.md.
+build_rewrite_rules
 i=0
 while [ "$i" -lt "${#STAGE[@]}" ]; do
   apply_rewrite "${STAGE[$i]}"
