@@ -24,7 +24,7 @@ Three memories overlap here, and this is where the system rots first. Each holds
 
 ## Header additions
 
-On top of the full header of `document-standard.md`, every file here carries:
+On top of the full header of `document-standard.md`, every `type: information` file here carries — the folder's own `index.md` is `type: reference` and carries neither:
 
 - `severity:` — one of the four levels defined, with their obligations, in `information-severity.md`. That file owns them; never restate, extend or re-tune a level anywhere else.
 - `relevance:` — one or more of the values below, or `all`.
@@ -49,7 +49,7 @@ Rows sort by severity, `critical` first. Every create, retag or prune updates th
 
 ## Briefing duty (the reason any of this works)
 
-When the orchestrator briefs a sub-agent, it NAMES — by path, in the brief — every information file whose `relevance:` matches that agent's persona and whose severity makes it mandatory. The agent is never left to discover them, and never told to "check the information folder". A brief that omits a `critical` file that applies is a defective brief; a validator failing work against a rule that was never named is the orchestrator's miss, not the builder's. This is item 5 of `briefing.md`, which also reserves the FINAL MESSAGE line the agent reports them back on.
+When the orchestrator briefs a sub-agent, it NAMES — by path, in the brief — every information file that binds the task: the relevance-matched ones at a binding severity, AND every `critical` file whose subject the task touches regardless of relevance, because that is how `information-severity.md` binds them and an agent has no other way to learn of one. The index row carries severity, relevance and summary precisely so this is decided without opening a file. The agent is never left to discover them, and never told to "check the information folder". A brief that omits a `critical` file that applies is a defective brief; a validator failing work against a rule that was never named is the orchestrator's miss, not the builder's. This is item 5 of `briefing.md`, which also reserves the FINAL MESSAGE line the agent reports them back on.
 
 ## Lifecycle
 
