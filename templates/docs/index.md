@@ -19,6 +19,8 @@ updated: {{INSTALL_DATE}}
 
 Choose by what the document IS, not by what it is about. Work that has been decided and not yet finished → `plans/`. What an investigation found → `researches/`. Debt identified for a later cleanup → `refactor/`. An idea deliberately deferred → `future/`. A durable rule, constraint or warning a future agent must obey → `information/`. How the shipped product works, written for a human audience → `handbooks/`. One document lives in exactly one folder — never copy it into a second, link it with `related:`. If two folders genuinely both fit, it is two documents.
 
+The three the documentation agent writes, so nobody has to guess: an **architecture or contract note** is developer-handbook material → `handbooks/developer/`, amended in place per `.marvin/agents/handbooks.md`, never a loose note at the root. The **roadmap** is decided-but-unfinished work → `plans/`. The **issue log** is a standing record, not a document → it stays at `{{DOCS_ISSUE_LOG_PATH}}` and is listed below.
+
 ## Sub-folders
 
 | item | what it covers | status | updated |
@@ -34,5 +36,8 @@ Choose by what the document IS, not by what it is about. Work that has been deci
 
 ## Root-level documents
 
+Nothing lives at the root because it is hard to classify — the six folders above take everything that is a document. The root holds only standing RECORDS that belong to no branch and are appended to over time, and each one must have a row here. If you are about to add a second kind of thing, you want a folder.
+
 | item | what it covers | status | updated |
 |---|---|---|---|
+| {{DOCS_ISSUE_LOG_PATH}} | The running log of real bugs found and fixed — one row per defect, filed alongside the tracker issue per `.marvin/agents/ticket-filing.md`. | active | {{INSTALL_DATE}} |
