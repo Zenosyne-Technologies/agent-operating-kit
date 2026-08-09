@@ -50,6 +50,7 @@ check-count-lies|TR1|s/^  echo "renamed=\$\(\( \$\{#MOVE_SRC\[\@\]\} \+ \$\{#CAS
 check-skips-liveness|TR2|s/^dir_will_empty\(\) \{\n  local d="\$1" e i found\n  \[ -d "\$d" \] \|\| return 1/dir_will_empty() {\n  local d="\$1" e i found\n  [ "\$MODE" = "check" ] \&\& return 0\n  [ -d "\$d" ] || return 1/m
 rollback-keeps-map|T27|s/^  clear_move_map\n  report rolled-back/  report rolled-back/m
 refusal-keeps-map|TM4|s/^  clear_move_map\n  report dirty-refused/  report dirty-refused/m
+symlink-refusal-keeps-map|T24|s/^  clear_move_map\n  report refused-symlink/  report refused-symlink/m
 no-encoder|TX1|s/^    \*\[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\._\/\@\+-\]\*\) ;;/    ZZZNOMATCH) ;;/m
 locale-dependent-classify|TM3|s/^  local p="\$1" LC_ALL=C LC_COLLATE=C LC_CTYPE=C/  local p="\$1"/m; s/ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/A-Za-z0-9/
 locale-dependent-tag|TM3|s/\[abcdefghijklmnopqrstuvwxyz\]\) state_problem/[a-z]) state_problem/; s/^  local gitdir f d rec tag path sub hidden LC_ALL=C LC_COLLATE=C LC_CTYPE=C/  local gitdir f d rec tag path sub hidden/m

@@ -628,6 +628,14 @@ assert_out "symlink: .marvin"
 assert_tracked ".docs/agents/briefing.md" "nothing moved"
 assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
 assert_eq "$(find "$WORK/t24-outside" -type f | wc -l | tr -d ' ')" "0" "no consumer file left the repository"
+# Nothing moved, so the report must carry no move map — the third refusal leg, pinned like the
+# other two. Without this, an agent reading the map without branching on result= would rewrite
+# references to .marvin/… for files still sitting in .docs/.
+assert_out "renamed=0"
+assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the symlink refusal"
+assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records either"
+assert_eq "$(report_lines | grep -c '^directory-emptied: ')" "0" "and no directory-emptied records"
+assert_report_wellformed "symlink refusal"
 run_migrate --check
 assert_rc 6 "--check predicts the same refusal"
 assert_out "result=plan-only-symlink"
