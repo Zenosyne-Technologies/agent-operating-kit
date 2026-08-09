@@ -1,3 +1,11 @@
+---
+doc: Micro-task profile
+type: reference
+status: active
+summary: What a zero-discretion size:xs micro-task looks like, and how to brief one so it needs no clarification.
+updated: {{INSTALL_DATE}}
+---
+
 # Ponytail — micro-model task profile
 
 For mechanical, low-blast-radius work where the orchestrator (or a worker agent) already made every decision. The micro-model agent executes; it does not judge.

@@ -1,3 +1,11 @@
+---
+doc: Stats collection brief — Local
+type: reference
+status: active
+summary: The dispatchable brief that snapshots label-dimension statistics from the file-based tracker into a report file.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief: collect tracker statistics (Local, file-based)
 
 Fill the placeholders, then hand this brief verbatim to an agent (works at the micro tier — reads files, no external tracker).

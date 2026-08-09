@@ -1,3 +1,11 @@
+---
+doc: Stats collection brief — Linear
+type: reference
+status: active
+summary: The dispatchable brief that snapshots label-dimension statistics from Linear into a report file.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief: collect tracker statistics (Linear)
 
 Fill the placeholders, then hand this brief verbatim to an agent (works at the small-worker tier; micro-model if your Linear MCP tools are reliable).

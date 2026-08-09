@@ -1,3 +1,11 @@
+---
+doc: Token economics contract
+type: reference
+status: active
+summary: The telemetry contract — cost queries, the pricing rule, the per-issue context sidecar, and how reporting degrades without telemetry.
+updated: {{INSTALL_DATE}}
+---
+
 # Token & cost telemetry contract
 
 The single description of the seam between the kit and the token-telemetry plugin. Every consumer (stats collection, reporting, documentation agent) reads this file instead of re-deriving these rules.

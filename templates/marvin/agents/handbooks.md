@@ -1,3 +1,11 @@
+---
+doc: Handbook system
+type: reference
+status: active
+summary: The three-audience handbook wikis — layout, page format, audience voice, and the discovery pass that is mandatory before writing.
+updated: {{INSTALL_DATE}}
+---
+
 # Handbooks — developer / user / admin wikis
 
 Three living, Obsidian-compatible wikis under `.docs/handbooks/<audience>/` (`developer`, `user`, `admin`) that document the product as it currently is — not the changelog of *what changed* (that's `documentation-agent.md`'s job), but the current shape of *what exists*. Every consumer of this file — the documentation agent, milestone validation — reads it instead of re-deriving these rules.
