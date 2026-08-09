@@ -210,7 +210,7 @@ assert_not_tracked ".marvin/agents/oncall-runbook.md"
 # ── defect 9: `git rm -r "the stale one"` — an undefined, unbounded, recursive delete
 hd "T09 defect 9 — the migration contains no recursive delete, and deletes nothing on collision"
 if grep -nE 'git[[:space:]]+rm|rm[[:space:]]+-[a-zA-Z]*r|rm[[:space:]]+-rf' "$MIGRATE" | grep -v 'no recursive delete'; then
-  bad "recursive/`git rm` delete present in migrate-v0.21.0.sh"
+  bad 'recursive delete or `git rm` present in migrate-v0.21.0.sh'
 else
   ok "no \`git rm\` and no recursive rm in migrate-v0.21.0.sh"
 fi
