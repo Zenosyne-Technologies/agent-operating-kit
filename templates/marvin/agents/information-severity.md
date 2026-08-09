@@ -25,7 +25,7 @@ Severity is about CONSEQUENCE, not about how interesting the rule is. If ignorin
 
 | `severity:` | your persona is in `relevance:` (or it is `all`) | your persona is not |
 |---|---|---|
-| `critical` | read it BEFORE you act; state in your final message that you did | read it anyway if your change enters the area it names — a critical rule binds by subject, not by role |
+| `critical` | read it BEFORE you act, and attest to it on your final message's reserved `INFORMATION:` line (`briefing.md` item 10) | read it anyway if your change enters the area it names — a critical rule binds by subject, not by role |
 | `high` | read it before you act | skip unless the topic is directly at hand |
 | `normal` | read it while planning your approach | skip |
 | `low` | read it if the topic is directly at hand | skip |
