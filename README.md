@@ -75,7 +75,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 
 No plugin, three steps:
 
-1. **Copy the payload.** `templates/docs/agents/` → `<repo>/.docs/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.docs/agents/`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used the old `docs/agents/` location? `git mv` the kit's files to `.docs/agents/` and fix the references.
+1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? `git mv` the kit's files to `.marvin/agents/` and fix the references.
 2. **Fill every `{{PLACEHOLDER}}`** in the core file — project facts, env preamble, tracker coordinates. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 3. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -186,7 +186,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 ## The discipline stack
 
-**Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.docs/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
+**Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
 
 **Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, milestone-branch and autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
 
@@ -200,7 +200,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Security and secrets.** Secrets are never committed and never pasted into PM-tool surfaces — issue comments, snapshots, PR bodies. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized `m` or larger and get advisory checks with pinned versions. Every brief names the task's security surface, and security-critical design stays with the orchestrator rather than being delegated.
 
-**Handbooks that stay alive.** Three audiences, three wikis: the developer handbook explains the software's logic, the WHY behind nuanced behavior and how modules connect; the user and admin handbooks give plain-language per-module guides with what-to-be-aware-of notes. Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds every affected page with one grep and amends it rather than writing a duplicate. Every page registers in its folder's `INDEX.md`, and milestone validation checks coverage.
+**Handbooks that stay alive.** Three audiences, three wikis: the developer handbook explains the software's logic, the WHY behind nuanced behavior and how modules connect; the user and admin handbooks give plain-language per-module guides with what-to-be-aware-of notes. Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds every affected page with one grep and amends it rather than writing a duplicate. Every page registers in its folder's `index.md`, and milestone validation checks coverage.
 
 **Token economics.** With telemetry present, cost stops being a mystery: usage ties to issue key, task size and a one-sentence summary of what was being attempted; snapshots, digests, close-outs and the stakeholder page all carry money; closed issues get a one-line cost figure. Without it, every one of those paths silently omits its cost content. Nothing fails, nothing warns.
 
@@ -227,11 +227,10 @@ agents/*.md                        Marvin's seven sub-agent personas, shipped wi
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
-  docs/
-    PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .docs/PROJECT-INFO.md)
-  docs/marvin/
-    MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .docs/marvin/MEMORY.md)
-  docs/agents/
+  marvin/
+    PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .marvin/PROJECT-INFO.md)
+    MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .marvin/MEMORY.md)
+  marvin/agents/
     briefing.md                    how to write any sub-agent brief
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
     planning-research.md           size-gated plan-validation + solution research, tier routing
@@ -242,9 +241,9 @@ templates/
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
-    handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, INDEX rule
+    handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
   docs/handbooks/
-    INDEX.md                       generic handbook ToC skeleton (installed ×3: developer/user/admin)
+    index.md                       generic handbook ToC skeleton (installed ×3: developer/user/admin)
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/

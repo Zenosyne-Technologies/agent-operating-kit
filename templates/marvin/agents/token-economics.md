@@ -45,4 +45,4 @@ Stats snapshots (schema v2) carry a `tokens` key, null when telemetry is absent 
 
 ## Secrets
 
-DB paths and cost figures are shareable. Transcript contents are not — no query or render built from this contract ever exposes transcript text. Anything posted to the PM tool (comments, attachments) stays governed by `.docs/agents/security.md`.
+DB paths and cost figures are shareable. Transcript contents are not — no query or render built from this contract ever exposes transcript text. Anything posted to the PM tool (comments, attachments) stays governed by `.marvin/agents/security.md`.

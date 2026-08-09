@@ -47,5 +47,5 @@ Externally-hosted tools LIST what exists and let the USER choose — never guess
 - **Local** — ask for a short uppercase key (2–5 letters), or propose one derived from the project
   name and have the user confirm it. Coordinates: `.docs/project-management/` + project key.
 
-Record the resolved coordinates as today: `.docs/PROJECT-INFO.md` frontmatter (`pm_tool`,
+Record the resolved coordinates as today: `.marvin/PROJECT-INFO.md` frontmatter (`pm_tool`,
 `project_key`, `tracker_coordinates`, `hierarchy_levels`) and `ticket-filing.md`'s coordinates line.
