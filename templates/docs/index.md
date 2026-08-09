@@ -36,8 +36,8 @@ The three the documentation agent writes, so nobody has to guess: an **architect
 
 ## Root-level documents
 
-Nothing lives at the root because it is hard to classify — the six folders above take everything that is a document. The root holds only standing RECORDS that belong to no branch and are appended to over time, and each one must have a row here. If you are about to add a second kind of thing, you want a folder.
+Nothing lives at the root because it is hard to classify — the six folders above take everything that is a document. The root holds only standing RECORDS that belong to no branch and are appended to over time. A record carries no header, so its row is written by hand rather than quoted from a `summary:`, and it earns a row only where it actually resolves inside `.docs/` and outside `project-management/`. Resolved anywhere else, delete the row: `CLAUDE.md` still points at it, and a row for a file this crawl does not own is worse than no row at all.
 
 | item | what it covers | status | updated |
 |---|---|---|---|
-| {{DOCS_ISSUE_LOG_PATH}} | The running log of real bugs found and fixed — one row per defect, filed alongside the tracker issue per `.marvin/agents/ticket-filing.md`. | active | {{INSTALL_DATE}} |
+| {{DOCS_ISSUE_LOG_PATH}} | The running log of real bugs found and fixed — one row per defect, filed alongside the tracker issue per `.marvin/agents/ticket-filing.md`. Delete this row if the path resolves outside `.docs/`, or inside `project-management/`. | active | {{INSTALL_DATE}} |
