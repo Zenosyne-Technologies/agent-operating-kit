@@ -256,7 +256,8 @@ templates/
     refactor/index.md              identified technical debt and the cleanup it calls for
     future/index.md                deliberately deferred ideas
     information/index.md           the project's dynamic rule system (adds severity + relevance columns)
-    handbooks/index.md             generic handbook ToC skeleton (installed ×3: developer/user/admin)
+    handbooks/index.md             handbooks parent index: the three audience sub-folder rows
+    handbooks/audience-index.md    generic handbook ToC skeleton (installed ×3 as developer|user|admin/index.md)
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/
