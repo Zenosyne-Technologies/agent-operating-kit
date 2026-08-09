@@ -4,8 +4,8 @@ Authoritative rules live in the tracker document **"Issue Intake & Triage Guide"
 
 Non-negotiables (mirror of the guide — the guide wins on filing workflow; `label-syntax.md` wins on labels):
 - {{TRACKER_COORDINATES: Jira → site URL + project key · Linear → team + project · GitHub → owner/repo · Local → .docs/project-management/ + project key}}; new issues → Backlog (or the workflow's initial status — the guide records which).
-- Hierarchy levels, virtual-milestone rule (for tools exposing only 3 of the kit's 4 target levels), native type/field usage, and severity→native mapping: `.docs/agents/tracker-config.md`.
-- Labels: per the versioned registry `.docs/agents/label-syntax.md` — one label per required dimension (`type:*`, `area:*`, `origin:*`; `sev1..sev4` on defects) on EVERY item you create or edit, epics and stories included. Touching an unlabeled issue → backfill from its description.
+- Hierarchy levels, virtual-milestone rule (for tools exposing only 3 of the kit's 4 target levels), native type/field usage, and severity→native mapping: `.marvin/agents/tracker-config.md`.
+- Labels: per the versioned registry `.marvin/agents/label-syntax.md` — one label per required dimension (`type:*`, `area:*`, `origin:*`; `sev1..sev4` on defects) on EVERY item you create or edit, epics and stories included. Touching an unlabeled issue → backfill from its description.
 - Severity: sev1 data-loss/security/app-unusable · sev2 feature broken, no workaround · sev3 workaround exists or cosmetic-functional · sev4 polish. Sev labels are canonical; mirror the native field per `tracker-config.md` — on conflict the label wins.
 - Search for duplicates BEFORE filing.
 - Description template: `## Repro / ## Expected / ## Actual / ## Evidence / ## Suspected cause / ## Refs`. Change requests: current vs desired behavior + acceptance criteria. Feature/story items: `## Scope / ## DoD` — the DoD is verifiable done-statements, written by the planner before build.

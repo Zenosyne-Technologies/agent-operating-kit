@@ -1,16 +1,16 @@
 ---
 name: project-info
-description: Create the project's .docs/PROJECT-INFO.md meta page from the kit template, or — if it already exists — validate it against the repo's actual facts and auto-fix discrepancies via a sub-agent, never recreating the file. Use when the user asks to create, generate, check, validate, or fix the project info page / project information overview.
+description: Create the project's .marvin/PROJECT-INFO.md meta page from the kit template, or — if it already exists — validate it against the repo's actual facts and auto-fix discrepancies via a sub-agent, never recreating the file. Use when the user asks to create, generate, check, validate, or fix the project info page / project information overview.
 ---
 
 # Project info page — create or validate
 
-Template source of truth: `${CLAUDE_PLUGIN_ROOT}/templates/docs/PROJECT-INFO.md`. Target: `.docs/PROJECT-INFO.md` in the current repo.
+Template source of truth: `${CLAUDE_PLUGIN_ROOT}/templates/marvin/PROJECT-INFO.md`. Target: `.marvin/PROJECT-INFO.md` in the current repo.
 
 ## If the target does NOT exist → create
 
-1. Gather every fact from the repo itself: name/description (manifest, README), owner, layout, tech stack, dev command + ports; PM tool, coordinates, hierarchy, and guide URL from `.docs/agents/tracker-config.md` + `.docs/agents/ticket-filing.md` if installed; label-syntax version from `.docs/agents/label-syntax.md`. Ask only for facts that are truly undiscoverable.
-2. Write `.docs/PROJECT-INFO.md` from the template with every placeholder resolved — every YAML frontmatter key filled (`kit_version` from the plugin's `.claude-plugin/plugin.json` when installed via plugin, else the kit repo's; `label_syntax_version` from `.docs/agents/label-syntax.md`'s H1); body stays facts-only prose, no operating rules.
+1. Gather every fact from the repo itself: name/description (manifest, README), owner, layout, tech stack, dev command + ports; PM tool, coordinates, hierarchy, and guide URL from `.marvin/agents/tracker-config.md` + `.marvin/agents/ticket-filing.md` if installed; label-syntax version from `.marvin/agents/label-syntax.md`. Ask only for facts that are truly undiscoverable.
+2. Write `.marvin/PROJECT-INFO.md` from the template with every placeholder resolved — every YAML frontmatter key filled (`kit_version` from the plugin's `.claude-plugin/plugin.json` when installed via plugin, else the kit repo's; `label_syntax_version` from `.marvin/agents/label-syntax.md`'s H1); body stays facts-only prose, no operating rules.
 3. Commit it (autocommit policy, attribution per the project's settings). Report the created path and any unresolved placeholder.
 
 ## If the target EXISTS → validate, then fix via sub-agent — never recreate

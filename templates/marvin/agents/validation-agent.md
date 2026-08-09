@@ -33,7 +33,7 @@ At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) w
 
 ## After a verdict
 
-PASS at completion → dispatch the security stage. PASS at security → the task is validated but NOT finished: dispatch `marvin:documenter` per `.docs/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL → back to the task's build tier with the findings; the re-run starts again at completion validation, never at documentation or close.
+PASS at completion → dispatch the security stage. PASS at security → the task is validated but NOT finished: dispatch `marvin:documenter` per `.marvin/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL → back to the task's build tier with the findings; the re-run starts again at completion validation, never at documentation or close.
 
 ## Why fresh agents
 

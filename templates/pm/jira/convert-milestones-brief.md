@@ -18,4 +18,4 @@ FINAL MESSAGE (machine-consumed): `releases: <created N>/<existing M>`, `issues:
 
 ---
 
-After it completes: update `.docs/agents/tracker-config.md` (levels 4 of 4, virtual-milestone section removed) and `.docs/PROJECT-INFO.md` frontmatter (`hierarchy_levels: 4/4`).
+After it completes: update `.marvin/agents/tracker-config.md` (levels 4 of 4, virtual-milestone section removed) and `.marvin/PROJECT-INFO.md` frontmatter (`hierarchy_levels: 4/4`).
