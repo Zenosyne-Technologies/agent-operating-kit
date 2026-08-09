@@ -84,7 +84,7 @@ RED_KEYS="doc type status summary updated"
 # and briefs that are dispatched from the plugin rather than installed. EVERY other templates/**/*.md
 # is treated as consumer-bound and MUST carry a header — a new file is classified here deliberately
 # or it fails (extension rule 2 adds per-tracker files; extend this list in the same PR).
-NOHDR=" templates/CLAUDE.core.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/jira/convert-milestones-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
+NOHDR=" templates/CLAUDE.core.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
 missing=""
 while IFS= read -r f; do
   case "$NOHDR" in *" $f "*) continue;; esac
