@@ -75,7 +75,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 
 No plugin, three steps:
 
-1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? `git mv` the kit's files to `.marvin/agents/` and fix the references.
+1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? `mkdir -p .marvin` first — `git mv` will not create the parent — then `git mv` the kit's files to `.marvin/agents/` and fix the references.
 2. **Fill every `{{PLACEHOLDER}}`** in the core file — project facts, env preamble, tracker coordinates. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 3. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -178,7 +178,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 | `report` | Asking for an architect digest, a milestone close-out or a stakeholder page. Fills and dispatches the installed stats brief, then renders. |
 | `plan-docs` | Handbooks are missing or stale. The orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic carrying those findings, and dispatches documentation agents against it. |
 | `stress-test` | Verifying the project holds past demo scale — every growth dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. |
-| `validate-kit` | Releasing a new kit version. Runs the static gate plus three agentic scratch-repo scenarios: fresh install, legacy upgrade, no-op re-run. |
+| `validate-kit` | Releasing a new kit version. Runs the static gate plus four agentic scratch-repo scenarios: fresh install, legacy upgrade, current-layout upgrade, no-op re-run. |
 
 | Command | What it does |
 |---|---|
