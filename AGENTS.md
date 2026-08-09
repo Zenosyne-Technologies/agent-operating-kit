@@ -22,8 +22,8 @@ A change that helps one specific project belongs in that project's installed fil
 5. **Validate by installing**: run the `install-agent-os` skill against a scratch repo and check every placeholder resolves and the merge path works.
 6. **No AI attribution** in this repo's commits/PRs (also the default policy the kit ships).
 7. **Label registry changes** → edit `templates/marvin/agents/label-syntax.md` only; bump the registry's OWN version and add its changelog row (on top of the plugin version bump). Never define labels anywhere else — briefs and guides reference the registry.
-8. **Every PR must pass `scripts/validate-kit.sh`** (CI runs it; run it locally before pushing). Extend the script's known-placeholder list when a template legitimately introduces a new placeholder — in the same PR.
-9. **Every release adds `upgrades/v<version>.md`** — ≤15 lines, ONLY the consumer-visible deltas from the previous version as mechanical steps; factory-only releases state "No consumer-visible changes". The upgrade skill walks these files in order; CI enforces the current version's file exists.
+8. **Every PR must pass `scripts/validate-kit.sh` and `scripts/test-migrations.sh`** (CI runs both; run them locally before pushing). Extend the static gate's known-placeholder list when a template legitimately introduces a new placeholder — in the same PR.
+9. **Every release adds `upgrades/v<version>.md`** — ≤15 lines, ONLY the consumer-visible deltas from the previous version as mechanical steps; factory-only releases state "No consumer-visible changes". The upgrade skill walks these files in order; CI enforces the current version's file exists. A release that MOVES or RENAMES installed files also ships **`scripts/migrate-v<version>.sh`** — dry-runnable (`--check`), guarded, one atomic commit staged by explicit path — with a fixture per guard in `scripts/test-migrations.sh`; the upgrade file and the skill then RUN it instead of listing steps an agent retypes. Migration prose is a defect source: every defect found in the v0.21.0 migration was a transcription failure, so migrations are code.
 
 ## Origin
 
