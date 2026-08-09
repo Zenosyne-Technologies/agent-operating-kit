@@ -10,7 +10,7 @@ updated: {{INSTALL_DATE}}
 
 Dispatch `marvin:documenter` once — and only once — BOTH validators have PASSED; the task is not Done until this step lands, and the tracker issue is never closed before it. Brief the agent with the issue id, commit hashes, and the touched paths. A failed validation goes back to the builder instead: nothing is documented until the work actually holds.
 
-Everything you write under `{{DOCS_LOCATION}}` obeys `.marvin/agents/document-standard.md`: enter at `{{DOCS_LOCATION}}/index.md`, find the existing document by crawling — never by globbing — write the full header, and update every index row on the path to whatever you touched, in this commit. A loose note at the docs root belongs to no folder and no index, which means it does not exist.
+Everything you write under `{{DOCS_LOCATION}}` obeys `.marvin/agents/document-standard.md`: enter at `{{DOCS_LOCATION}}/index.md`, find the existing document by crawling — never by globbing — write the full header on every document (records such as the issue log take none), and update every index row on the path to whatever you touched, in this commit. A loose note at the docs root belongs to no folder and no index, which means it does not exist.
 
 Scope (only what the change affects — skip untouched docs):
 1. **Project docs** ({{DOCS_LOCATION}}): the new behavior or contract is developer-handbook material and is handled at item 6 — do NOT also write a separate architecture note. Here: the result line on the milestone's plan in `plans/` when the change is milestone-relevant, a row in the issue log at {{DOCS_ISSUE_LOG_PATH}} for each bug fixed en route, and a `researches/` memo registered in its index only if the task produced findings that outlive it.
