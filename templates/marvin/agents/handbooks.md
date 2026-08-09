@@ -34,7 +34,7 @@ Body: Obsidian wikilinks (`[[Page Name]]`) between pages; kebab-case filenames; 
 ## Discovery rule (MANDATORY, before writing)
 
 1. Read all three index.md files.
-2. Grep the handbooks for every touched path: `grep -rl "<path>" .docs/handbooks/`. This is the standing content-search carve-out of `document-standard.md` rule 6 — no index maps a code path to the pages that mention it — and it is the ONLY search here that is not an index lookup.
+2. Grep the handbooks for every touched path: `grep -rl "<path>" .docs/handbooks/`. This is the standing content-search carve-out of `document-standard.md` rule 6: the indexes register main pages only, while a unit's sub-files carry their own narrower `sources` and never get a row, so the grep reaches pages no index covers. It is the ONLY search here that is not an index lookup.
 3. Matches → AMEND, never create a near-duplicate. Multiple hits are NORMAL: exclude `index.md` rows, then treat every remaining page as an amend candidate — a changed source may need its developer page AND its user/admin pages updated, each in its own voice.
 4. No match → check whether an existing logical unit should absorb the topic (extend its page or add a sub-file) before creating a new unit; the orchestrator owns the unit map.
 5. On every create or rename: update `sources`, `updated`, `related`, and the folder's index row. On rename: fix every wikilink that pointed at the old title.
