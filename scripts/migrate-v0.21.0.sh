@@ -110,9 +110,14 @@ say() { printf '%s\n' "$SELF: $*"; }
 # makes ` -> ` unambiguous as a separator.
 ENCODING_DOC='encoding=paths are printed raw when they match [A-Za-z0-9._/@+-]+, otherwise C-quoted in double quotes with \n \t \r \" \\ and \ooo escapes (git core.quotePath convention); exactly one record per line'
 q() {
-  local p="$1"
+  # LC_ALL=C is set for the CLASSIFICATION as well as the quoting: bash range expressions
+  # follow locale collation, so under a UTF-8 or ISO-8859 locale `[A-Za-z]` swallows high
+  # bytes and the same path would print raw in one shell and quoted in another — the one
+  # thing this contract says cannot vary. The set is also enumerated rather than ranged, so
+  # collation cannot reorder it even if the locale assignment were ignored.
+  local p="$1" LC_ALL=C LC_COLLATE=C LC_CTYPE=C
   case "$p" in
-    *[!A-Za-z0-9._/@+-]*) ;;
+    *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/@+-]*) ;;
     *) printf '%s' "$p"; return 0;;
   esac
   printf '%s' "$p" | LC_ALL=C od -An -v -tu1 | awk '
@@ -235,7 +240,10 @@ build_plan() {
       i=$((i+1))
     done
     [ "$seen" = 0 ] && dirs[${#dirs[@]}]="$dir"
-  done < <(git ls-files -z -- '.docs/handbooks/*/INDEX.md' '.docs/handbooks/*/__index.tmp')
+  # `:(glob)` matters: a BARE pathspec matches with FNM_PATHNAME off, so `*` crosses `/` and
+  # every tracked INDEX.md at ANY depth under .docs/handbooks/ would be renamed — consumer
+  # files included, with no allowlist. The kit owns `<audience>/index.md`, one level down.
+  done < <(git ls-files -z -- ':(glob).docs/handbooks/*/INDEX.md' ':(glob).docs/handbooks/*/__index.tmp')
   i=0
   while [ "$i" -lt "${#dirs[@]}" ]; do
     dir="${dirs[$i]}"; i=$((i+1))
@@ -359,7 +367,10 @@ submodules_present() {
 }
 
 repo_state_checks() {
-  local gitdir f d rec tag path sub hidden
+  # LC_ALL=C for the same reason as in q(): the `git ls-files -v` tag test below is a bracket
+  # match, and under a UTF-8 locale collation puts `H` inside `[a-z]` — every tracked file
+  # would be reported as assume-unchanged and the run would refuse. Enumerated, not ranged.
+  local gitdir f d rec tag path sub hidden LC_ALL=C LC_COLLATE=C LC_CTYPE=C
   gitdir=$(git rev-parse --git-dir)
   # An operation in progress: the agent's commit would silently CONCLUDE the consumer's merge,
   # producing a two-parent commit that `git revert HEAD` then refuses.
@@ -375,7 +386,7 @@ repo_state_checks() {
     [ -n "$rec" ] || continue
     tag=${rec%% *}; path=${rec#* }
     case "$tag" in
-      [a-z]) state_problem "assume-unchanged bit set on $(q "$path") — its changes are invisible to git status";;
+      [abcdefghijklmnopqrstuvwxyz]) state_problem "assume-unchanged bit set on $(q "$path") — its changes are invisible to git status";;
       S)     state_problem "skip-worktree bit set on $(q "$path") — its changes are invisible to git status";;
     esac
   done < <(git ls-files -v -z)
@@ -420,17 +431,30 @@ rollback() {
     i=$((i-1))
     [ -d "${CREATED_DIRS[$i]}" ] && rmdir "${CREATED_DIRS[$i]}" 2>/dev/null || true
   done
-  MOVE_SRC=(); MOVE_DST=(); CASE_DIR=(); CASE_FROM=(); EMPTIED=(); STAGE=(); STAGED_COUNT=0
+  clear_move_map
   report rolled-back
   exit 7
+}
+
+# Nothing moved, so the report must carry no move records — an agent that reads the map
+# without branching on `result=` would otherwise edit references for files still in place.
+# Used by the rollback and by every real-run refusal. `--check` keeps its plan: showing what
+# WOULD happen is the whole point of a dry run, and `mode=check` says so.
+clear_move_map() {
+  MOVE_SRC=(); MOVE_DST=(); CASE_DIR=(); CASE_FROM=(); EMPTIED=(); STAGE=(); STAGED_COUNT=0
+  return 0
 }
 
 mkdir_tracked() {
   local d="$1"
   [ -d "$d" ] && return 0
+  # Record BEFORE creating. Bash dispatches a pending trap between two commands, so a signal
+  # landing after `mkdir` but before the bookkeeping would leave a directory the rollback
+  # unwind never hears about. Recording one that was never created is harmless — the unwind
+  # is a best-effort, non-recursive `rmdir`.
   MUTATED=1
-  mkdir -p "$d"
   CREATED_DIRS[${#CREATED_DIRS[@]}]="$d"
+  mkdir -p "$d"
   return 0
 }
 
@@ -469,8 +493,10 @@ report() {
     printf 'repo-state: %s\n' "${STATE_PROBLEMS[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
     printf 'references-to-update: %s\n' "$(q "${MOVE_SRC[$i]}")"; i=$((i+1)); done
+  # Always INDEX.md, never `__index.tmp`: a resumed rename moves the temp file, but the
+  # consumer's documents reference the pre-interruption path, and that is what needs updating.
   i=0; while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-    printf 'references-to-update: %s\n' "$(q "${CASE_DIR[$i]}/${CASE_FROM[$i]}")"; i=$((i+1)); done
+    printf 'references-to-update: %s\n' "$(q "${CASE_DIR[$i]}/INDEX.md")"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#EMPTIED[@]}" ]; do
     printf 'directory-emptied: %s\n' "${EMPTIED[$i]}"; i=$((i+1)); done
   echo "---- end ${SELF} report ----"
@@ -530,6 +556,7 @@ if [ "${#STATE_PROBLEMS[@]}" -gt 0 ]; then
   say "REFUSED — the repository state makes an unattended migration unsafe:"
   i=0; while [ "$i" -lt "${#STATE_PROBLEMS[@]}" ]; do
     printf '  %s\n' "${STATE_PROBLEMS[$i]}"; i=$((i+1)); done
+  clear_move_map
   report refused-repo-state
   exit 9
 fi
@@ -539,6 +566,7 @@ fi
 if [ -n "$DIRTY" ]; then
   say "REFUSED — the working tree is not clean. Commit or stash these yourself, then re-run:"
   git status --short
+  clear_move_map
   report dirty-refused
   exit 2
 fi
@@ -546,6 +574,7 @@ if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
   say "REFUSED — symlinked paths are never followed:"
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
     printf '  %s\n' "$(q "${SYMLINK_HITS[$i]}")"; i=$((i+1)); done
+  clear_move_map
   report refused-symlink
   exit 6
 fi

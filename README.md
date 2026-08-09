@@ -225,6 +225,7 @@ BOOTSTRAP.md                       pointer prompt at the install skill (plugin-l
 scripts/validate-kit.sh              eight-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
+scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
 templates/
