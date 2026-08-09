@@ -1,47 +1,51 @@
 #!/usr/bin/env bash
-# migrate-v0.21.0.sh — move Marvin's machinery out of `.docs/` into `.marvin/` in a
-# CONSUMER repository. This is the executable form of the v0.21.0 step of the
-# `upgrade-agent-os` skill: an agent runs it, reads its report, and reconciles by hand only
-# what the script declines to touch.
+# migrate-v0.21.0.sh — relocate Marvin's machinery from `.docs/` to `.marvin/` in a CONSUMER
+# repository, stage the renames, and report what moved. Used by the `upgrade-agent-os` skill's
+# v0.21.0 step.
 #
-# It performs destructive git operations, unattended, inside a repository the kit does not
-# own, whose file names it does not control. Four design rules keep that safe; each one
-# replaced a class of reproduced data loss, and scripts/test-migrations.sh pins all four:
+# WHAT THIS SCRIPT DOES NOT DO: it never reads, writes or stages file CONTENT. It moves files
+# and prints a rename map. Updating references to the moved paths is the agent's job, from that
+# map, with its own editor — a semantic judgement (a third-party URL that merely contains
+# `docs/agents/`, a `.bak` sibling that did not move, a code fence quoting the old layout on
+# purpose) that a substring replacer gets wrong silently, and did, repeatedly. The agent then
+# commits the staged renames together with its reference edits, so the migration is still one
+# atomic, revertible commit.
 #
-#   1. NO REGEX EVER TOUCHES CONSUMER CONTENT. The reference rewrite is literal string
-#      replacement over the exact path pairs that actually moved. A file that did not move
-#      has no pair, so it can never be retargeted — and a consumer filename containing
-#      + ? ( ) { } | * or a space is just text, not a pattern.
-#   2. NO CONSUMER NAME IS EVER INTERPRETED AS A PATTERN. Every git invocation that takes a
+# It performs destructive git operations, unattended, in a repository the kit does not own,
+# whose file names it does not control. Three design rules keep that safe, all mutation-tested
+# by scripts/test-migrations.sh:
+#
+#   1. NO CONSUMER NAME IS EVER INTERPRETED AS A PATTERN. Every git invocation that takes a
 #      consumer path passes it as a `:(literal)` pathspec, which cannot glob.
-#   3. SYMLINKS ARE REFUSED, NEVER FOLLOWED. Any symlinked source, destination, destination
-#      ancestor or CLAUDE.md aborts before the first change.
-#   4. ANY FAILURE AFTER THE FIRST CHANGE ROLLS BACK. The tree is provably clean at entry, so
-#      the pre-migration state is exactly HEAD; a trap restores it on error, kill or disk-full.
+#   2. SYMLINKS ARE REFUSED, NEVER FOLLOWED. Any symlinked source, destination or destination
+#      ancestor aborts before the first change.
+#   3. ANY FAILURE AFTER THE FIRST CHANGE ROLLS BACK. The repository state is verified exactly
+#      clean at entry, so the pre-migration state is HEAD; a trap restores it on error, kill or
+#      full disk.
 #
-# Usage: bash migrate-v0.21.0.sh [--check | --no-commit]      (the two flags are exclusive)
-#   --check      dry run: print the exact plan, change nothing at all — works on ANY tree
-#   --no-commit  perform + stage the changes, leave them uncommitted for inspection
+# Usage: bash migrate-v0.21.0.sh [--check]
+#   (no flag)  move the kit's files and stage them by literal pathspec — NO COMMIT
+#   --check    dry run: print the same report, change nothing — works on ANY tree
 #
 # Exit codes:
 #   0  success (including a clean no-op re-run)
 #   2  dirty working tree: a real run refuses to start; `--check` still printed its plan
 #   3  completed, but destination collisions need reconciling by hand
-#   4  usage error (unknown or mutually exclusive flags) / not a git work tree
-#   6  refused before changing anything: a symlink, or a path resolving outside the repo
+#   4  usage error (unknown flag) / not a git work tree
+#   6  refused before changing anything: a symlinked source, destination or ancestor
 #   7  a failure occurred after the first change; the repository was rolled back to HEAD
-#   8  refused before changing anything: a file that must be rewritten is not writable
+#   9  refused before changing anything: repository state makes this unsafe (an operation in
+#      progress, assume-unchanged/skip-worktree bits, sparse checkout, detached or unborn HEAD)
 set -euo pipefail
 
 KIT_VERSION="0.21.0"
 SELF="migrate-v${KIT_VERSION}"
-MODE="apply"
+MODE="stage"
 
 # The kit's OWN cascade files. Moves are file-by-file against this allowlist: `.docs/agents/`
 # may also hold consumer-authored files (a runbook, project notes), and moving the whole
 # directory silently relocates them. `convert-milestones-brief.md` is Jira-only but is just as
-# much kit machinery — leaving it off the list strands it in `.docs/agents/` while every
-# reference to it is retargeted at a path that will not exist.
+# much kit machinery — leaving it off the list strands it in `.docs/agents/`.
 CASCADE_FILES="briefing.md
 convert-milestones-brief.md
 documentation-agent.md
@@ -63,29 +67,26 @@ PROJECT_INFO_SRCS=".docs/PROJECT-INFO.md docs/PROJECT-INFO.md"
 MEMORY_SRCS=".docs/marvin/MEMORY.md docs/marvin/MEMORY.md"
 PRUNE_DIRS=".docs/agents docs/agents .docs/marvin docs/marvin"
 
-TAB=$'\t'
 MOVE_SRC=(); MOVE_DST=()
 CASE_DIR=(); CASE_FROM=()
 DECL_PATH=(); DECL_WHY=()
 COLL_SRC=(); COLL_DST=(); COLL_WHY=()
 FAIL_SRC=(); FAIL_DST=()
 MOVED_SRC=(); MOVED_DST=()
-PAIR_FROM=(); PAIR_TO=()
-KEEP=(); STAGE=(); REWRITTEN=(); NOTES=(); CREATED_DIRS=(); SYMLINK_HITS=(); UNWRITABLE=()
-COMMIT_SHA="none"
+STAGE=(); NOTES=(); CREATED_DIRS=(); SYMLINK_HITS=(); STATE_PROBLEMS=(); EMPTIED=()
 DIRTY=""
-ROOT_PHYS=""
 HEAD_AT_ENTRY=""
 MUTATED=0
 COMPLETED=0
+STAGED_COUNT=0
 
 usage() {
   cat <<EOF
-Usage: bash ${SELF}.sh [--check | --no-commit]
-  (no flag)    migrate, stage by explicit literal pathspec, commit as ONE atomic commit
-  --check      dry run — print the plan, change nothing (valid on a dirty tree too)
-  --no-commit  migrate and stage, but do not commit
-The two flags are mutually exclusive: anything containing --check must not modify the repo.
+Usage: bash ${SELF}.sh [--check]
+  (no flag)  move the kit's files, stage them by literal pathspec, and print the rename map.
+             NOTHING IS COMMITTED and no file content is touched: update the references from
+             the map, then commit the renames and your edits together.
+  --check    dry run — print the same report, change nothing (valid on a dirty tree too)
 EOF
 }
 
@@ -95,7 +96,7 @@ note() { NOTES[${#NOTES[@]}]="$*"; }
 # ── git access: every consumer path goes in as a literal pathspec ────────────────────────────
 # A bare pathspec is a GLOB. A consumer directory named `x*` plus `git add -f` was reproduced
 # force-staging a gitignored `.docs/handbooks/xsecret/index.md` full of credentials into the
-# migration commit. `:(literal)` cannot glob, so a name is only ever itself.
+# commit. `:(literal)` cannot glob, so a name is only ever itself.
 lit() { printf ':(literal)%s' "$1"; }
 
 # Index membership, case-EXACT. `git ls-files --error-unmatch` is the membership test, but on
@@ -111,10 +112,17 @@ in_cascade() { printf '%s\n' "$CASCADE_FILES" | grep -Fxq -- "$1"; }
 
 add_move()      { MOVE_SRC[${#MOVE_SRC[@]}]="$1"; MOVE_DST[${#MOVE_DST[@]}]="$2"; }
 add_case()      { CASE_DIR[${#CASE_DIR[@]}]="$1"; CASE_FROM[${#CASE_FROM[@]}]="$2"; }
-add_declined()  { DECL_PATH[${#DECL_PATH[@]}]="$1"; DECL_WHY[${#DECL_WHY[@]}]="$2"
-                  KEEP[${#KEEP[@]}]="$1"; }
+add_declined()  { DECL_PATH[${#DECL_PATH[@]}]="$1"; DECL_WHY[${#DECL_WHY[@]}]="$2"; }
 add_collision() { COLL_SRC[${#COLL_SRC[@]}]="$1"; COLL_DST[${#COLL_DST[@]}]="$2"
-                  COLL_WHY[${#COLL_WHY[@]}]="$3"; KEEP[${#KEEP[@]}]="$1"; }
+                  COLL_WHY[${#COLL_WHY[@]}]="$3"; }
+
+# A tab or a newline in a path would break the one-line-per-entry report the agent parses.
+# Such a file is left strictly alone rather than half-handled.
+printable_path() {
+  case "$1" in *"$(printf '\t')"*|*"
+"*) return 1;; esac
+  return 0
+}
 
 # ── destination guards ───────────────────────────────────────────────────────────────────────
 # REAL path moves: a destination counts as occupied if it is in the index OR present on disk.
@@ -129,7 +137,7 @@ dst_occupied_real() { tracked_exact "$1" || [ -e "$1" ]; }
 # at runtime, so test-migrations.sh pins this line's exact text as well as its behaviour.
 dst_occupied_case() { tracked_exact "$1"; }
 
-planned_dst_source() {   # first source already planning a move to $1, if any
+planned_dst_source() {
   local i=0
   while [ "$i" -lt "${#MOVE_DST[@]}" ]; do
     if [ "${MOVE_DST[$i]}" = "$1" ]; then printf '%s' "${MOVE_SRC[$i]}"; return 0; fi
@@ -138,7 +146,7 @@ planned_dst_source() {   # first source already planning a move to $1, if any
   return 0
 }
 
-drop_planned_dst() {     # remove every planned move targeting $1
+drop_planned_dst() {
   local i=0 s=() d=()
   while [ "$i" -lt "${#MOVE_DST[@]}" ]; do
     if [ "${MOVE_DST[$i]}" != "$1" ]; then
@@ -152,8 +160,10 @@ drop_planned_dst() {     # remove every planned move targeting $1
 plan_real_move() {
   local src="$1" dst="$2" prev
   tracked_exact "$src" || return 0
-  case "$src" in *"$TAB"*|*"
-"*) add_declined "$src" "unsupported: the path contains a tab or newline"; return 0;; esac
+  if ! printable_path "$src"; then
+    add_declined "$src" "unsupported: the path contains a tab or a newline"
+    return 0
+  fi
   if dst_occupied_real "$dst"; then
     add_collision "$src" "$dst" "destination already exists — reconcile by hand"
     return 0
@@ -172,8 +182,7 @@ plan_real_move() {
 }
 
 build_plan() {
-  local d p base s dir from i seen
-  # 1. the kit's cascade, file by file against the allowlist
+  local d p base s dir from i seen dirs=()
   for d in $CASCADE_SRC_DIRS; do
     while IFS= read -r -d '' p; do
       [ -n "$p" ] || continue
@@ -188,14 +197,12 @@ build_plan() {
       fi
     done < <(git ls-files -z -- "$(lit "$d")")
   done
-  # 2. PROJECT-INFO + MEMORY
   for s in $PROJECT_INFO_SRCS; do plan_real_move "$s" ".marvin/PROJECT-INFO.md"; done
   for s in $MEMORY_SRCS;       do plan_real_move "$s" ".marvin/MEMORY.md"; done
-  # 3. handbook index, per audience: INDEX.md -> index.md, case only.
-  #    `__index.tmp` is a RESUME MARKER, not debris: the rename is two `git mv` calls through a
-  #    temp name, and a run that died between them leaves only the temp file — the source guard
-  #    is off forever, so skipping it loses the handbook index permanently. Check the temp FIRST.
-  local dirs=()
+  # Handbook index, per audience: INDEX.md -> index.md, case only.
+  # `__index.tmp` is a RESUME MARKER, not debris: the rename is two `git mv` calls through a
+  # temp name, and a run that died between them leaves only the temp file — the source guard is
+  # off forever, so skipping it loses the handbook index permanently. Check the temp FIRST.
   while IFS= read -r -d '' p; do
     [ -n "$p" ] || continue
     dir=${p%/*}
@@ -209,6 +216,10 @@ build_plan() {
   i=0
   while [ "$i" -lt "${#dirs[@]}" ]; do
     dir="${dirs[$i]}"; i=$((i+1))
+    if ! printable_path "$dir"; then
+      add_declined "$dir" "unsupported: the directory name contains a tab or a newline"
+      continue
+    fi
     from=""
     if tracked_exact "$dir/__index.tmp"; then from="__index.tmp"; fi
     if [ -n "$from" ] && tracked_exact "$dir/INDEX.md"; then
@@ -226,140 +237,33 @@ build_plan() {
   done
 }
 
-# ── reference rewrite: literal pairs only ────────────────────────────────────────────────────
-# Every pair is an exact path that actually moved. There is no pattern, no escaping and no
-# protection mechanism, because a path that did not move never enters the list.
-keep_extends() {          # does some kept path continue past $1?
-  local k
-  for k in ${KEEP[@]+"${KEEP[@]}"}; do
-    case "$k" in "$1"?*) return 0;; esac
-  done
-  return 1
-}
-keep_matches_here() {     # does the text in $2 continue into a kept path that starts with $1?
-  local k tail
-  for k in ${KEEP[@]+"${KEEP[@]}"}; do
-    case "$k" in "$1"?*) tail=${k#"$1"};; *) continue;; esac
-    case "$2" in "$tail"*) return 0;; esac
-  done
-  return 1
-}
-
-REPL_OUT=""
-replace_literal() {       # $1 content, $2 from, $3 to → REPL_OUT
-  local c="$1" from="$2" to="$3" out pre rest
-  if ! keep_extends "$from"; then
-    REPL_OUT=${c//"$from"/"$to"}      # quoted pattern = literal; no metacharacters exist here
-    return 0
-  fi
-  # A kept path extends this one (`…/notes.md` vs a declined `…/notes.md.bak`), so replace
-  # occurrence by occurrence and leave the ones that are really the longer, unmoved path.
-  out=""; rest="$c"
-  while :; do
-    case "$rest" in *"$from"*) ;; *) break;; esac
-    pre=${rest%%"$from"*}
-    rest=${rest#"$pre$from"}
-    if keep_matches_here "$from" "$rest"; then out="$out$pre$from"; else out="$out$pre$to"; fi
-  done
-  REPL_OUT="$out$rest"
-}
-
-add_pair() { PAIR_FROM[${#PAIR_FROM[@]}]="$1"; PAIR_TO[${#PAIR_TO[@]}]="$2"; }
-
-keep_under() {            # is any kept path inside directory $1?
-  local k
-  for k in ${KEEP[@]+"${KEEP[@]}"}; do
-    case "$k" in "$1"/*) return 0;; esac
-  done
-  return 1
-}
-moved_from() {            # did anything move out of directory $1?
-  local i=0
-  while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-    case "${MOVE_SRC[$i]}" in "$1"/*) return 0;; esac
-    i=$((i+1))
-  done
-  return 1
-}
-
-build_pairs() {
-  local i=0 d
-  PAIR_FROM=(); PAIR_TO=()
-  NOTES=()          # regenerated: this runs again after the prune, on the final state
-  while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-    add_pair "${MOVE_SRC[$i]}" "${MOVE_DST[$i]}"
-    i=$((i+1))
-  done
-  i=0
-  while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-    add_pair "${CASE_DIR[$i]}/INDEX.md" "${CASE_DIR[$i]}/index.md"
-    i=$((i+1))
-  done
-  # A bare directory reference is one explicit final pair, and only when the directory was
-  # emptied — anything declined or collided keeps it alive and keeps its references valid.
+# A source directory the migration emptied. Reported, never acted on: whether a bare
+# `.docs/agents/` reference in prose should follow is a judgement for the agent.
+record_emptied() {
+  local d i keep
   for d in .docs/agents docs/agents .docs/marvin docs/marvin; do
-    moved_from "$d" || continue
-    if keep_under "$d" || { [ "$MODE" != "check" ] && [ -e "$d" ]; }; then
-      note "dir-ref-kept: $d/ (files remain there — bare directory references left as they are)"
-      continue
-    fi
+    keep=0
+    i=0; while [ "$i" -lt "${#DECL_PATH[@]}" ]; do
+      case "${DECL_PATH[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
+    i=0; while [ "$i" -lt "${#COLL_SRC[@]}" ]; do
+      case "${COLL_SRC[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
+    [ "$keep" = 1 ] && continue
+    i=0; keep=0
+    while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+      case "${MOVE_SRC[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
+    [ "$keep" = 1 ] || continue
+    if [ "$MODE" != "check" ] && [ -e "$d" ]; then continue; fi
     case "$d" in
-      *agents) add_pair "$d/" ".marvin/agents/";;
-      *marvin) add_pair "$d/" ".marvin/";;
+      *agents) EMPTIED[${#EMPTIED[@]}]="$d/ -> .marvin/agents/";;
+      *marvin) EMPTIED[${#EMPTIED[@]}]="$d/ -> .marvin/";;
     esac
   done
-  sort_pairs_longest_first
-}
-
-sort_pairs_longest_first() {
-  local i=0 blob="" n f t
-  while [ "$i" -lt "${#PAIR_FROM[@]}" ]; do
-    blob="${blob}${#PAIR_FROM[$i]}${TAB}${PAIR_FROM[$i]}${TAB}${PAIR_TO[$i]}"$'\n'
-    i=$((i+1))
-  done
-  PAIR_FROM=(); PAIR_TO=()
-  [ -n "$blob" ] || return 0
-  while IFS="$TAB" read -r n f t; do
-    [ -n "$f" ] || continue
-    add_pair "$f" "$t"
-  done < <(printf '%s' "$blob" | sort -t"$TAB" -k1,1nr)
-}
-
-NEW_CONTENT=""
-compute_rewrite() {       # $1 file → 0 if the content would change, NEW_CONTENT set
-  local f="$1" orig new i bytes_file bytes_mem
-  [ -f "$f" ] || return 1
-  IFS= read -r -d '' orig < "$f" || true
-  bytes_file=$(wc -c < "$f" | tr -d ' ')
-  bytes_mem=$(printf '%s' "$orig" | wc -c | tr -d ' ')
-  if [ "$bytes_file" != "$bytes_mem" ]; then
-    note "rewrite-skipped: $f (NUL bytes — left untouched)"
-    return 1
-  fi
-  new="$orig"; i=0
-  while [ "$i" -lt "${#PAIR_FROM[@]}" ]; do
-    replace_literal "$new" "${PAIR_FROM[$i]}" "${PAIR_TO[$i]}"
-    new="$REPL_OUT"
-    i=$((i+1))
-  done
-  [ "$new" = "$orig" ] && return 1
-  NEW_CONTENT="$new"
   return 0
 }
 
-apply_rewrite() {
-  local f="$1"
-  compute_rewrite "$f" || return 0
-  printf '%s' "$NEW_CONTENT" > "$f"
-  REWRITTEN[${#REWRITTEN[@]}]="$f"
-}
-
-stage_path() { STAGE[${#STAGE[@]}]="$1"; }
-
 # Best effort ONLY. A consumer may keep their own files in `.docs/marvin/`; `rmdir` then exits
-# 1 and, under `set -e`, would abort the run before the handbook renames. Never recursive:
-# this script contains no recursive delete of any kind, on either side of a collision or
-# otherwise — reconciling one is the user's call on their own data.
+# 1 and, under `set -e`, would abort the run before the handbook renames. Never recursive: this
+# script contains no recursive delete of any kind, on either side of a collision or otherwise.
 prune_dirs() {
   local d
   for d in $PRUNE_DIRS; do
@@ -368,11 +272,12 @@ prune_dirs() {
   return 0
 }
 
-# ── symlink and containment refusal ──────────────────────────────────────────────────────────
+# ── symlink refusal ──────────────────────────────────────────────────────────────────────────
 # A symlinked `.marvin` was reproduced relocating 15 consumer files out of the repository
-# before `git mv` died; a symlinked CLAUDE.md was reproduced rewriting a file outside the repo
-# while the commit stayed empty of it. Neither is worth following "safely".
-check_components() {      # record every symlinked component of a repo-relative path
+# before `git mv` died. Refusing every symlinked component is the containment boundary: with no
+# symlinked component and no `..` in any path, everything the script touches is under the root
+# by construction, so there is no separate (and untestable) resolved-path check.
+check_components() {
   local p="$1" acc="" part oldifs
   oldifs="$IFS"; IFS=/
   set -f
@@ -388,17 +293,6 @@ check_components() {      # record every symlinked component of a repo-relative 
   return 0
 }
 
-check_contained() {       # an existing directory must resolve inside the repository root
-  local d="$1" phys
-  [ -d "$d" ] || return 0
-  phys=$(cd "$d" 2>/dev/null && pwd -P) || return 0
-  case "$phys" in
-    "$ROOT_PHYS"|"$ROOT_PHYS"/*) return 0;;
-    *) SYMLINK_HITS[${#SYMLINK_HITS[@]}]="$d (resolves outside the repository: $phys)";;
-  esac
-  return 0
-}
-
 safety_checks() {
   local i=0 d
   while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
@@ -411,44 +305,56 @@ safety_checks() {
     check_components "${CASE_DIR[$i]}/index.md"
     i=$((i+1))
   done
-  check_components "CLAUDE.md"
-  for d in .marvin .marvin/agents; do check_components "$d"; check_contained "$d"; done
-  i=0
-  while [ "$i" -lt "${#CASE_DIR[@]}" ]; do check_contained "${CASE_DIR[$i]}"; i=$((i+1)); done
+  for d in .marvin .marvin/agents; do check_components "$d"; done
+  return 0
 }
 
-writability_checks() {    # fail cleanly BEFORE the first move, not after
-  local i=0 f
-  while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-    f="${MOVE_SRC[$i]}"
-    [ -f "$f" ] && [ ! -w "$f" ] && UNWRITABLE[${#UNWRITABLE[@]}]="$f"
-    i=$((i+1))
+# ── repository-state refusal ─────────────────────────────────────────────────────────────────
+# The clean-tree gate is load-bearing for the rollback, and `git status --porcelain` alone does
+# not prove a clean tree.
+repo_state_checks() {
+  local gitdir bad
+  gitdir=$(git rev-parse --git-dir)
+  # An operation in progress: the agent's commit would silently CONCLUDE the consumer's merge,
+  # producing a two-parent commit that `git revert HEAD` then refuses.
+  for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
+    [ -e "$gitdir/$f" ] && STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$f exists — an operation is in progress; finish or abort it first"
   done
-  i=0
-  while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-    f="${CASE_DIR[$i]}/${CASE_FROM[$i]}"
-    [ -f "$f" ] && [ ! -w "$f" ] && UNWRITABLE[${#UNWRITABLE[@]}]="$f"
-    i=$((i+1))
+  for d in rebase-merge rebase-apply; do
+    [ -d "$gitdir/$d" ] && STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$d/ exists — a rebase is in progress; finish or abort it first"
   done
-  [ -f CLAUDE.md ] && [ ! -w CLAUDE.md ] && UNWRITABLE[${#UNWRITABLE[@]}]="CLAUDE.md"
+  # assume-unchanged / skip-worktree: `git status --porcelain` does not report modifications to
+  # these files, so a "clean" tree can hide uncommitted work that the rollback would destroy.
+  while IFS= read -r bad; do
+    [ -n "$bad" ] || continue
+    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$bad"
+  done < <(git ls-files -v | awk '
+    /^[a-z] / { print "assume-unchanged bit set on " substr($0,3) " — its changes are invisible to git status" }
+    /^S /     { print "skip-worktree bit set on "     substr($0,3) " — its changes are invisible to git status" }')
+  [ "$(git config --bool core.sparseCheckout 2>/dev/null || echo false)" = "true" ] &&
+    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="core.sparseCheckout is enabled — parts of the tree are not present"
+  # HEAD must be a real branch tip: rollback resets to it and the agent commits on top of it.
+  git rev-parse --verify HEAD >/dev/null 2>&1 ||
+    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="HEAD is unborn (no commits yet) — there is nothing to roll back to"
+  git symbolic-ref -q HEAD >/dev/null 2>&1 ||
+    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="HEAD is detached — commit on a branch before migrating"
   return 0
 }
 
 # ── rollback ─────────────────────────────────────────────────────────────────────────────────
-# The clean-tree precondition is what makes this trivial: the pre-migration state IS HEAD.
-# Armed as a trap so it also covers a kill, a full disk or an unwritable file.
+# The clean-state precondition is what makes this exact: the pre-migration state IS HEAD.
+# Armed as a trap so it also covers a kill or a full disk.
 rollback() {
-  local rc=$?
+  local rc=$? i
   trap - EXIT INT TERM HUP
   if [ "$COMPLETED" = 1 ] || [ "$MUTATED" = 0 ]; then exit "$rc"; fi
   say "FAILED after the first change (exit $rc) — restoring the repository to ${HEAD_AT_ENTRY}"
   [ -n "$HEAD_AT_ENTRY" ] && git reset -q --hard "$HEAD_AT_ENTRY" >/dev/null 2>&1 || true
-  local i="${#CREATED_DIRS[@]}"
-  while [ "$i" -gt 0 ]; do                       # deepest first; empty ones only
+  i="${#CREATED_DIRS[@]}"
+  while [ "$i" -gt 0 ]; do
     i=$((i-1))
     [ -d "${CREATED_DIRS[$i]}" ] && rmdir "${CREATED_DIRS[$i]}" 2>/dev/null || true
   done
-  COMMIT_SHA="none"
   report rolled-back
   exit 7
 }
@@ -462,21 +368,55 @@ mkdir_tracked() {
   return 0
 }
 
-# ── reporting ────────────────────────────────────────────────────────────────────────────────
+# ── the report: this is the contract the upgrade skill consumes ──────────────────────────────
+renamed_count() {
+  if [ "$MODE" = "check" ]; then echo $(( ${#MOVE_SRC[@]} + ${#CASE_DIR[@]} )); else echo "${#MOVED_SRC[@]}"; fi
+}
+
+emit_renamed() {   # identical lines in --check and in a real run: the plan IS the outcome
+  local i=0
+  if [ "$MODE" = "check" ]; then
+    while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+      printf 'renamed: %s -> %s\n' "${MOVE_SRC[$i]}" "${MOVE_DST[$i]}"; i=$((i+1)); done
+    i=0
+    while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
+      printf 'renamed: %s/%s -> %s/index.md\n' "${CASE_DIR[$i]}" "${CASE_FROM[$i]}" "${CASE_DIR[$i]}"
+      i=$((i+1)); done
+  else
+    while [ "$i" -lt "${#MOVED_SRC[@]}" ]; do
+      printf 'renamed: %s -> %s\n' "${MOVED_SRC[$i]}" "${MOVED_DST[$i]}"; i=$((i+1)); done
+  fi
+  return 0
+}
+
+emit_refs() {      # the exact old paths whose references now need attention
+  local i=0
+  if [ "$MODE" = "check" ]; then
+    while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+      printf 'references-to-update: %s\n' "${MOVE_SRC[$i]}"; i=$((i+1)); done
+    i=0
+    while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
+      printf 'references-to-update: %s/%s\n' "${CASE_DIR[$i]}" "${CASE_FROM[$i]}"; i=$((i+1)); done
+  else
+    while [ "$i" -lt "${#MOVED_SRC[@]}" ]; do
+      printf 'references-to-update: %s\n' "${MOVED_SRC[$i]}"; i=$((i+1)); done
+  fi
+  return 0
+}
+
 report() {
   local result="$1" i
   echo "---- ${SELF} report ----"
   echo "version=${KIT_VERSION}"
   echo "mode=${MODE}"
-  echo "moved=${#MOVED_SRC[@]}"
+  echo "renamed=$(renamed_count)"
   echo "declined=${#DECL_PATH[@]}"
   echo "collisions=${#COLL_SRC[@]}"
   echo "failures=${#FAIL_SRC[@]}"
-  echo "rewritten=${#REWRITTEN[@]}"
-  echo "commit=${COMMIT_SHA}"
+  echo "staged=${STAGED_COUNT}"
+  echo "committed=no"
   echo "result=${result}"
-  i=0; while [ "$i" -lt "${#MOVED_SRC[@]}" ]; do
-    printf 'moved: %s -> %s\n' "${MOVED_SRC[$i]}" "${MOVED_DST[$i]}"; i=$((i+1)); done
+  emit_renamed
   i=0; while [ "$i" -lt "${#DECL_PATH[@]}" ]; do
     printf 'declined: %s (%s)\n' "${DECL_PATH[$i]}" "${DECL_WHY[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#COLL_SRC[@]}" ]; do
@@ -484,12 +424,13 @@ report() {
     i=$((i+1)); done
   i=0; while [ "$i" -lt "${#FAIL_SRC[@]}" ]; do
     printf 'failure: %s -> %s\n' "${FAIL_SRC[$i]}" "${FAIL_DST[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#REWRITTEN[@]}" ]; do
-    printf 'rewritten: %s\n' "${REWRITTEN[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
     printf 'symlink: %s\n' "${SYMLINK_HITS[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#UNWRITABLE[@]}" ]; do
-    printf 'unwritable: %s\n' "${UNWRITABLE[$i]}"; i=$((i+1)); done
+  i=0; while [ "$i" -lt "${#STATE_PROBLEMS[@]}" ]; do
+    printf 'repo-state: %s\n' "${STATE_PROBLEMS[$i]}"; i=$((i+1)); done
+  emit_refs
+  i=0; while [ "$i" -lt "${#EMPTIED[@]}" ]; do
+    printf 'directory-emptied: %s\n' "${EMPTIED[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#NOTES[@]}" ]; do
     printf 'note: %s\n' "${NOTES[$i]}"; i=$((i+1)); done
   echo "---- end ${SELF} report ----"
@@ -498,108 +439,76 @@ report() {
 
 finish() {
   COMPLETED=1
-  if [ "${#COLL_SRC[@]}" -gt 0 ]; then report collisions; exit 3; fi
-  report ok
+  if [ "${#COLL_SRC[@]}" -gt 0 ]; then report "$1"; exit 3; fi
+  report "$1"
   exit 0
 }
 
 # ── argument parsing ─────────────────────────────────────────────────────────────────────────
-# The flags are mutually exclusive and "last one wins" is not an option: an invocation
-# containing --check must never modify the repository, whatever else is on the line.
-saw_check=0; saw_nocommit=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check)     saw_check=1;;
-    --no-commit) saw_nocommit=1;;
-    -h|--help)   usage; exit 0;;
-    *)           say "unknown option: $1"; usage >&2; exit 4;;
+    --check)   MODE="check";;
+    -h|--help) usage; exit 0;;
+    *)         say "unknown option: $1 (this script takes --check, and never commits)"
+               usage >&2; exit 4;;
   esac
   shift
 done
-if [ "$saw_check" = 1 ] && [ "$saw_nocommit" = 1 ]; then
-  say "--check and --no-commit are mutually exclusive — refusing (nothing was changed)"
-  usage >&2
-  exit 4
-fi
-[ "$saw_check" = 1 ] && MODE="check"
-[ "$saw_nocommit" = 1 ] && MODE="no-commit"
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { say "not a git work tree — refusing"; exit 4; }
 cd "$(git rev-parse --show-toplevel)"
-ROOT_PHYS=$(pwd -P)
 HEAD_AT_ENTRY=$(git rev-parse HEAD 2>/dev/null || echo "")
 DIRTY=$(git status --porcelain)
 
 build_plan
-build_pairs
+repo_state_checks
+safety_checks
+record_emptied
 
 # ── dry run ──────────────────────────────────────────────────────────────────────────────────
 # A dry run changes nothing, so it is available on ANY tree — deciding whether the cleanup is
-# worth it is exactly when a preview is useful. It reports the dirty state as part of the plan.
+# worth it is exactly when a preview is useful. Its report is line-for-line what the real run
+# will print, so it is a usable safety net rather than an approximation.
 if [ "$MODE" = "check" ]; then
-  say "plan (dry run — nothing will be changed):"
-  i=0; while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-    printf '  move:    %s -> %s\n' "${MOVE_SRC[$i]}" "${MOVE_DST[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-    printf '  rename:  %s/%s -> %s/index.md (case only, via __index.tmp)\n' \
-      "${CASE_DIR[$i]}" "${CASE_FROM[$i]}" "${CASE_DIR[$i]}"; i=$((i+1)); done
-  TARGETS=("CLAUDE.md")
-  i=0; while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-    TARGETS[${#TARGETS[@]}]="${MOVE_SRC[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-    TARGETS[${#TARGETS[@]}]="${CASE_DIR[$i]}/${CASE_FROM[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#TARGETS[@]}" ]; do
-    if compute_rewrite "${TARGETS[$i]}"; then
-      printf '  rewrite: %s\n' "${TARGETS[$i]}"
-      REWRITTEN[${#REWRITTEN[@]}]="${TARGETS[$i]}"
-    fi
-    i=$((i+1))
-  done
-  safety_checks
-  i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
-    printf '  refuse:  %s\n' "${SYMLINK_HITS[$i]}"; i=$((i+1)); done
-  if [ "${#MOVE_SRC[@]}" = 0 ] && [ "${#CASE_DIR[@]}" = 0 ] && [ "${#REWRITTEN[@]}" = 0 ]; then
-    echo "  (nothing to do)"
+  if [ "${#STATE_PROBLEMS[@]}" -gt 0 ]; then
+    say "a real run will REFUSE: the repository state makes this unsafe"
+    COMPLETED=1; report plan-only-repo-state; exit 9
   fi
   if [ -n "$DIRTY" ]; then
-    say "the working tree is NOT clean — a real run will refuse to start until you clear it:"
+    say "a real run will REFUSE: the working tree is not clean"
     git status --short
-    COMPLETED=1
-    report plan-only-tree-dirty
-    exit 2
+    COMPLETED=1; report plan-only-tree-dirty; exit 2
   fi
-  if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then COMPLETED=1; report would-refuse-symlink; exit 6; fi
-  finish
+  if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
+    say "a real run will REFUSE: symlinked paths are never followed"
+    COMPLETED=1; report plan-only-symlink; exit 6
+  fi
+  finish plan
 fi
 
-# ── precondition: clean tree ─────────────────────────────────────────────────────────────────
+# ── preconditions, in the order a real run hits them ─────────────────────────────────────────
+if [ "${#STATE_PROBLEMS[@]}" -gt 0 ]; then
+  say "REFUSED — the repository state makes an unattended migration unsafe:"
+  i=0; while [ "$i" -lt "${#STATE_PROBLEMS[@]}" ]; do
+    printf '  %s\n' "${STATE_PROBLEMS[$i]}"; i=$((i+1)); done
+  report refused-repo-state
+  exit 9
+fi
 # "git-revertible" — the justification for running this unattended — is FALSE on a dirty tree:
-# the consumer's WIP and untracked files land in the migration commit, and the `git revert`
-# this step advertises then destroys them. Never stash on their behalf: a stash the script
-# creates is a stash the user does not know to pop. It is also what makes rollback exact.
+# the consumer's WIP lands in the agent's migration commit and their later `git revert` destroys
+# it. Never stash on their behalf: a stash the script creates is a stash they do not know to pop.
 if [ -n "$DIRTY" ]; then
   say "REFUSED — the working tree is not clean. Commit or stash these yourself, then re-run:"
   git status --short
   report dirty-refused
   exit 2
 fi
-
-# ── preconditions that must hold before the FIRST change ─────────────────────────────────────
-safety_checks
 if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
-  say "REFUSED — symlinked or out-of-repository paths are never followed:"
+  say "REFUSED — symlinked paths are never followed:"
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
     printf '  %s\n' "${SYMLINK_HITS[$i]}"; i=$((i+1)); done
   report refused-symlink
   exit 6
-fi
-writability_checks
-if [ "${#UNWRITABLE[@]}" -gt 0 ]; then
-  say "REFUSED — these files must be rewritten but are not writable:"
-  i=0; while [ "$i" -lt "${#UNWRITABLE[@]}" ]; do
-    printf '  %s\n' "${UNWRITABLE[$i]}"; i=$((i+1)); done
-  report refused-unwritable
-  exit 8
 fi
 
 trap rollback EXIT INT TERM HUP
@@ -617,7 +526,7 @@ if [ "${#MOVE_SRC[@]}" -gt 0 ]; then
     MUTATED=1
     if git mv -- "$src" "$dst"; then
       MOVED_SRC[${#MOVED_SRC[@]}]="$src"; MOVED_DST[${#MOVED_DST[@]}]="$dst"
-      stage_path "$dst"
+      STAGE[${#STAGE[@]}]="$dst"
     else
       FAIL_SRC[${#FAIL_SRC[@]}]="$src"; FAIL_DST[${#FAIL_DST[@]}]="$dst"
       say "move failed: $src -> $dst"
@@ -643,37 +552,19 @@ while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
     exit 1
   fi
   MOVED_SRC[${#MOVED_SRC[@]}]="$dir/$from"; MOVED_DST[${#MOVED_DST[@]}]="$dir/index.md"
-  stage_path "$dir/index.md"
+  STAGE[${#STAGE[@]}]="$dir/index.md"
   i=$((i+1))
 done
 
 prune_dirs
-build_pairs                                      # bare-directory pairs need the post-prune state
+EMPTIED=(); record_emptied                       # observed, not predicted, after the prune
 
-# ── apply: reference rewrite ─────────────────────────────────────────────────────────────────
-# CLAUDE.md plus the migrated files at their NEW paths. Nothing else is touched: the script's
-# entire blast radius is those four locations and CLAUDE.md.
-i=0
-while [ "$i" -lt "${#STAGE[@]}" ]; do
-  apply_rewrite "${STAGE[$i]}"
-  i=$((i+1))
-done
-apply_rewrite "CLAUDE.md"
-i=0
-while [ "$i" -lt "${#REWRITTEN[@]}" ]; do
-  [ "${REWRITTEN[$i]}" = "CLAUDE.md" ] && stage_path "CLAUDE.md"
-  i=$((i+1))
-done
-
-# ── stage + commit ───────────────────────────────────────────────────────────────────────────
-# Staging is by explicit literal pathspec, always. A blanket stage-everything sweep drags
-# untracked consumer files (a fixture caught `.env.local`) into the migration commit, and the
-# `git revert` escape hatch this step advertises then destroys them. `-f` covers one real case:
-# a consumer who gitignored `.marvin/` — `git mv` already put those paths in the index, but
-# `git add` still refuses an ignored pathspec and would leave the migration half-staged. With
-# `:(literal)` the force flag can only ever apply to the exact paths this run moved.
-# The renames AND the CLAUDE.md rewrite land in ONE commit: a revert that restored the file
-# locations but not the references — or the other way round — leaves an inconsistent repo.
+# ── stage ────────────────────────────────────────────────────────────────────────────────────
+# By explicit literal pathspec, always. A blanket stage-everything sweep drags untracked
+# consumer files (a fixture caught `.env.local`) into what the agent then commits. `-f` covers
+# one real case: a consumer who gitignored `.marvin/` — `git mv` already put those paths in the
+# index, but `git add` still refuses an ignored pathspec and would leave the migration
+# half-staged. With `:(literal)` the force flag can only ever apply to paths this run moved.
 if [ "${#STAGE[@]}" -gt 0 ]; then
   ADDARGS=()
   i=0
@@ -682,19 +573,14 @@ if [ "${#STAGE[@]}" -gt 0 ]; then
     i=$((i+1))
   done
   git add -f -- "${ADDARGS[@]}"
+  STAGED_COUNT=${#STAGE[@]}
 fi
 
 if git diff --cached --quiet; then
   say "nothing to migrate — already at the v${KIT_VERSION} layout"
-  finish
+  finish nothing-to-do
 fi
 
-if [ "$MODE" = "no-commit" ]; then
-  say "staged, not committed (--no-commit)"
-else
-  git commit -q -m "chore: move Marvin machinery from .docs/ to .marvin/ (kit v${KIT_VERSION})"
-  COMMIT_SHA=$(git rev-parse HEAD)
-  say "committed ${COMMIT_SHA}"
-fi
-
-finish
+say "moved and staged ${STAGED_COUNT} path(s) — NOTHING COMMITTED."
+say "update the references listed under 'references-to-update:', then commit them together."
+finish staged
