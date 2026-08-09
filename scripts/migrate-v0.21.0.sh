@@ -285,6 +285,7 @@ moved_from() {            # did anything move out of directory $1?
 build_pairs() {
   local i=0 d
   PAIR_FROM=(); PAIR_TO=()
+  NOTES=()          # regenerated: this runs again after the prune, on the final state
   while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
     add_pair "${MOVE_SRC[$i]}" "${MOVE_DST[$i]}"
     i=$((i+1))
