@@ -4,7 +4,19 @@
   <img src="assets/marvin-logo-full.png" alt="Marvin — The Agentic Operating System. Plan · Brief · Orchestrate · Verify · Never Implement" width="520">
 </p>
 
-**At a glance** — a Claude Code plugin · four supported PM tools · seven skills and one command · installs a lean, self-contained payload into any repo · battle-tested on a full 7-milestone SaaS build with 37 agent-built, independently validated tasks · self-hosting: this kit is built and operated under its own rules.
+## ✨ At a glance
+
+> **Give your AI software team an operating system — not another enormous prompt.**
+
+| 🧠 **Marvin at the helm** | 🧭 **Fits your workflow** |
+|---|---|
+| A sharp, evidence-hungry orchestrator that plans, delegates and verifies — but never disappears into a bulk implementation. | Installs a lean, self-contained payload in any repo and works with **Linear, Jira, GitHub Issues or Local** tracking. |
+
+| 🧰 **Ready to ship** | 🧪 **Built under pressure** |
+|---|---|
+| **7 skills + 1 command** cover setup, upgrades, reporting, docs, stress testing and kit validation. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
+
+<p align="center"><sub>✦ Self-hosting: Marvin is built and operated under the same rules it installs. ✦</sub></p>
 
 **Marvin** is a reusable agentic operating system for AI-assisted software projects. Install it into a repo and that repo gets an orchestrator with a name, a personality and a memory — one who plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements. Around the persona comes the machinery that makes agent work auditable: size-routed model-tier dispatch, a cascading ruleset that keeps context proportional to the task, DoD-gated task lifecycles with two sequenced adversarial validators, a versioned label registry feeding collect-once reporting, three living product handbooks, and — with the companion **token-telemetry** plugin — token and dollar cost visibility down to the individual tracker issue. It is for anyone running real software delivery through Claude Code and tired of "done" without evidence.
 
