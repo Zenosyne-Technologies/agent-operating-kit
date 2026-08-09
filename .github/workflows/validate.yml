@@ -10,3 +10,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run static release gate
         run: bash scripts/validate-kit.sh
+      - name: Run migration tests
+        run: bash scripts/test-migrations.sh

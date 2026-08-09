@@ -75,7 +75,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 
 No plugin, three steps:
 
-1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? `mkdir -p .marvin` first — `git mv` will not create the parent — then `git mv` the kit's files to `.marvin/agents/` and fix the references.
+1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? Do not move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan).
 2. **Fill every `{{PLACEHOLDER}}`** in the core file — project facts, env preamble, tracker coordinates. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 3. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -208,13 +208,14 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 `templates/` is the payload that gets installed into consumer projects; everything else — skills, commands, upgrade notes, the plugin manifest, this README — is kit machinery. Never blur the two: a change that helps one specific project belongs in that project's installed files, and only lessons that generalise get promoted into templates. `CLAUDE.md` holds the full extension rules — new activity docs, new tracker support, template line budgets, and the version and changelog bumps each change owes.
 
-Every PR must pass the static release gate, which CI runs on every push:
+Every PR must pass the static release gate and the migration tests, both of which CI runs on every push:
 
 ```
 bash scripts/validate-kit.sh
+bash scripts/test-migrations.sh
 ```
 
-Its eight checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist.
+The static gate's eight checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist.
 
 ## Inventory
 
@@ -222,6 +223,8 @@ Its eight checks: known placeholders only · template line budgets · manifests 
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 scripts/validate-kit.sh              eight-check static release gate (CI runs it on every PR)
+scripts/migrate-v<version>.sh        executable layout migration for a release that moves installed files
+scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
 templates/
