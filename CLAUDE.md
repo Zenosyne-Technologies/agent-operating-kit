@@ -16,10 +16,10 @@ A change that helps one specific project belongs in that project's installed fil
 
 ## Extension rules
 
-1. **New activity rule** → add `templates/marvin/agents/<activity>.md` (lean, one activity), add its reference line to the cascade in `templates/CLAUDE.core.md`, update the README inventory.
+1. **New activity rule** → add `templates/marvin/agents/<activity>.md` (lean, one activity) carrying the reduced header (`doc:`/`type:`/`status:`/`summary:`/`updated:`) `templates/marvin/agents/document-standard.md` defines — `scripts/validate-kit.sh`'s `doc-headers` check is fail-by-default and only skips a file explicitly listed in its `NOHDR` exclusion set — add its reference line to the cascade in `templates/CLAUDE.core.md`, update the README inventory.
 2. **New tracker support** (GitHub Issues/…) → new folder `templates/pm/<tracker>/` mirroring the existing ones: intake brief + `tracker-config.md` + `stats-collection-brief.md` (same snapshot schema) (levels vs the kit's 4-level target, virtual-milestone rule if fewer, severity mapping to the native scheme). Taxonomy and template carry over 1:1, sev labels stay canonical; `ticket-filing.md` stays tracker-neutral except its coordinates line; add the tool to `templates/pm/INSTALL.md`'s selection, sensecheck, and project-key tables (the skills read it — do not restate the flow in a skill). Intake briefs MUST be idempotent/re-runnable — the upgrade skill re-dispatches them as the label-sync mechanism.
 3. **Every template change** → bump `version` in `.claude-plugin/plugin.json`.
-4. **Keep files lean** — the kit's core value is context proportionality. Templates stay ≤60 lines (CLAUDE.core.md, always-loaded, ≤55) — past that, split into the cascade instead.
+4. **Keep files lean** — the kit's core value is context proportionality. Templates stay ≤60 lines (CLAUDE.core.md, always-loaded, ≤55) — past that, split into the cascade instead. The `document-standard.md` header (reduced or full) counts toward that budget; leave room for it before writing the body.
 5. **Validate by installing**: run the `install-agent-os` skill against a scratch repo and check every placeholder resolves and the merge path works.
 6. **No AI attribution** in this repo's commits/PRs (also the default policy the kit ships).
 7. **Label registry changes** → edit `templates/marvin/agents/label-syntax.md` only; bump the registry's OWN version and add its changelog row (on top of the plugin version bump). Never define labels anywhere else — briefs and guides reference the registry.
