@@ -17,9 +17,9 @@ label_syntax_version: {{LABEL_SYNTAX_VERSION}}
 
 # {{PROJECT_NAME}} — project information
 
-Meta overview for foreign agents, agentic OS frameworks, and reporting tools. The YAML frontmatter above is the machine contract and the source of truth for facts; this body is the human overview. Any agent that changes a fact below updates the frontmatter in the same change. Facts only — operating rules live in `CLAUDE.md` and `.docs/agents/`.
+Meta overview for foreign agents, agentic OS frameworks, and reporting tools. The YAML frontmatter above is the machine contract and the source of truth for facts; this body is the human overview. Any agent that changes a fact below updates the frontmatter in the same change. Facts only — operating rules live in `CLAUDE.md` and `.marvin/agents/`.
 
 - Repository layout: {{MONOREPO_OR_SINGLE + one-line top-level map}}
-- Hierarchy details, virtual milestones, severity/size native mappings: `.docs/agents/tracker-config.md`
-- Label registry: `.docs/agents/label-syntax.md` · Filing rules: `.docs/agents/ticket-filing.md`
-- Operating rules: `CLAUDE.md` + the `.docs/agents/` rules cascade
+- Hierarchy details, virtual milestones, severity/size native mappings: `.marvin/agents/tracker-config.md`
+- Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
+- Operating rules: `CLAUDE.md` + the `.marvin/agents/` rules cascade

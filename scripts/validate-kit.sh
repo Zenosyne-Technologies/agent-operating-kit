@@ -35,7 +35,7 @@ echo "$ver" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { fail json "plugin version
 [ "$ok" = 1 ] && pass json
 
 # ── 4. registry: label-syntax H1 version equals newest changelog row
-REG=templates/docs/agents/label-syntax.md
+REG=templates/marvin/agents/label-syntax.md
 h1=$(head -1 "$REG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | tr -d v)
 newest=$(grep -E '^\| [0-9]+\.[0-9]+\.[0-9]+ \|' "$REG" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 [ -n "$h1" ] && [ "$h1" = "$newest" ] && pass registry || fail registry "H1 v$h1 != newest changelog row $newest"

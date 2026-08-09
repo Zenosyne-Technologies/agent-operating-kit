@@ -4,7 +4,7 @@ Three living, Obsidian-compatible wikis under `.docs/handbooks/<audience>/` (`de
 
 ## Layout
 
-One page per LOGICAL unit — a business logic, feature, or module grouping the ORCHESTRATOR sets at planning time. NEVER one page per code file: hundreds of files must collapse into a handful of units. A unit that outgrows a single page becomes a subfolder — `<unit>/<unit>.md` is its main page (overview + the unit's FULL `sources` list) with topic sub-files beside it (each carrying its own narrower `sources`), all wiki-linked from the main page. Plain markdown, per-folder `INDEX.md` as the table of contents. Every page (a subfolder registers its main page) MUST be in its folder's INDEX with a one-line description — **a page not in INDEX doesn't exist**, even if the file sits on disk.
+One page per LOGICAL unit — a business logic, feature, or module grouping the ORCHESTRATOR sets at planning time. NEVER one page per code file: hundreds of files must collapse into a handful of units. A unit that outgrows a single page becomes a subfolder — `<unit>/<unit>.md` is its main page (overview + the unit's FULL `sources` list) with topic sub-files beside it (each carrying its own narrower `sources`), all wiki-linked from the main page. Plain markdown, per-folder `index.md` as the table of contents. Every page (a subfolder registers its main page) MUST be in its folder's index with a one-line description — **a page not in the index doesn't exist**, even if the file sits on disk.
 
 Scope: document only what the PROJECT introduces. Framework defaults and stock conventions (e.g., a Laravel app's standard structure or routing conventions) are never referenced or explained — only the functions, logic, and nuances this project added on top.
 
@@ -27,11 +27,11 @@ Body: Obsidian wikilinks (`[[Page Name]]`) between pages; kebab-case filenames; 
 
 ## Discovery rule (MANDATORY, before writing)
 
-1. Read all three INDEX.md files.
+1. Read all three index.md files.
 2. Grep the handbooks for every touched path: `grep -rl "<path>" .docs/handbooks/`.
-3. Matches → AMEND, never create a near-duplicate. Multiple hits are NORMAL: exclude `INDEX.md` rows, then treat every remaining page as an amend candidate — a changed source may need its developer page AND its user/admin pages updated, each in its own voice.
+3. Matches → AMEND, never create a near-duplicate. Multiple hits are NORMAL: exclude `index.md` rows, then treat every remaining page as an amend candidate — a changed source may need its developer page AND its user/admin pages updated, each in its own voice.
 4. No match → check whether an existing logical unit should absorb the topic (extend its page or add a sub-file) before creating a new unit; the orchestrator owns the unit map.
-5. On every create or rename: update `sources`, `updated`, `related`, and the folder's INDEX row. On rename: fix every wikilink that pointed at the old title.
+5. On every create or rename: update `sources`, `updated`, `related`, and the folder's index row. On rename: fix every wikilink that pointed at the old title.
 
 ## When triggered
 
