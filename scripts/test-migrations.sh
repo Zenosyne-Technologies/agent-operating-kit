@@ -5,6 +5,12 @@
 # half-finishing a migration. Each test names the mechanic it pins: revert that mechanic in
 # scripts/migrate-v0.21.0.sh and the named assertion must fail.
 #
+# The migration MOVES files and REPORTS; it never reads or writes file content. A whole class
+# of defects (substring rewriting eating URLs, `.bak` siblings, code fences, prose) is gone by
+# construction rather than by guard, so the fixtures that used to police it are replaced by one
+# invariant, pinned in TC1: after any run, every byte of every file is either where it was or
+# at its new path — nothing is edited, and CLAUDE.md is never touched at all.
+#
 # Run from anywhere: bash scripts/test-migrations.sh
 # Exit 0 = all assertions pass.
 set -uo pipefail
@@ -46,6 +52,7 @@ assert_clean()       { if [ -z "$(git status --porcelain)" ]; then ok "working t
 assert_eq()          { if [ "$1" = "$2" ]; then ok "$3"; else bad "$3 (got '$1', want '$2')"; fi; }
 
 run_migrate() { OUT=$(bash "$MIGRATE" "$@" 2>&1); RC=$?; return 0; }
+report_body() { printf '%s\n' "$OUT" | grep -E '^(renamed|declined|collision|references-to-update):'; }
 
 # Extract a shell function's body from the migration script, for the STRUCTURAL pins below.
 fn_body() { awk -v f="^$1\\\\(\\\\)" '$0 ~ f {s=1} s {print} s && /}/ {exit}' "$MIGRATE"; }
@@ -78,6 +85,9 @@ snapshot() {   # everything the migration could possibly perturb, in one blob.
   git rev-parse HEAD
   find . -path ./.git -prune -o -type f -exec cksum {} + | LC_ALL=C sort
 }
+content_map() {  # path-independent content census: <cksum-without-name> per file, sorted
+  find . -path ./.git -prune -o -type f -exec cksum {} + | awk '{print $1" "$2}' | LC_ALL=C sort
+}
 
 # ── fixture builders ─────────────────────────────────────────────────────────────────────────
 CASCADE="briefing documentation-agent handbooks label-syntax planning-research ponytail
@@ -95,7 +105,7 @@ mk_repo() {  # mk_repo <name> — a committed v0.20.0 install, decoys included
   mkdir -p .docs/agents .docs/marvin .docs/project-management .docs/reports src
   local f
   for f in $CASCADE; do printf 'kit cascade file %s\nsee `.docs/agents/briefing.md`\n' "$f" > ".docs/agents/$f.md"; done
-  # a Local-tracker config: its `.docs/project-management/INDEX.md` refs MUST survive verbatim
+  # a Local-tracker config: its `.docs/project-management/INDEX.md` refs must survive verbatim
   cat > .docs/agents/tracker-config.md <<'EOF'
 # Tracker configuration — Local
 Issue index: `.docs/project-management/INDEX.md` (allocator: `next_issue`).
@@ -118,28 +128,52 @@ EOF
 - Project facts: `.docs/PROJECT-INFO.md`
 - Memory: `.docs/marvin/MEMORY.md`
 - Developer handbook: `.docs/handbooks/developer/INDEX.md`
-- User handbook: `.docs/handbooks/user/INDEX.md`
 - Issue log: `.docs/project-management/INDEX.md`
+- Upstream style guide: https://github.com/acme/standards/blob/main/docs/agents/style.md
 EOF
   git add -- . >/dev/null
   git commit -qm "v0.20.0 install"
 }
 
 commit_all() { git add -- . >/dev/null; git commit -qm "$1"; }
+# What the upgrade skill does after the script: edit the references it was told about, then
+# commit them together with the staged renames. Simulated here with sed; the skill uses its own
+# editor and its own judgement — that is the point of moving this out of the script.
+agent_updates_and_commits() {
+  LC_ALL=C sed -i.bak \
+    -e 's#`\.docs/agents/#`.marvin/agents/#g' \
+    -e 's#`\.docs/PROJECT-INFO\.md`#`.marvin/PROJECT-INFO.md`#g' \
+    -e 's#`\.docs/marvin/MEMORY\.md`#`.marvin/MEMORY.md`#g' \
+    -e 's#`\.docs/handbooks/developer/INDEX\.md`#`.docs/handbooks/developer/index.md`#g' \
+    CLAUDE.md
+  rm -f CLAUDE.md.bak
+  git add -- CLAUDE.md
+  git commit -qm "chore: move Marvin machinery to .marvin/ and update references"
+}
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-hd "T00 --check is a pure dry run (DoD 1)"
+hd "T00 --check is a pure dry run"
 mk_repo t00
 before=$(snapshot)
 run_migrate --check
 after=$(snapshot)
 assert_rc 0
 assert_eq "$after" "$before" "repository byte-identical before/after --check"
-assert_out "move:    .docs/agents/briefing.md -> .marvin/agents/briefing.md"
-assert_out "rename:  .docs/handbooks/developer/INDEX.md -> .docs/handbooks/developer/index.md"
-assert_out "rewrite: CLAUDE.md"
+assert_out "renamed: .docs/agents/briefing.md -> .marvin/agents/briefing.md"
+assert_out "renamed: .docs/handbooks/developer/INDEX.md -> .docs/handbooks/developer/index.md"
+assert_out "references-to-update: .docs/agents/briefing.md"
 assert_out "mode=check"
+assert_out "committed=no"
 assert_not_tracked ".marvin/agents/briefing.md" "check mode moved nothing"
+
+hd "TR1 the --check report is line-for-line what the real run prints"
+mk_repo tr1
+run_migrate --check
+check_body=$(report_body)
+run_migrate
+real_body=$(report_body)
+assert_eq "$real_body" "$check_body" "renamed/declined/collision/references lines identical"
+assert_out "mode=stage"
 
 # ── defect 1: `git mv` into `.marvin/…` without mkdir -p (and `.marvin` alone is not enough)
 hd "T01 defect 1 — destination directories are created before the moves"
@@ -147,10 +181,13 @@ mk_repo t01
 run_migrate
 assert_rc 0
 assert_out "failures=0"
+assert_out "result=staged"
 assert_tracked ".marvin/agents/briefing.md" "cascade landed — dies without mkdir -p .marvin/agents"
 assert_tracked ".marvin/PROJECT-INFO.md"
 assert_tracked ".marvin/MEMORY.md"
 assert_not_tracked ".docs/agents/briefing.md"
+assert_out "committed=no"
+assert_eq "$(git rev-list --count HEAD)" "1" "the script did not commit"
 
 # ── defect 2: a filesystem-existence guard on a case-only rename skips it (same inode)
 hd "T02 defect 2 — case-only handbook rename is index-guarded, not disk-guarded"
@@ -163,10 +200,6 @@ for a in developer user admin; do
 done
 assert_not_tracked ".docs/handbooks/developer/__index.tmp"
 
-# ── defect 2, structurally. The behavioural fixture above is inert on a case-sensitive
-#    filesystem (the mutant and the correct code do the same thing there), and CI runs on
-#    ubuntu-latest. So the guard is ALSO pinned by inspecting its implementation: the case-only
-#    destination test must be the index test and nothing else.
 hd "T02S defect 2 (structural) — the guard trio is pinned to its exact text"
 # A keyword blacklist is not enough: `[ -n "$(ls -d …)" ]`, a helper function, or `stat` are
 # all filesystem tests that no reasonable blacklist catches, and on a case-sensitive filesystem
@@ -174,7 +207,7 @@ hd "T02S defect 2 (structural) — the guard trio is pinned to its exact text"
 # three functions that decide the case-only rename must match their canonical text exactly.
 # Any edit — however innocent — fails here until a human re-justifies it and updates this pin.
 # It is not a semantic proof, and the suite says so in its output.
-assert_fn_exact() {  # assert_fn_exact <name> <canonical one-line body>
+assert_fn_exact() {  # assert_fn_exact <name> <canonical body>
   local got; got=$(fn_body "$1" | sed 's/[[:space:]]*$//')
   if [ "$got" = "$2" ]; then ok "$1() matches its pinned implementation"
   else bad "$1() drifted from its pinned implementation
@@ -213,7 +246,7 @@ assert_rc 0 "run completed past the rmdir"
 assert_tracked ".docs/marvin/notes.md" "consumer file survived"
 assert_tracked ".marvin/MEMORY.md"
 assert_tracked ".docs/handbooks/developer/index.md" "handbook renames still ran after the rmdir"
-assert_clean
+assert_no_out "directory-emptied: .docs/marvin/" "not reported as emptied — it is not"
 
 # ── defect 5: a source-only guard permits `.marvin/agents/agents/` nesting
 hd "T05 defect 5 — a tracked destination is a collision, never a nested move"
@@ -229,6 +262,7 @@ assert_not_tracked ".marvin/agents/agents/briefing.md" "no nesting"
 assert_eq "$(git ls-files | grep -c '\.marvin/agents/agents/')" "0" "no .marvin/agents/agents/ path at all"
 assert_tracked ".marvin/agents/security.md" "non-colliding files still migrated"
 assert_file_has ".marvin/agents/briefing.md" "hand-migrated" "consumer content not overwritten"
+assert_no_out "references-to-update: .docs/agents/briefing.md" "a file that did not move is not on the reference list"
 
 # ── defect 6: an index-only guard is blind to a destination present on disk but untracked.
 #    `.marvin/` is gitignored here on purpose: without it the stray copy makes the tree dirty,
@@ -264,142 +298,139 @@ assert_tracked ".docs/agents/briefing.md"
 assert_eq "$(git stash list | wc -l | tr -d ' ')" "0" "no stash created on the user's behalf"
 
 # ── defect 8: a whole-directory move silently relocates consumer-authored files
-hd "T08 defect 8 — consumer files in .docs/agents/ stay put, are reported, and keep their references"
+hd "T08 defect 8 — consumer files in .docs/agents/ stay put and are named in the report"
 mk_repo t08
 printf 'oncall runbook\n' > .docs/agents/oncall-runbook.md
-printf '%s\n' '- Oncall: `.docs/agents/oncall-runbook.md`' >> CLAUDE.md
-printf 'Escalate per `.docs/agents/oncall-runbook.md`.\n' >> .docs/agents/ticket-filing.md
-commit_all "consumer runbook, cited from CLAUDE.md and a kit file"
+commit_all "consumer runbook"
 run_migrate
 assert_rc 0
 assert_tracked ".docs/agents/oncall-runbook.md" "still at its original path"
 assert_out "declined: .docs/agents/oncall-runbook.md"
 assert_not_tracked ".marvin/agents/oncall-runbook.md"
-# A reference to a file the allowlist refused to move must NOT be retargeted: that is the same
-# locations-vs-references inconsistency the atomic commit exists to prevent, inside a run that
-# reports result=ok.
-assert_file_has "CLAUDE.md" ".docs/agents/oncall-runbook.md" "declined path still referenced where it lives"
-assert_file_lacks "CLAUDE.md" ".marvin/agents/oncall-runbook.md"
-assert_file_has ".marvin/agents/ticket-filing.md" ".docs/agents/oncall-runbook.md" "same inside a migrated file"
-assert_file_lacks ".marvin/agents/ticket-filing.md" ".marvin/agents/oncall-runbook.md"
-assert_file_has "CLAUDE.md" ".marvin/agents/briefing.md" "kit references still retargeted"
+assert_no_out "references-to-update: .docs/agents/oncall-runbook.md" "declined paths are not on the reference list"
+assert_no_out "directory-emptied: .docs/agents/" "the directory still holds a consumer file"
 
-# ── defect 9: `git rm -r "the stale one"` — an undefined, unbounded, recursive delete
-hd "T09 defect 9 — the migration contains no recursive delete, and deletes nothing on collision"
+# ── defect 9: `git rm -r "the stale one"`, and a blanket staging sweep
+hd "T09 defect 9 — no recursive delete, and exactly one pinned staging call"
 if grep -nE 'git[[:space:]]+rm|rm[[:space:]]+-[a-zA-Z]*r|rm[[:space:]]+-rf' "$MIGRATE" | grep -v 'no recursive delete'; then
   bad 'recursive delete or `git rm` present in migrate-v0.21.0.sh'
 else
   ok "no \`git rm\` and no recursive rm in migrate-v0.21.0.sh"
 fi
-if grep -nE 'git[[:space:]]+add[[:space:]]+(-A|--all|\.)' "$MIGRATE"; then
-  bad "blanket staging sweep present in migrate-v0.21.0.sh"
-else
-  ok "staging is by explicit path only"
-fi
+# A pattern hunt for sweep spellings kept missing `git add -f -A`, the exact form its own
+# comment named. Pin the staging call itself instead: there must be exactly one, and it must be
+# the literal-pathspec form.
+add_lines=$(grep -nE '^[[:space:]]*git[[:space:]]+add' "$MIGRATE")
+assert_eq "$(printf '%s\n' "$add_lines" | grep -c .)" "1" "exactly one git add invocation"
+assert_eq "$(printf '%s' "$add_lines" | sed 's/^[0-9]*:[[:space:]]*//')" \
+  'git add -f -- "${ADDARGS[@]}"' "the staging call matches its pinned form (ADDARGS are :(literal) pathspecs)"
 
-# ── defect 10: a blanket INDEX.md rewrite corrupts a Local-tracker config
-hd "T10 defect 10 — INDEX.md lowercasing is anchored to handbook paths only"
-mk_repo t10
-printf '%s\n' 'The whole cascade lives in .docs/agents/ today.' >> CLAUDE.md
-commit_all "bare directory reference"
-run_migrate
-assert_rc 0
-assert_file_has ".marvin/agents/tracker-config.md" ".docs/project-management/INDEX.md" "tracker index ref verbatim"
-assert_file_has ".marvin/agents/tracker-config.md" "the file is named INDEX.md" "bare INDEX.md ref verbatim"
-assert_file_has ".marvin/agents/tracker-config.md" ".marvin/agents/ticket-filing.md" "cascade ref retargeted"
-assert_file_has "CLAUDE.md" ".docs/project-management/INDEX.md" "issue-log ref survived"
-assert_file_has "CLAUDE.md" ".docs/handbooks/developer/index.md" "handbook ref lowercased"
-assert_file_lacks "CLAUDE.md" ".docs/handbooks/developer/INDEX.md"
-assert_file_has "CLAUDE.md" "The whole cascade lives in .marvin/agents/ today." \
-  "bare directory reference retargeted — nothing was left in .docs/agents/"
-
-# ── defect 11: the staging set excluded the CLAUDE.md rewrite → dirty tree + broken revert
-hd "T11 defect 11 — renames and the CLAUDE.md rewrite land in ONE commit"
+# ── defect 11: renames and reference edits must land in ONE revertible commit
+hd "T11 defect 11 — ATOMICITY: the script stages, the agent edits and commits once"
 mk_repo t11
 run_migrate
 assert_rc 0
-assert_clean "nothing left unstaged after the run"
-git show --name-only --format= HEAD | grep -Fxq CLAUDE.md
-chk $? "CLAUDE.md is part of the migration commit"
-git show --name-only --format= HEAD | grep -Fxq .marvin/agents/briefing.md
-chk $? "the moves are in the same commit"
-assert_file_lacks "CLAUDE.md" ".docs/agents/"
-assert_file_lacks "CLAUDE.md" ".docs/PROJECT-INFO.md"
-assert_file_lacks "CLAUDE.md" ".docs/marvin/"
+assert_out "committed=no"
+assert_eq "$(git rev-list --count HEAD)" "1" "the script committed nothing"
+agent_updates_and_commits
+assert_clean "nothing left unstaged after the agent's commit"
 assert_eq "$(git rev-list --count HEAD)" "2" "exactly one migration commit"
+git show --name-only --format= HEAD | grep -Fxq CLAUDE.md
+chk $? "CLAUDE.md is part of that commit"
+git show --name-only --format= HEAD | grep -Fxq .marvin/agents/briefing.md
+chk $? "the renames are in the SAME commit"
+assert_file_lacks "CLAUDE.md" '`.docs/agents/'
+git revert --no-edit HEAD >/dev/null 2>&1
+chk $? "git revert HEAD applies cleanly"
+assert_tracked ".docs/agents/briefing.md" "locations restored"
+assert_not_tracked ".marvin/agents/briefing.md"
+assert_tracked ".docs/handbooks/developer/INDEX.md" "handbook index back to uppercase"
+assert_file_has "CLAUDE.md" '`.docs/agents/briefing.md`' "references consistent with locations again"
+assert_file_lacks "CLAUDE.md" ".marvin/"
+assert_clean "clean after revert"
 
 # ── defect 12: a fixed 13-file list strands Jira's convert-milestones-brief.md
 hd "T12 defect 12 — the Jira-only cascade file migrates too"
 mk_repo t12
-printf 'convert milestones brief, see `.docs/agents/tracker-config.md`\n' > .docs/agents/convert-milestones-brief.md
+printf 'convert milestones brief\n' > .docs/agents/convert-milestones-brief.md
 commit_all "jira install"
 run_migrate
 assert_rc 0
 assert_tracked ".marvin/agents/convert-milestones-brief.md" "not stranded in .docs/agents/"
 assert_not_tracked ".docs/agents/convert-milestones-brief.md"
 assert_no_out "declined: .docs/agents/convert-milestones-brief.md"
-assert_file_has ".marvin/agents/convert-milestones-brief.md" ".marvin/agents/tracker-config.md"
 
-# ── idempotence (DoD 4)
-hd "T13 second run — zero moves, clean tree, unchanged HEAD"
+# ── idempotence
+hd "T13 second run — nothing to do, clean tree, unchanged HEAD"
 mk_repo t13
 run_migrate
 assert_rc 0
+agent_updates_and_commits
 head_after=$(git rev-parse HEAD)
 run_migrate
 assert_rc 0
-assert_out "moved=0"
-assert_out "nothing to migrate"
+assert_out "renamed=0"
+assert_out "result=nothing-to-do"
 assert_eq "$(git rev-parse HEAD)" "$head_after" "HEAD unchanged on re-run"
 assert_clean "clean after re-run"
-
-# ── revert consistency (DoD 3)
-hd "T14 git revert HEAD restores locations AND references together"
-mk_repo t14
-run_migrate
-assert_rc 0
-git revert --no-edit HEAD >/dev/null 2>&1
-chk $? "git revert HEAD applies cleanly"
-assert_tracked ".docs/agents/briefing.md" "cascade back where it was"
-assert_not_tracked ".marvin/agents/briefing.md"
-assert_tracked ".docs/PROJECT-INFO.md"
-assert_not_tracked ".marvin/PROJECT-INFO.md"
-assert_tracked ".docs/handbooks/developer/INDEX.md" "handbook index back to uppercase"
-assert_not_tracked ".docs/handbooks/developer/index.md"
-assert_file_has "CLAUDE.md" ".docs/agents/briefing.md" "references consistent with locations"
-assert_file_has "CLAUDE.md" ".docs/handbooks/developer/INDEX.md"
-assert_file_lacks "CLAUDE.md" ".marvin/"
-assert_clean "clean after revert"
 
 # ── pre-`.docs/` install migrates in one hop
 hd "T15 legacy docs/agents/ install migrates straight to .marvin/agents/"
 mk_repo t15
 git rm -q -f .docs/agents/briefing.md >/dev/null
 mkdir -p docs/agents
-printf 'legacy cascade, see `docs/agents/security.md`\n' > docs/agents/briefing.md
-printf '%s\n' '- Legacy cascade: `docs/agents/briefing.md`' >> CLAUDE.md
+printf 'legacy cascade\n' > docs/agents/briefing.md
 commit_all "pre-.docs install"
 run_migrate
 assert_rc 0
 assert_tracked ".marvin/agents/briefing.md" "one hop from docs/agents/"
 assert_not_tracked "docs/agents/briefing.md"
-assert_file_has "CLAUDE.md" "\`.marvin/agents/briefing.md\`" "legacy reference rewritten"
+assert_out "references-to-update: docs/agents/briefing.md"
+# The upstream URL in CLAUDE.md contains `docs/agents/` too. The script cannot corrupt it
+# because it never edits content; the agent judges it from the rename map.
+assert_file_has "CLAUDE.md" "https://github.com/acme/standards/blob/main/docs/agents/style.md" \
+  "a third-party URL containing docs/agents/ is untouched"
 
-# ── --no-commit
-hd "T16 --no-commit stages without committing"
-mk_repo t16
-head_before=$(git rev-parse HEAD)
-run_migrate --no-commit
+# ── content invariance: the script relocates bytes, it never edits them
+hd "TC1 no file content is modified by any run"
+mk_repo tc1
+tracker_before=$(cksum < .docs/agents/tracker-config.md)
+claude_before=$(cksum < CLAUDE.md)
+pm_before=$(cksum < .docs/project-management/INDEX.md)
+map_before=$(content_map)
+run_migrate
 assert_rc 0
-assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
-assert_out "staged, not committed"
-if [ -n "$(git diff --cached --name-only)" ]; then ok "changes are staged"; else bad "nothing staged"; fi
+assert_eq "$(content_map)" "$map_before" "every file's content census is unchanged — only paths moved"
+assert_eq "$(cksum < .marvin/agents/tracker-config.md)" "$tracker_before" "the moved tracker config is byte-identical"
+assert_eq "$(cksum < CLAUDE.md)" "$claude_before" "CLAUDE.md is byte-identical — the script never opens it"
+assert_eq "$(cksum < .docs/project-management/INDEX.md)" "$pm_before" "the Local tracker's index is untouched"
+assert_file_has ".marvin/agents/tracker-config.md" ".docs/project-management/INDEX.md" \
+  "its .docs/project-management/INDEX.md reference survived verbatim (nothing rewrites it)"
+assert_tracked ".docs/project-management/INDEX.md" "project record stays where it is"
+assert_tracked ".docs/reports/2026-01.md"
+
+# ── a gitignored, untracked CLAUDE.md must never be staged, and must survive a rollback
+hd "TG1 an untracked, gitignored CLAUDE.md is never staged and never deleted"
+mk_repo tg1
+git rm -q --cached CLAUDE.md >/dev/null
+printf '%s\n' 'CLAUDE.md' > .gitignore
+commit_all "CLAUDE.md is gitignored and untracked"
+claude_before=$(cksum < CLAUDE.md)
+assert_clean "fixture: tree is clean with CLAUDE.md ignored"
+run_migrate
+assert_rc 0
+assert_not_tracked "CLAUDE.md" "never force-staged into the index"
+assert_eq "$(cksum < CLAUDE.md)" "$claude_before" "still on disk, byte-identical"
+if git diff --cached --name-only | grep -Fxq CLAUDE.md; then bad "CLAUDE.md was staged"; else ok "CLAUDE.md is not in the staged set"; fi
+
+# ── not a git work tree
+hd "T17 refuses outside a git work tree"
+mkdir -p "$WORK/t17"; cd "$WORK/t17" || exit 1
+OUT=$(cd "$WORK/t17" && env GIT_CEILING_DIRECTORIES="$WORK" bash "$MIGRATE" 2>&1); RC=$?
+assert_rc 4
+assert_out "not a git work tree"
 
 # ── staging: defense in depth behind the clean-tree gate.
-#    On a clean tree a blanket sweep and explicit paths stage the same set, so the only
-#    behaviourally reachable sweep regression is one combined with the `-f` the script already
-#    needs (`git add -f -A` / `git add -f .`). This fixture puts ignored foreign files in reach
-#    of the staging call and asserts they never enter the commit.
 hd "T18 staging never sweeps foreign files that are in reach"
 mk_repo t18
 printf '%s\n' '.marvin/' '.env.local' > .gitignore
@@ -412,22 +443,21 @@ run_migrate
 assert_rc 0
 assert_not_tracked ".marvin/agents/zz-stray.md" "foreign file beside the destination not staged"
 assert_not_tracked ".env.local"
-if git show --name-only --format= HEAD | grep -Fxq .marvin/agents/zz-stray.md; then
-  bad "the stray file entered the migration commit"; else ok "migration commit free of the stray file"; fi
+if git diff --cached --name-only | grep -Fq zz-stray; then bad "the stray file was staged"; else ok "staged set free of the stray file"; fi
 assert_file_has ".marvin/agents/zz-stray.md" "stray, not a cascade file" "left untouched on disk"
 
-# ── flags: an invocation containing --check must never modify anything
-hd "T19 --check and --no-commit are mutually exclusive, in either order"
+# ── flags
+hd "T19 unknown flags are refused, and --check never mutates"
 mk_repo t19
 before=$(snapshot)
-run_migrate --check --no-commit
-assert_rc 4 "--check --no-commit rejected"
-assert_out "mutually exclusive"
-run_migrate --no-commit --check
-assert_rc 4 "--no-commit --check rejected"
+run_migrate --no-commit
+assert_rc 4 "--no-commit is gone: the script never commits, so there is nothing to suppress"
+assert_out "unknown option: --no-commit"
+run_migrate --commit
+assert_rc 4 "--commit is refused too — committing is the agent's step"
 after=$(snapshot)
 assert_eq "$after" "$before" "repository untouched by both rejected invocations"
-assert_not_tracked ".marvin/agents/briefing.md" "no move happened"
+assert_not_tracked ".marvin/agents/briefing.md"
 
 # ── a dry run changes nothing, so it must be available on a dirty tree too
 hd "T20 --check works on a dirty tree and reports it"
@@ -437,39 +467,35 @@ printf 'SECRET=hunter2\n' > .env.local
 before=$(snapshot)
 run_migrate --check
 assert_rc 2 "exit 2 = a real run would refuse"
-assert_out "move:    .docs/agents/briefing.md -> .marvin/agents/briefing.md"
+assert_out "renamed: .docs/agents/briefing.md -> .marvin/agents/briefing.md"
 assert_out "result=plan-only-tree-dirty"
 assert_out ".env.local"
 after=$(snapshot)
 assert_eq "$after" "$before" "dry run changed nothing on a dirty tree"
 assert_eq "$(git diff --cached --name-only | wc -l | tr -d ' ')" "0" "nothing staged"
 
-# ── two source roots targeting one destination is a plan-time collision, not a mid-run failure
+# ── two source roots targeting one destination is a plan-time collision
 hd "T21 dual source roots collide at plan time"
 mk_repo t21
 mkdir -p docs/agents
 printf 'legacy briefing\n' > docs/agents/briefing.md
-printf '%s\n' '- Legacy: `docs/agents/briefing.md`' >> CLAUDE.md
 commit_all "both cascade roots present"
 run_migrate --check
 assert_rc 3 "the dry run already reports the conflict"
 assert_out "collision: .docs/agents/briefing.md -> .marvin/agents/briefing.md (another source targets the same destination: docs/agents/briefing.md)"
 assert_out "collision: docs/agents/briefing.md -> .marvin/agents/briefing.md (another source targets the same destination: .docs/agents/briefing.md)"
-assert_no_out "move:    .docs/agents/briefing.md"
-assert_no_out "move:    docs/agents/briefing.md"
+assert_no_out "renamed: .docs/agents/briefing.md"
+assert_no_out "renamed: docs/agents/briefing.md"
 run_migrate
 assert_rc 3 "real run reports the same conflict"
 assert_out "failures=0" "no move was attempted and failed mid-run"
 assert_tracked ".docs/agents/briefing.md" "both sources survive"
 assert_tracked "docs/agents/briefing.md"
 assert_not_tracked ".marvin/agents/briefing.md"
-assert_file_has "CLAUDE.md" ".docs/agents/briefing.md" "references to the unmoved files are left alone"
-assert_file_has "CLAUDE.md" "\`docs/agents/briefing.md\`"
 assert_tracked ".marvin/agents/security.md" "the rest of the cascade still migrated"
-assert_clean
 
-# ── class 1: consumer filenames are content, never patterns
-hd "T22 declined filenames full of metacharacters are text, not regex"
+# ── consumer filenames are data, never patterns
+hd "T22 declined filenames full of metacharacters are handled as plain text"
 mk_repo t22
 META='runbook (1).md
 a+b.md
@@ -480,41 +506,22 @@ br{ace}.md
 star*.md
 security.md.bak'
 printf '%s\n' "$META" | while IFS= read -r n; do printf 'consumer file\n' > ".docs/agents/$n"; done
-{
-  printf '%s\n' '- Oncall: `.docs/agents/runbook (1).md`'
-  printf '%s\n' '- Plus: `.docs/agents/a+b.md`  `.docs/agents/a|b.md`  `.docs/agents/notes(1.md`'
-  printf '%s\n' '- More: `.docs/agents/q?.md`  `.docs/agents/br{ace}.md`  `.docs/agents/star*.md`'
-  printf '%s\n' '- Backup of a KIT file: `.docs/agents/security.md.bak`'
-  printf '%s\n' 'Unrelated prose that mentions b.md and (1) and must survive byte for byte.'
-  printf '%s\n' 'The cascade folder is .docs/agents/ and it also holds our runbooks.'
-} >> CLAUDE.md
+claude_before=$(cksum < CLAUDE.md)
 commit_all "consumer files with metacharacters in their names"
 run_migrate
-assert_rc 0 "no sed error, no aborted run"
-assert_out "result=ok"
+assert_rc 0 "no pattern error, no aborted run"
+assert_out "result=staged"
 printf '%s\n' "$META" | while IFS= read -r n; do
   if git ls-files | grep -Fxq -- ".docs/agents/$n"; then :; else echo "MISSING:$n"; fi
 done > "$WORK/t22.missing"
 assert_eq "$(cat "$WORK/t22.missing")" "" "every metacharacter-named file stayed at its path"
-assert_file_has "CLAUDE.md" '`.docs/agents/runbook (1).md`' "space + parentheses reference intact"
-assert_file_has "CLAUDE.md" '`.docs/agents/a+b.md`' "plus reference intact"
-assert_file_has "CLAUDE.md" '`.docs/agents/a|b.md`' "pipe reference intact — alternation would have matched bare b.md"
-assert_file_has "CLAUDE.md" '`.docs/agents/notes(1.md`' "unbalanced parenthesis reference intact"
-assert_file_has "CLAUDE.md" '`.docs/agents/q?.md`' "question-mark reference intact"
-assert_file_has "CLAUDE.md" '`.docs/agents/br{ace}.md`' "brace reference intact"
-assert_file_has "CLAUDE.md" '`.docs/agents/star*.md`' "star reference intact"
-assert_file_lacks "CLAUDE.md" ".marvin/agents/runbook (1).md"
-assert_file_lacks "CLAUDE.md" ".marvin/agents/a+b.md"
-assert_file_has "CLAUDE.md" "Unrelated prose that mentions b.md and (1) and must survive byte for byte." \
-  "unrelated line untouched"
-# a kept path that EXTENDS a moved one: `security.md` moved, `security.md.bak` did not
+assert_out "declined: .docs/agents/a|b.md"
+assert_out "declined: .docs/agents/runbook (1).md"
+assert_out "declined: .docs/agents/star*.md"
+assert_eq "$(cksum < CLAUDE.md)" "$claude_before" "CLAUDE.md byte-identical — no rewriting can go wrong"
 assert_tracked ".marvin/agents/security.md" "the kit file still migrated"
 assert_tracked ".docs/agents/security.md.bak" "the consumer backup did not"
-assert_file_has "CLAUDE.md" '`.docs/agents/security.md.bak`' "and its reference was not half-rewritten"
-# The bare-directory pair is withheld while consumer files keep that directory alive.
-assert_file_has "CLAUDE.md" "The cascade folder is .docs/agents/ and it also holds our runbooks." \
-  "bare directory reference kept — the directory still exists"
-assert_out "note: dir-ref-kept: .docs/agents/"
+assert_no_out "references-to-update: .docs/agents/security.md.bak" "and it is not on the reference list"
 
 # ── class 2: a consumer directory name must never act as a glob in a git pathspec
 hd "T23 a handbook directory named x* cannot drag in a gitignored sibling"
@@ -522,8 +529,6 @@ mk_repo t23
 mkdir -p '.docs/handbooks/x*' .docs/handbooks/xsecret
 printf '# x star handbook\n' > '.docs/handbooks/x*/INDEX.md'
 printf '%s\n' '.docs/handbooks/xsecret/' > .gitignore
-{ printf '%s\n' '- Star handbook: `.docs/handbooks/x*/INDEX.md`'
-  printf '%s\n' '- Private handbook (not in git): `.docs/handbooks/xsecret/INDEX.md`'; } >> CLAUDE.md
 commit_all "handbook directory whose name is a glob"
 printf 'API_TOKEN=s3cr3t-not-for-git\n' > .docs/handbooks/xsecret/index.md
 assert_clean "the ignored sibling leaves the tree clean"
@@ -531,13 +536,10 @@ run_migrate
 assert_rc 0
 assert_tracked '.docs/handbooks/x*/index.md' "the real directory was renamed"
 assert_not_tracked ".docs/handbooks/xsecret/index.md" "the gitignored sibling was NOT force-staged"
-if git show --name-only --format= HEAD | grep -Fq xsecret; then
-  bad "the gitignored sibling entered the migration commit"; else ok "migration commit free of the ignored sibling"; fi
+if git diff --cached --name-only | grep -Fq xsecret; then
+  bad "the gitignored sibling entered the staged set"; else ok "staged set free of the ignored sibling"; fi
 assert_file_has ".docs/handbooks/xsecret/index.md" "API_TOKEN=s3cr3t-not-for-git" "secret untouched on disk"
-# The rewrite pair is `.docs/handbooks/x*/INDEX.md`. As a glob it would also match the sibling's
-# reference; as a literal string it matches only itself.
-assert_file_has "CLAUDE.md" '`.docs/handbooks/x*/index.md`' "the star handbook reference was retargeted"
-assert_file_has "CLAUDE.md" '`.docs/handbooks/xsecret/INDEX.md`' "the sibling's reference is untouched — a glob pattern would have eaten it"
+assert_out "renamed: .docs/handbooks/x*/INDEX.md -> .docs/handbooks/x*/index.md"
 
 # ── class 3: symlinks are refused, never followed
 hd "T24 a symlinked .marvin is refused before anything moves"
@@ -554,43 +556,63 @@ assert_out "symlink: .marvin (symlink)"
 assert_tracked ".docs/agents/briefing.md" "nothing moved"
 assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
 assert_eq "$(find "$WORK/t24-outside" -type f | wc -l | tr -d ' ')" "0" "no consumer file left the repository"
+run_migrate --check
+assert_rc 6 "--check predicts the same refusal"
+assert_out "result=plan-only-symlink"
 
-hd "T25 a symlinked CLAUDE.md is refused, not written through"
-mk_repo t25
-mkdir -p "$WORK/t25-outside"
-printf 'outside file citing `.docs/agents/briefing.md`\n' > "$WORK/t25-outside/CLAUDE.md"
-outside_before=$(cksum < "$WORK/t25-outside/CLAUDE.md")
-rm -f CLAUDE.md
-ln -s "$WORK/t25-outside/CLAUDE.md" CLAUDE.md
-commit_all "CLAUDE.md is a symlink out of the repository"
+# ── repository state: `git status --porcelain` alone does not prove a clean tree
+hd "TP1 an assume-unchanged file is refused (its changes are invisible to git status)"
+mk_repo tp1
+git update-index --assume-unchanged src/app.js
+printf 'uncommitted work nobody can see\n' >> src/app.js
+assert_clean "fixture: porcelain is empty although src/app.js is modified"
 head_before=$(git rev-parse HEAD)
 run_migrate
-assert_rc 6 "refused"
-assert_out "symlink: CLAUDE.md (symlink)"
-assert_eq "$(cksum < "$WORK/t25-outside/CLAUDE.md")" "$outside_before" "the out-of-repo file was not written"
-assert_tracked ".docs/agents/briefing.md" "nothing moved"
+assert_rc 9 "refused"
+assert_out "result=refused-repo-state"
+assert_out "assume-unchanged bit set on src/app.js"
+assert_file_has "src/app.js" "uncommitted work nobody can see" "the invisible work was NOT destroyed"
 assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
-assert_clean
+assert_not_tracked ".marvin/agents/briefing.md" "nothing moved"
+
+hd "TP2 a merge in progress is refused, even with an empty porcelain"
+mk_repo tp2
+git checkout -q -b other
+printf 'X\n' >> src/app.js
+git commit -qam "change on other"
+git checkout -q -
+printf 'X\n' >> src/app.js
+git commit -qam "same change applied directly"
+git merge --no-commit --no-ff other >/dev/null 2>&1
+assert_clean "fixture: porcelain is empty while MERGE_HEAD exists"
+if [ -e .git/MERGE_HEAD ]; then ok "fixture: MERGE_HEAD present"; else bad "fixture: no merge in progress"; fi
+run_migrate
+assert_rc 9 "refused — the agent's commit would silently conclude the consumer's merge"
+assert_out "MERGE_HEAD exists"
+assert_not_tracked ".marvin/agents/briefing.md" "nothing moved"
+
+hd "TP3 a detached HEAD is refused"
+mk_repo tp3
+git checkout -q --detach
+run_migrate
+assert_rc 9 "refused"
+assert_out "HEAD is detached"
+assert_not_tracked ".marvin/agents/briefing.md" "nothing moved"
+
+hd "TP4 skip-worktree / sparse checkout is refused"
+mk_repo tp4
+git update-index --skip-worktree src/app.js
+run_migrate
+assert_rc 9 "refused"
+assert_out "skip-worktree bit set on src/app.js"
+assert_not_tracked ".marvin/agents/briefing.md" "nothing moved"
+git update-index --no-skip-worktree src/app.js
+git config core.sparseCheckout true
+run_migrate
+assert_rc 9 "sparse checkout refused too"
+assert_out "core.sparseCheckout is enabled"
 
 # ── class 4: never leave a half-migration
-hd "T26 an unwritable CLAUDE.md fails before the first change"
-mk_repo t26
-chmod 444 CLAUDE.md
-if [ -w CLAUDE.md ]; then
-  printf '   note  running as a user that ignores file permissions — T26 skipped\n'
-else
-  before=$(snapshot)
-  run_migrate
-  assert_rc 8 "refused before mutating"
-  assert_out "result=refused-unwritable"
-  assert_out "unwritable: CLAUDE.md"
-  after=$(snapshot)
-  assert_eq "$after" "$before" "repository byte-identical to its pre-run state"
-  assert_not_tracked ".marvin/agents/briefing.md" "no move happened"
-  assert_clean
-fi
-chmod 644 CLAUDE.md
-
 hd "T27 a killed run rolls back to the pre-run state"
 mk_repo t27
 i=0
@@ -638,13 +660,6 @@ assert_eq "$selftest_rc" "2" "require_workdir aborts when mktemp failed"
 printf '%s' "$selftest" | grep -Fq "refusing to run at the filesystem root"
 chk $? "and says why"
 require_workdir   # the real one is still intact
-
-# ── not a git work tree
-hd "T17 refuses outside a git work tree"
-mkdir -p "$WORK/t17"; cd "$WORK/t17" || exit 1
-OUT=$(cd "$WORK/t17" && env GIT_CEILING_DIRECTORIES="$WORK" bash "$MIGRATE" 2>&1); RC=$?
-assert_rc 4
-assert_out "not a git work tree"
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 cd "$SCRIPT_DIR" || exit 1
