@@ -30,7 +30,7 @@ The four the documentation agent writes, so nobody has to guess: an **architectu
 | [refactor/](refactor/index.md) | Known technical debt and the shape of the cleanup it calls for. | active | {{INSTALL_DATE}} |
 | [future/](future/index.md) | Ideas deliberately deferred — not scheduled, not forgotten. | active | {{INSTALL_DATE}} |
 | [information/](information/index.md) | Durable rules, constraints and warnings agents are obliged to obey — severity-tagged and relevance-routed. | active | {{INSTALL_DATE}} |
-| handbooks/ | The product as it currently is, per audience — `developer/index.md`, `user/index.md`, `admin/index.md`, each its own index. | active | {{INSTALL_DATE}} |
+| [handbooks/](handbooks/index.md) | The product as it currently is, split by the audience that reads it — developer, user, admin, each its own index. | active | {{INSTALL_DATE}} |
 
 `project-management/` and `reports/` are project RECORD, not documentation: machine-shaped, owned by `.marvin/agents/tracker-config.md` and `.marvin/agents/reporting.md`. The crawl does not descend into them, and they are not indexed here.
 

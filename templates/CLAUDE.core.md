@@ -34,15 +34,14 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Writing any agent brief → `.marvin/agents/briefing.md`
 - Validating done work (BA + security personas, E2E script) → `.marvin/agents/validation-agent.md`
 - Documenting after a done task → `.marvin/agents/documentation-agent.md`
-- Creating/updating tracker issues → `.marvin/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide")
-- Labeling ANY tracker item you create or edit (and backfilling unlabeled ones) → `.marvin/agents/label-syntax.md` (versioned registry)
-- Planning milestones/epics or mapping severity to native fields → `.marvin/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
+- Writing, updating OR SEARCHING FOR any document (start every search at `.docs/index.md`; never glob or grep-sweep to find one) → `.marvin/agents/document-standard.md` (header keys, index rows, crawl protocol)
+- Recording a durable rule, constraint or warning — or being bound by one → `.marvin/agents/information-guide.md` (tagging, indexing, briefing duty; severity levels and their read obligations: `.marvin/agents/information-severity.md`)
+- Tracker work → creating/updating issues: `.marvin/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide"); labeling ANY item you create or edit, and backfilling unlabeled ones: `.marvin/agents/label-syntax.md` (versioned registry); planning milestones/epics or mapping severity to native fields: `.marvin/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Planning a `size:l`/`size:xl` task → `.marvin/agents/planning-research.md` (plan-validation + solution research, tier-routed by size)
 - Producing any report (digest / close-out / stakeholder) → `.marvin/agents/reporting.md` (snapshot first, render second)
 - Token/cost reporting, and starting or switching tracker-issue work with telemetry enabled (write the context sidecar) → `.marvin/agents/token-economics.md`
 - Checking, creating, or amending the product handbooks (developer / user / admin wikis) → `.marvin/agents/handbooks.md`
 - Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.marvin/agents/security.md`
-- Micro-tasks → `.marvin/agents/ponytail.md`
 
 ## Standing rules
 
@@ -51,4 +50,5 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - **Attribution: none.** Commits, PRs, docs, and code comments carry NO AI attribution of any kind. {{DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION}}
 - Integration-verify at the real boundary: cold-boot the composed/dev stack for milestone-sized work; API-level checks (curl) are NOT browser E2E — browser-smoke any web-facing change.
 - Real bugs → {{DOCS_ISSUE_LOG_PATH}} AND the tracker per `.marvin/agents/ticket-filing.md`.
+- **Nothing important stays in chat**: a plan → `.docs/plans/`, a finding worth tracking → `.docs/researches/`, identified debt → `.docs/refactor/`, a deferred idea → `.docs/future/`, a warning or durable rule → `.docs/information/` — written as a document and indexed per `.marvin/agents/document-standard.md`, in the same commit. Never left only in a conversation or in `.marvin/MEMORY.md`.
 - {{CONVENTIONS_THAT_BITE: grow this list with project-specific hard-won rules — DI quirks, env-wiring gaps, test-serialization needs — each with the incident reference that earned it.}}
