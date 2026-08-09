@@ -1,6 +1,6 @@
 # The `.docs/` documentation system — index-crawl, three memories, severity × relevance
 
-Date: 2026-08-10 · Status: shipped, not yet wired (AOS-60, AOS-61, AOS-62) · Target: same release as AOS-63
+Date: 2026-08-10 · Status: shipped and wired (AOS-60, AOS-61, AOS-62, wired by AOS-63) · Release: v0.21.0
 
 ## Decision
 
@@ -11,11 +11,17 @@ brought-into-conformance `templates/docs/handbooks/index.md`), and an informatio
 design, before wiring any of it into the cascade or the install/upgrade skills. This record is
 the rationale; the wiring is AOS-63.
 
-**The subsystem is not installed or operating end-to-end.** `templates/CLAUDE.core.md` carries
-no cascade lines for the three new guides, the install skill does not yet copy the six seeds or
-`convert-milestones-brief.md`, no consumer gets a `.docs/handbooks/index.md`, and
-`{{INSTALL_DATE}}` / `{{DOCS_ISSUE_LOG_PATH}}` have no resolution rule yet. Everything below
-describes what the shipped files say, not what a consumer project currently experiences.
+**AOS-63 wired it, and the description below is now what a consumer experiences.**
+`templates/CLAUDE.core.md` names `document-standard.md` and `information-guide.md` (with
+`information-severity.md` as its severity source) and carries the standing rule that plans,
+findings, debt, deferred ideas and warnings are written into `.docs/` rather than left in chat;
+install and upgrade both seed the six `.docs/` seeds plus a `.docs/handbooks/index.md` parent
+that links the three audience indexes (the audience skeleton became
+`templates/docs/handbooks/audience-index.md` so the parent could take the `index.md` slot);
+Jira installs get `convert-milestones-brief.md` in `.marvin/agents/`; `{{INSTALL_DATE}}`
+resolves to the install date and `{{DOCS_ISSUE_LOG_PATH}}` to `.docs/issue-log.md` by default,
+with the root index's record row kept only where the path resolves inside `.docs/` and outside
+`project-management/` and `reports/`.
 
 ## Index-crawl protocol, and why headers exist
 
