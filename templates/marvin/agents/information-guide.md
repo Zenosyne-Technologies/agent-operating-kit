@@ -14,7 +14,13 @@ The orchestrator follows this at all times, not only when writing documentation.
 
 A durable constraint, warning, gotcha or hard-won rule a future agent must obey — true beyond the task that discovered it. **One fact per file.** Not a plan (→ `.docs/plans/`), not a research memo (→ `.docs/researches/`), not a changelog entry, not a narrative. If the file needs the word "and" to state what it is about, it is two files.
 
-Boundary against the other two memories, which is where this system rots first: session continuity that Marvin prunes → `.marvin/MEMORY.md`; the always-loaded one-liner that POINTS at a file here → `CLAUDE.md`'s conventions list; the rule itself, in full, exactly once → here. The table in `.docs/information/index.md` states it for readers arriving from the crawl.
+Three memories overlap here, and this is where the system rots first. Each holds one thing, and a rule restated in two of them has already drifted:
+
+| system | what it holds | who it serves |
+|---|---|---|
+| `.marvin/MEMORY.md` | Marvin's working memory — session continuity, prunable at will | the orchestrator, privately |
+| `.docs/information/` | the durable rule itself, in full, exactly once — indexed and severity-tagged | every dispatched agent |
+| `CLAUDE.md` conventions | the always-loaded one-liner that POINTS at a file here, never a copy of it | everyone, on every turn |
 
 ## Header additions
 
@@ -31,11 +37,11 @@ These are EXACTLY the dispatch personas of the model-tier rules in `CLAUDE.md` �
 
 ## Index maintenance
 
-`.docs/information/index.md` sorts rows by severity, `critical` first, and carries relevance per row:
+`.docs/information/index.md` uses the canonical row of `document-standard.md` with `severity` and `relevance` inserted after `item` — one of the two deviations that standard sanctions, and the shape it defines:
 
-`| item | severity | relevance | what it covers | updated |`
+`| item | severity | relevance | what it covers | status | updated |`
 
-Every create, retag or prune updates that table in the same commit. An information file not in the index does not exist — nobody will be briefed with it.
+Rows sort by severity, `critical` first. Every create, retag or prune updates that table in the same commit. An information file not in the index does not exist — nobody will be briefed with it.
 
 ## Read obligation
 
@@ -43,7 +49,7 @@ Every create, retag or prune updates that table in the same commit. An informati
 
 ## Briefing duty (the reason any of this works)
 
-When the orchestrator briefs a sub-agent, it NAMES — by path, in the brief — every information file whose `relevance:` matches that agent's persona and whose severity makes it mandatory. The agent is never left to discover them, and never told to "check the information folder". A brief that omits a `critical` file that applies is a defective brief; a validator failing work against a rule that was never named is the orchestrator's miss, not the builder's.
+When the orchestrator briefs a sub-agent, it NAMES — by path, in the brief — every information file whose `relevance:` matches that agent's persona and whose severity makes it mandatory. The agent is never left to discover them, and never told to "check the information folder". A brief that omits a `critical` file that applies is a defective brief; a validator failing work against a rule that was never named is the orchestrator's miss, not the builder's. This is item 5 of `briefing.md`, which also reserves the FINAL MESSAGE line the agent reports them back on.
 
 ## Lifecycle
 
