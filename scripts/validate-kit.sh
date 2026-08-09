@@ -80,17 +80,18 @@ fi
 # (templates/marvin/agents/document-standard.md — full under templates/docs/, reduced for the cascade)
 FULL_KEYS="doc type status summary keywords level created updated"
 RED_KEYS="doc type status summary updated"
+# Headerless by exception, listed one exact path at a time: files with their own machine format,
+# and briefs that are dispatched from the plugin rather than installed. EVERY other templates/**/*.md
+# is treated as consumer-bound and MUST carry a header — a new file is classified here deliberately
+# or it fails (extension rule 2 adds per-tracker files; extend this list in the same PR).
+NOHDR=" templates/CLAUDE.core.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/jira/convert-milestones-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
 missing=""
 while IFS= read -r f; do
-  case "$f" in
-    # own machine format, or never installed into a consumer project
-    templates/CLAUDE.core.md|templates/marvin/PROJECT-INFO.md|templates/marvin/MEMORY.md) continue;;
-    templates/pm/INSTALL.md|*/intake-structure-brief.md|*/convert-milestones-brief.md) continue;;
-  esac
+  case "$NOHDR" in *" $f "*) continue;; esac
+  # default is the reduced header: anything consumer-bound that is not a .docs/ document
   case "$f" in
     templates/docs/*) keys="$FULL_KEYS";;
-    templates/marvin/agents/*|templates/pm/*/tracker-config.md|templates/pm/*/stats-collection-brief.md) keys="$RED_KEYS";;
-    *) continue;;
+    *) keys="$RED_KEYS";;
   esac
   if [ "$(head -1 "$f")" != "---" ]; then missing="$missing $f(no-header)"; continue; fi
   hdr=$(awk 'NR==1{next} /^---$/{exit} {print}' "$f")
