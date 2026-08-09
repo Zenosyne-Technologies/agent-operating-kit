@@ -12,18 +12,16 @@ Three living, Obsidian-compatible wikis under `.docs/handbooks/<audience>/` (`de
 
 ## Layout
 
-One page per LOGICAL unit — a business logic, feature, or module grouping the ORCHESTRATOR sets at planning time. NEVER one page per code file: hundreds of files must collapse into a handful of units. A unit that outgrows a single page becomes a subfolder — `<unit>/<unit>.md` is its main page (overview + the unit's FULL `sources` list) with topic sub-files beside it (each carrying its own narrower `sources`), all wiki-linked from the main page. Plain markdown, per-folder `index.md` as the table of contents. Every page (a subfolder registers its main page) MUST be in its folder's index with a one-line description — **a page not in the index doesn't exist**, even if the file sits on disk.
+One page per LOGICAL unit — a business logic, feature, or module grouping the ORCHESTRATOR sets at planning time. NEVER one page per code file: hundreds of files must collapse into a handful of units. A unit that outgrows a single page becomes a subfolder — `<unit>/<unit>.md` is its main page (overview + the unit's FULL `sources` list) with topic sub-files beside it (each carrying its own narrower `sources`), all wiki-linked from the main page. Plain markdown, per-folder `index.md` as the table of contents. Every page (a subfolder registers its main page) MUST be in its folder's index with a one-line description (its `summary:`, quoted verbatim) — **a page not in the index doesn't exist**, even if the file sits on disk.
 
 Scope: document only what the PROJECT introduces. Framework defaults and stock conventions (e.g., a Laravel app's standard structure or routing conventions) are never referenced or explained — only the functions, logic, and nuances this project added on top.
 
 ## Page format
 
-YAML frontmatter:
-- `title` — page title
+YAML frontmatter: the full document header of `document-standard.md` (`doc`, `type: handbook`, `status`, `summary`, `keywords`, `level`, `created`, `updated`), plus the handbook-only keys:
 - `audience` — `developer` | `user` | `admin`
 - `module` — the module/feature this page covers
-- `sources` — list of repo code paths this page documents (the discovery key)
-- `updated` — `YYYY-MM-DD`
+- `sources` — list of repo code paths this page documents (the discovery key — the handbook's form of `covers:`)
 - `related` — list of quoted `"[[Page Name]]"` links (quoting keeps the YAML valid for Obsidian's property editor)
 
 Body: Obsidian wikilinks (`[[Page Name]]`) between pages; kebab-case filenames; relative-only references (no absolute paths, no external URLs standing in for internal links).
