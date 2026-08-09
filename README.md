@@ -75,7 +75,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 
 No plugin, three steps:
 
-1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? Do not move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan).
+1. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; `templates/docs/handbooks/index.md` → `<repo>/.docs/handbooks/{developer,user,admin}/index.md`; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Upgrading an install that used an older cascade location (`docs/agents/` or `.docs/agents/`)? Do not move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan). It moves and stages the kit's files and prints a rename map; you then update the references it lists and commit both together.
 2. **Fill every `{{PLACEHOLDER}}`** in the core file — project facts, env preamble, tracker coordinates. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 3. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -223,7 +223,7 @@ The static gate's eight checks: known placeholders only · template line budgets
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 scripts/validate-kit.sh              eight-check static release gate (CI runs it on every PR)
-scripts/migrate-v<version>.sh        executable layout migration for a release that moves installed files
+scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
