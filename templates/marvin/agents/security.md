@@ -1,3 +1,11 @@
+---
+doc: Security discipline
+type: reference
+status: active
+summary: The security surfaces every task is checked against, plus secrets handling and dependency vetting rules.
+updated: {{INSTALL_DATE}}
+---
+
 # Security discipline
 
 Applies to EVERY task that touches auth, input boundaries, data exposure, secrets, or dependencies — cite this file in those briefs.

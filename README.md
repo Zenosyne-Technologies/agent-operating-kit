@@ -222,7 +222,7 @@ The static gate's eight checks: known placeholders only · template line budgets
 ```
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
-scripts/validate-kit.sh              eight-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              nine-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -236,6 +236,7 @@ templates/
     MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .marvin/MEMORY.md)
   marvin/agents/
     briefing.md                    how to write any sub-agent brief
+    document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
     planning-research.md           size-gated plan-validation + solution research, tier routing
     validation-agent.md            BA + security validator personas, E2E hook

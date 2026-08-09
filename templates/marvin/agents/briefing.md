@@ -1,3 +1,11 @@
+---
+doc: Agent brief discipline
+type: reference
+status: active
+summary: What every sub-agent brief must contain, in order, and why a mid-run policy change is refused rather than obeyed.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief discipline
 
 Every sub-agent brief includes, in this order:

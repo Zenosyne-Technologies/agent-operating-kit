@@ -1,3 +1,11 @@
+---
+doc: Planning research
+type: reference
+status: active
+summary: The size-gated plan-validation and solution-research passes, which tier runs them, and where their findings land.
+updated: {{INSTALL_DATE}}
+---
+
 # Planning research (plan validation + solution research)
 
 Applies when planning sizes a task `size:l` or `size:xl` (per `label-syntax.md`). Tasks `size:m` and below get NO dedicated research pass — build them directly.

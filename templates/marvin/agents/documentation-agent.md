@@ -1,3 +1,11 @@
+---
+doc: Documentation agent scope
+type: reference
+status: active
+summary: What a documentation agent covers once a tracker task has passed both validators, and the order it covers it in.
+updated: {{INSTALL_DATE}}
+---
+
 # Documentation agent (after a tracker task is done)
 
 Dispatch `marvin:documenter` once — and only once — BOTH validators have PASSED; the task is not Done until this step lands, and the tracker issue is never closed before it. Brief the agent with the issue id, commit hashes, and the touched paths. A failed validation goes back to the builder instead: nothing is documented until the work actually holds.
