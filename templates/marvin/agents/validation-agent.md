@@ -1,3 +1,11 @@
+---
+doc: Validation agent personas
+type: reference
+status: active
+summary: The completion and security validator personas, what each falsifies, and the evidence each must produce.
+updated: {{INSTALL_DATE}}
+---
+
 # Validation agents
 
 Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (heavy worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:

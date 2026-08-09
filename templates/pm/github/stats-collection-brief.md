@@ -1,3 +1,11 @@
+---
+doc: Stats collection brief — GitHub Issues
+type: reference
+status: active
+summary: The dispatchable brief that snapshots label-dimension statistics from GitHub Issues into a report file.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief: collect tracker statistics (GitHub Issues)
 
 Fill the placeholders, then hand this brief verbatim to an agent (works at the small-worker tier; micro-model if your `gh` CLI setup is reliable).

@@ -1,3 +1,11 @@
+---
+doc: Ticket filing rules
+type: reference
+status: active
+summary: How agents create and edit tracker issues, and where the in-tracker intake guide takes over.
+updated: {{INSTALL_DATE}}
+---
+
 # Filing tracker issues
 
 Authoritative rules live in the tracker document **"Issue Intake & Triage Guide"** ({{TRACKER_GUIDE_URL}}). Every brief that has an agent create or update issues MUST tell the agent to fetch and follow that document — and to label per `label-syntax.md`.

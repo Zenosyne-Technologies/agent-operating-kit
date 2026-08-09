@@ -1,3 +1,11 @@
+---
+doc: Stats collection brief — Jira
+type: reference
+status: active
+summary: The dispatchable brief that snapshots label-dimension statistics from Jira into a report file.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief: collect tracker statistics (Jira)
 
 Fill the placeholders, then hand this brief verbatim to an agent (works at the small-worker tier; micro-model if your Jira MCP tools are reliable).
