@@ -32,6 +32,16 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/marvin-migtest.XXXXXX") || WORK=""
 require_workdir
 trap 'if [ -n "${WORK:-}" ] && [ -d "$WORK" ]; then chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"; fi' EXIT
 
+# Timing-sensitive fixtures (the kill/rollback race) run REPEAT_TIMING times: a flake of a few
+# percent hides behind a single green run and then fails CI at random.
+REPEAT_TIMING=${REPEAT_TIMING:-1}
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repeat-timing) REPEAT_TIMING="$2"; shift 2;;
+    *) printf 'usage: test-migrations.sh [--repeat-timing N]\n' >&2; exit 2;;
+  esac
+done
+
 PASSED=0; FAILED=0; CURRENT=""
 OUT=""; RC=0
 
@@ -55,7 +65,10 @@ assert_clean()       { if [ -z "$(git status --porcelain)" ]; then ok "working t
 assert_eq()          { if [ "$1" = "$2" ]; then ok "$3"; else bad "$3 (got '$1', want '$2')"; fi; }
 
 run_migrate() { OUT=$(bash "$MIGRATE" "$@" 2>&1); RC=$?; return 0; }
-report_lines() { printf '%s\n' "$OUT" | sed -n '/^---- migrate-v0.21.0 report ----$/,/^---- end migrate-v0.21.0 report ----$/p'; }
+# From the FIRST start fence to end of output — not to the first end fence. A range that stops
+# at the first END makes anything after a forged fence invisible to the grammar check meant to
+# catch exactly that. assert_report_wellformed then requires exactly one fence of each kind.
+report_lines() { printf '%s\n' "$OUT" | sed -n '/^---- migrate-v0.21.0 report ----$/,$p'; }
 
 # The report is a machine contract parsed by an agent holding edit and commit authority, and
 # every path in it is consumer-controlled. Two general assertions police it, so a fixture does
@@ -64,17 +77,21 @@ report_lines() { printf '%s\n' "$OUT" | sed -n '/^---- migrate-v0.21.0 report --
 # record counts match the declared totals.
 RECORD_GRAMMAR='^(---- (migrate-v0\.21\.0|end migrate-v0\.21\.0) report ----|(version|encoding|mode|renamed|declined|collisions|failures|staged|committed|result)=.*|(renamed|declined|collision|failure|symlink|repo-state|references-to-update|directory-emptied): .*)$'
 assert_report_wellformed() {
-  local bad_lines
+  local bad_lines n declared counted key rec
   bad_lines=$(report_lines | grep -vE "$RECORD_GRAMMAR" || true)
   if [ -z "$bad_lines" ]; then ok "every report line is a valid record${1:+ — $1}"
   else bad "report contains non-record line(s)${1:+ — $1}: $(printf '%s' "$bad_lines" | head -3 | tr '\n' '|')"; fi
-  local declared counted
-  declared=$(report_lines | sed -n 's/^renamed=//p')
-  counted=$(report_lines | grep -c '^renamed: ' || true)
-  assert_eq "$counted" "$declared" "renamed: record count matches renamed=${declared}"
-  declared=$(report_lines | sed -n 's/^declined=//p')
-  counted=$(report_lines | grep -c '^declined: ' || true)
-  assert_eq "$counted" "$declared" "declined: record count matches declined=${declared}"
+  n=$(printf '%s\n' "$OUT" | grep -c '^---- migrate-v0.21.0 report ----$' || true)
+  assert_eq "$n" "1" "exactly one opening fence in the whole output"
+  n=$(printf '%s\n' "$OUT" | grep -c '^---- end migrate-v0.21.0 report ----$' || true)
+  assert_eq "$n" "1" "exactly one closing fence in the whole output"
+  # every declared total is cross-checked against its records, not just two of them
+  for key in renamed:renamed declined:declined collisions:collision failures:failure; do
+    declared=$(report_lines | sed -n "s/^${key%%:*}=//p")
+    rec=${key##*:}
+    counted=$(report_lines | grep -c "^${rec}: " || true)
+    assert_eq "$counted" "$declared" "${rec}: record count matches ${key%%:*}=${declared}"
+  done
 }
 # `--check` is the human safety net and the basis for the agent's edits, so it must not differ
 # from the real run in anything but the three fields that describe the run itself.
@@ -285,6 +302,11 @@ run_migrate
 assert_rc 0
 assert_tracked ".docs/handbooks/developer/index.md" "resumed from the temp name"
 assert_not_tracked ".docs/handbooks/developer/__index.tmp" "no resume marker shipped"
+assert_out "renamed: .docs/handbooks/developer/__index.tmp -> .docs/handbooks/developer/index.md" \
+  "the rename record shows the real move"
+assert_out "references-to-update: .docs/handbooks/developer/INDEX.md"
+assert_no_out "references-to-update: .docs/handbooks/developer/__index.tmp" \
+  "the agent is pointed at the reference consumers actually hold, not the temp file"
 
 # ── defect 4: unconditional `rmdir .docs/marvin` aborts the run when a consumer keeps files
 hd "T04 defect 4 — pruning an emptied source directory is best effort"
@@ -662,6 +684,73 @@ run_migrate
 assert_rc 9 "sparse checkout refused too"
 assert_out "core.sparseCheckout is enabled"
 
+# ── the handbook query is the kit's own, and it must not reach past one level
+hd "TM1 a nested consumer INDEX.md under .docs/handbooks/ is never touched"
+mk_repo tm1
+mkdir -p .docs/handbooks/developer/subproject/notes
+printf '# consumer notes index\n' > .docs/handbooks/developer/subproject/notes/INDEX.md
+mkdir -p .docs/handbooks/user/archive
+printf '# archived\n' > .docs/handbooks/user/archive/INDEX.md
+commit_all "consumer INDEX.md files nested under the handbooks tree"
+before_nested=$(cksum < .docs/handbooks/developer/subproject/notes/INDEX.md)
+run_migrate
+assert_rc 0
+assert_tracked ".docs/handbooks/developer/subproject/notes/INDEX.md" "still at its original path"
+assert_tracked ".docs/handbooks/user/archive/INDEX.md"
+assert_not_tracked ".docs/handbooks/developer/subproject/notes/index.md" "not renamed"
+assert_not_tracked ".docs/handbooks/user/archive/index.md"
+assert_no_out "subproject/notes" "absent from every record — a bare glob would have listed it"
+assert_no_out "user/archive"
+assert_eq "$(cksum < .docs/handbooks/developer/subproject/notes/INDEX.md)" "$before_nested" "untouched"
+assert_tracked ".docs/handbooks/developer/index.md" "the audience-level index still migrated"
+assert_check_equivalence "nested consumer indexes"
+
+# ── the encoding contract must not depend on the shell that runs the script
+hd "TM3 the report is byte-identical under a C and a UTF-8 locale"
+mk_repo tm3
+printf 'x\n' > '.docs/agents/café.md'
+printf 'x\n' > '.docs/agents/naïve (1).md'
+commit_all "non-ASCII consumer filenames"
+c_out=$(LC_ALL=C LANG=C bash "$MIGRATE" --check 2>&1)
+u_out=$(LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 bash "$MIGRATE" --check 2>&1)
+assert_eq "$u_out" "$c_out" "identical report bytes under C and en_US.UTF-8"
+OUT="$c_out"
+assert_out "result=plan" "no locale-induced repo-state refusal (the ls-files -v tag test is a range too)"
+assert_out 'declined: ".docs/agents/caf\303\251.md"' "high bytes are octal-escaped, per the encoding= line"
+assert_out 'declined: ".docs/agents/na\303\257ve (1).md"'
+assert_report_wellformed "non-ASCII names"
+if command -v locale >/dev/null 2>&1 && locale -a 2>/dev/null | grep -qi 'iso8859-1'; then
+  i_out=$(LC_ALL=en_US.ISO8859-1 LANG=en_US.ISO8859-1 bash "$MIGRATE" --check 2>&1)
+  assert_eq "$i_out" "$c_out" "identical under an ISO-8859 locale too"
+else
+  printf '   note  no ISO-8859 locale on this host — C vs UTF-8 checked only\n'
+fi
+
+# ── nothing moved means no move records, on every path that reaches the report
+hd "TM4 a refused run carries no move map"
+mk_repo tm4
+printf 'work in progress\n' >> src/app.js
+run_migrate
+assert_rc 2 "dirty refusal"
+assert_out "renamed=0"
+assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the dirty refusal"
+assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records either"
+assert_eq "$(report_lines | grep -c '^directory-emptied: ')" "0" "and no directory-emptied records"
+assert_report_wellformed "dirty refusal"
+git checkout -q -- src/app.js
+git update-index --assume-unchanged src/app.js
+run_migrate
+assert_rc 9 "repo-state refusal"
+assert_out "renamed=0"
+assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the repo-state refusal"
+assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records either"
+assert_report_wellformed "repo-state refusal"
+git update-index --no-assume-unchanged src/app.js
+# --check is the exception, and deliberately so: showing the plan is what a dry run is for
+run_migrate --check
+assert_rc 0
+assert_out "renamed: .docs/agents/briefing.md -> .marvin/agents/briefing.md" "the dry run still shows its plan"
+
 # ── the report is a machine contract: a path must never be able to forge a record
 hd "TX1 a newline in a path cannot inject report records"
 mk_repo tx1
@@ -743,55 +832,63 @@ assert_rc 9 "submodule.recurse refused too — a rollback would recurse into sub
 assert_out "submodule.recurse is enabled"
 
 # ── class 4: never leave a half-migration
-hd "T27 a killed run rolls back to the pre-run state"
-mk_repo t27
-i=0
-while [ "$i" -lt 80 ]; do                      # widen the window so the kill lands mid-run
-  mkdir -p ".docs/handbooks/aud$i"
-  printf '# aud%s\n' "$i" > ".docs/handbooks/aud$i/INDEX.md"
-  i=$((i+1))
+t27_killed_run_rolls_back() {
+  mk_repo "t27-$1"
+  i=0
+  while [ "$i" -lt 80 ]; do                      # widen the window so the kill lands mid-run
+    mkdir -p ".docs/handbooks/aud$i"
+    printf '# aud%s\n' "$i" > ".docs/handbooks/aud$i/INDEX.md"
+    i=$((i+1))
+  done
+  commit_all "many handbook audiences"
+  before=$(snapshot)
+  head_before=$(git rev-parse HEAD)
+  bash "$MIGRATE" > "$WORK/t27.log" 2>&1 &
+  mig_pid=$!
+  # Wait for the first actual mutation (`.marvin` appears) — a spin without a sleep kills the run
+  # during planning, where there is nothing to roll back and every assertion passes for free.
+  waited=0
+  while [ ! -d .marvin ] && [ "$waited" -lt 1000 ]; do   # generous: the box may be loaded
+    kill -0 "$mig_pid" 2>/dev/null || break
+    sleep 0.02
+    waited=$((waited+1))
+  done
+  if [ -d .marvin ]; then ok "the migration reached its first change before the kill"
+  else bad "the migration never created .marvin — the kill would prove nothing"; fi
+  kill -TERM "$mig_pid" 2>/dev/null
+  wait "$mig_pid" 2>/dev/null
+  mig_rc=$?
+  if [ "$(git rev-parse HEAD)" != "$head_before" ]; then
+    bad "the kill missed its window — the migration completed (rc=$mig_rc); fixture needs a wider window"
+  else
+    ok "the run was killed after it started moving files (rc=$mig_rc)"
+    after=$(snapshot)
+    assert_eq "$after" "$before" "repository byte-identical to its pre-run state"
+    assert_clean "no staged half-migration left behind"
+    assert_tracked ".docs/agents/briefing.md" "sources restored"
+    assert_not_tracked ".marvin/agents/briefing.md"
+    if [ -e .marvin ]; then bad ".marvin was left behind"; else ok "created directories removed"; fi
+    grep -q "restoring the repository to" "$WORK/t27.log"
+    chk $? "the run reported its rollback"
+    # A rolled-back run must not describe moves that were undone: an agent that parses the map
+    # without branching on result= would otherwise edit references for files never moved.
+    OUT=$(cat "$WORK/t27.log")
+    assert_out "result=rolled-back"
+    assert_out "renamed=0"
+    assert_out "staged=0"
+    assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the rollback path"
+    assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records either"
+    assert_eq "$(report_lines | grep -c '^directory-emptied: ')" "0" "and no directory-emptied records"
+    assert_report_wellformed "rolled-back report"
+  fi
+}
+# The kill lands in a race window, so a single green run proves little: repeat it.
+rep=1
+while [ "$rep" -le "$REPEAT_TIMING" ]; do
+  hd "T27 a killed run rolls back to the pre-run state (run $rep/$REPEAT_TIMING)"
+  t27_killed_run_rolls_back "$rep"
+  rep=$((rep+1))
 done
-commit_all "many handbook audiences"
-before=$(snapshot)
-head_before=$(git rev-parse HEAD)
-bash "$MIGRATE" > "$WORK/t27.log" 2>&1 &
-mig_pid=$!
-# Wait for the first actual mutation (`.marvin` appears) — a spin without a sleep kills the run
-# during planning, where there is nothing to roll back and every assertion passes for free.
-waited=0
-while [ ! -d .marvin ] && [ "$waited" -lt 1000 ]; do   # generous: the box may be loaded
-  kill -0 "$mig_pid" 2>/dev/null || break
-  sleep 0.02
-  waited=$((waited+1))
-done
-if [ -d .marvin ]; then ok "the migration reached its first change before the kill"
-else bad "the migration never created .marvin — the kill would prove nothing"; fi
-kill -TERM "$mig_pid" 2>/dev/null
-wait "$mig_pid" 2>/dev/null
-mig_rc=$?
-if [ "$(git rev-parse HEAD)" != "$head_before" ]; then
-  bad "the kill missed its window — the migration completed (rc=$mig_rc); fixture needs a wider window"
-else
-  ok "the run was killed after it started moving files (rc=$mig_rc)"
-  after=$(snapshot)
-  assert_eq "$after" "$before" "repository byte-identical to its pre-run state"
-  assert_clean "no staged half-migration left behind"
-  assert_tracked ".docs/agents/briefing.md" "sources restored"
-  assert_not_tracked ".marvin/agents/briefing.md"
-  if [ -e .marvin ]; then bad ".marvin was left behind"; else ok "created directories removed"; fi
-  grep -q "restoring the repository to" "$WORK/t27.log"
-  chk $? "the run reported its rollback"
-  # A rolled-back run must not describe moves that were undone: an agent that parses the map
-  # without branching on result= would otherwise edit references for files never moved.
-  OUT=$(cat "$WORK/t27.log")
-  assert_out "result=rolled-back"
-  assert_out "renamed=0"
-  assert_out "staged=0"
-  assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the rollback path"
-  assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records either"
-  assert_eq "$(report_lines | grep -c '^directory-emptied: ')" "0" "and no directory-emptied records"
-  assert_report_wellformed "rolled-back report"
-fi
 
 hd "T28 the suite refuses to run without a scratch directory"
 selftest=$( (WORK=""; require_workdir; echo "GUARD DID NOT FIRE") 2>&1 )
