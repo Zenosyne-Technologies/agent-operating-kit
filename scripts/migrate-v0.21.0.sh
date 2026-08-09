@@ -11,17 +11,26 @@
 # commits the staged renames together with its reference edits, so the migration is still one
 # atomic, revertible commit.
 #
+# THE REPORT IS A MACHINE CONTRACT another agent parses while holding edit and commit
+# authority, and every path in it comes from a consumer-controlled name. So the report is
+# ENCODED, not interpolated: see `q()` and the `encoding=` line it prints. One logical record
+# per physical line, always — a path can never forge a record.
+#
 # It performs destructive git operations, unattended, in a repository the kit does not own,
-# whose file names it does not control. Three design rules keep that safe, all mutation-tested
+# whose file names it does not control. Four design rules keep that safe, all mutation-tested
 # by scripts/test-migrations.sh:
 #
 #   1. NO CONSUMER NAME IS EVER INTERPRETED AS A PATTERN. Every git invocation that takes a
 #      consumer path passes it as a `:(literal)` pathspec, which cannot glob.
-#   2. SYMLINKS ARE REFUSED, NEVER FOLLOWED. Any symlinked source, destination or destination
+#   2. NO CONSUMER NAME IS EVER EMITTED RAW. Every path printed goes through `q()`.
+#   3. SYMLINKS ARE REFUSED, NEVER FOLLOWED. Any symlinked source, destination or destination
 #      ancestor aborts before the first change.
-#   3. ANY FAILURE AFTER THE FIRST CHANGE ROLLS BACK. The repository state is verified exactly
-#      clean at entry, so the pre-migration state is HEAD; a trap restores it on error, kill or
-#      full disk.
+#   4. ANY FAILURE AFTER THE FIRST CHANGE ROLLS BACK, and the rolled-back report contains no
+#      move records. The repository state is verified exactly clean at entry, so the
+#      pre-migration state is HEAD; a trap restores it on error, kill or full disk.
+#
+# `--check` prints the same report as the real run: they may differ ONLY in `mode=`, `staged=`
+# and `result=`. Anything else would make the dry run an unsafe basis for the agent's edits.
 #
 # Usage: bash migrate-v0.21.0.sh [--check]
 #   (no flag)  move the kit's files and stage them by literal pathspec — NO COMMIT
@@ -35,7 +44,8 @@
 #   6  refused before changing anything: a symlinked source, destination or ancestor
 #   7  a failure occurred after the first change; the repository was rolled back to HEAD
 #   9  refused before changing anything: repository state makes this unsafe (an operation in
-#      progress, assume-unchanged/skip-worktree bits, sparse checkout, detached or unborn HEAD)
+#      progress, assume-unchanged/skip-worktree bits, sparse checkout, a dirty or recursed
+#      submodule, detached or unborn HEAD)
 set -euo pipefail
 
 KIT_VERSION="0.21.0"
@@ -72,8 +82,7 @@ CASE_DIR=(); CASE_FROM=()
 DECL_PATH=(); DECL_WHY=()
 COLL_SRC=(); COLL_DST=(); COLL_WHY=()
 FAIL_SRC=(); FAIL_DST=()
-MOVED_SRC=(); MOVED_DST=()
-STAGE=(); NOTES=(); CREATED_DIRS=(); SYMLINK_HITS=(); STATE_PROBLEMS=(); EMPTIED=()
+STAGE=(); CREATED_DIRS=(); SYMLINK_HITS=(); STATE_PROBLEMS=(); EMPTIED=()
 DIRTY=""
 HEAD_AT_ENTRY=""
 MUTATED=0
@@ -90,8 +99,34 @@ Usage: bash ${SELF}.sh [--check]
 EOF
 }
 
-say()  { printf '%s\n' "$SELF: $*"; }
-note() { NOTES[${#NOTES[@]}]="$*"; }
+say() { printf '%s\n' "$SELF: $*"; }
+
+# ── path encoding: the report is a contract, so every path is encoded, never interpolated ────
+# A tracked path may contain a newline, a tab, a `"` or the ` -> ` separator, and it is
+# consumer-controlled. Printed raw, one file could forge `renamed:`/`note:`/anything records in
+# a report another agent acts on. `q()` follows git's own convention (`core.quotePath`): a path
+# made only of the safe set is printed as-is; anything else is C-quoted in double quotes. So a
+# record is exactly one line, and an unquoted field can never contain a space — which is what
+# makes ` -> ` unambiguous as a separator.
+ENCODING_DOC='encoding=paths are printed raw when they match [A-Za-z0-9._/@+-]+, otherwise C-quoted in double quotes with \n \t \r \" \\ and \ooo escapes (git core.quotePath convention); exactly one record per line'
+q() {
+  local p="$1"
+  case "$p" in
+    *[!A-Za-z0-9._/@+-]*) ;;
+    *) printf '%s' "$p"; return 0;;
+  esac
+  printf '%s' "$p" | LC_ALL=C od -An -v -tu1 | awk '
+    BEGIN{ printf "\"" }
+    { for(i=1;i<=NF;i++){ b=$i+0
+        if(b==92) printf "\\\\"
+        else if(b==34) printf "\\\""
+        else if(b==10) printf "\\n"
+        else if(b==9)  printf "\\t"
+        else if(b==13) printf "\\r"
+        else if(b<32 || b>126) printf "\\%03o", b
+        else printf "%c", b } }
+    END{ printf "\"" }'
+}
 
 # ── git access: every consumer path goes in as a literal pathspec ────────────────────────────
 # A bare pathspec is a GLOB. A consumer directory named `x*` plus `git add -f` was reproduced
@@ -115,14 +150,6 @@ add_case()      { CASE_DIR[${#CASE_DIR[@]}]="$1"; CASE_FROM[${#CASE_FROM[@]}]="$
 add_declined()  { DECL_PATH[${#DECL_PATH[@]}]="$1"; DECL_WHY[${#DECL_WHY[@]}]="$2"; }
 add_collision() { COLL_SRC[${#COLL_SRC[@]}]="$1"; COLL_DST[${#COLL_DST[@]}]="$2"
                   COLL_WHY[${#COLL_WHY[@]}]="$3"; }
-
-# A tab or a newline in a path would break the one-line-per-entry report the agent parses.
-# Such a file is left strictly alone rather than half-handled.
-printable_path() {
-  case "$1" in *"$(printf '\t')"*|*"
-"*) return 1;; esac
-  return 0
-}
 
 # ── destination guards ───────────────────────────────────────────────────────────────────────
 # REAL path moves: a destination counts as occupied if it is in the index OR present on disk.
@@ -160,10 +187,6 @@ drop_planned_dst() {
 plan_real_move() {
   local src="$1" dst="$2" prev
   tracked_exact "$src" || return 0
-  if ! printable_path "$src"; then
-    add_declined "$src" "unsupported: the path contains a tab or a newline"
-    return 0
-  fi
   if dst_occupied_real "$dst"; then
     add_collision "$src" "$dst" "destination already exists — reconcile by hand"
     return 0
@@ -174,8 +197,8 @@ plan_real_move() {
   prev=$(planned_dst_source "$dst")
   if [ -n "$prev" ]; then
     drop_planned_dst "$dst"
-    add_collision "$prev" "$dst" "another source targets the same destination: $src"
-    add_collision "$src" "$dst" "another source targets the same destination: $prev"
+    add_collision "$prev" "$dst" "another source targets the same destination: $(q "$src")"
+    add_collision "$src" "$dst" "another source targets the same destination: $(q "$prev")"
     return 0
   fi
   add_move "$src" "$dst"
@@ -216,10 +239,6 @@ build_plan() {
   i=0
   while [ "$i" -lt "${#dirs[@]}" ]; do
     dir="${dirs[$i]}"; i=$((i+1))
-    if ! printable_path "$dir"; then
-      add_declined "$dir" "unsupported: the directory name contains a tab or a newline"
-      continue
-    fi
     from=""
     if tracked_exact "$dir/__index.tmp"; then from="__index.tmp"; fi
     if [ -n "$from" ] && tracked_exact "$dir/INDEX.md"; then
@@ -237,22 +256,41 @@ build_plan() {
   done
 }
 
-# A source directory the migration emptied. Reported, never acted on: whether a bare
-# `.docs/agents/` reference in prose should follow is a judgement for the agent.
-record_emptied() {
-  local d i keep
-  for d in .docs/agents docs/agents .docs/marvin docs/marvin; do
-    keep=0
-    i=0; while [ "$i" -lt "${#DECL_PATH[@]}" ]; do
-      case "${DECL_PATH[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
-    i=0; while [ "$i" -lt "${#COLL_SRC[@]}" ]; do
-      case "${COLL_SRC[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
-    [ "$keep" = 1 ] && continue
-    i=0; keep=0
+# Which source directories the migration will empty. Predicted from the plan and the disk, at
+# plan time, in BOTH modes — a check-mode shortcut here would let the dry run promise something
+# the real run withholds, and this line is what licenses the agent to follow bare directory
+# references. Reported, never acted on.
+dir_will_empty() {
+  local d="$1" e i found
+  [ -d "$d" ] || return 1
+  while IFS= read -r -d '' e; do
+    [ -n "$e" ] || continue
+    [ -d "$e" ] && return 1                    # a subdirectory survives, so the parent does
+    found=0; i=0
     while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-      case "${MOVE_SRC[$i]}" in "$d"/*) keep=1;; esac; i=$((i+1)); done
-    [ "$keep" = 1 ] || continue
-    if [ "$MODE" != "check" ] && [ -e "$d" ]; then continue; fi
+      [ "${MOVE_SRC[$i]}" = "$e" ] && found=1
+      i=$((i+1))
+    done
+    [ "$found" = 1 ] || return 1               # something stays (declined, untracked, ignored)
+  done < <(find "$d" -mindepth 1 -print0)
+  return 0
+}
+
+moved_from() {
+  local i=0
+  while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+    case "${MOVE_SRC[$i]}" in "$1"/*) return 0;; esac
+    i=$((i+1))
+  done
+  return 1
+}
+
+predict_emptied() {
+  local d
+  EMPTIED=()
+  for d in .docs/agents docs/agents .docs/marvin docs/marvin; do
+    moved_from "$d" || continue
+    dir_will_empty "$d" || continue
     case "$d" in
       *agents) EMPTIED[${#EMPTIED[@]}]="$d/ -> .marvin/agents/";;
       *marvin) EMPTIED[${#EMPTIED[@]}]="$d/ -> .marvin/";;
@@ -285,7 +323,7 @@ check_components() {
     IFS="$oldifs"
     if [ -n "$part" ]; then
       acc="${acc:+$acc/}$part"
-      if [ -L "$acc" ]; then SYMLINK_HITS[${#SYMLINK_HITS[@]}]="$acc (symlink)"; fi
+      if [ -L "$acc" ]; then SYMLINK_HITS[${#SYMLINK_HITS[@]}]="$acc"; fi
     fi
     IFS=/
   done
@@ -312,38 +350,65 @@ safety_checks() {
 # ── repository-state refusal ─────────────────────────────────────────────────────────────────
 # The clean-tree gate is load-bearing for the rollback, and `git status --porcelain` alone does
 # not prove a clean tree.
+state_problem() { STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$1"; }
+
+submodules_present() {
+  [ -f .gitmodules ] && return 0
+  [ -n "$(git submodule status 2>/dev/null || true)" ] && return 0
+  return 1
+}
+
 repo_state_checks() {
-  local gitdir bad
+  local gitdir f d rec tag path sub hidden
   gitdir=$(git rev-parse --git-dir)
   # An operation in progress: the agent's commit would silently CONCLUDE the consumer's merge,
   # producing a two-parent commit that `git revert HEAD` then refuses.
   for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
-    [ -e "$gitdir/$f" ] && STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$f exists — an operation is in progress; finish or abort it first"
+    [ -e "$gitdir/$f" ] && state_problem "$f exists — an operation is in progress; finish or abort it first"
   done
   for d in rebase-merge rebase-apply; do
-    [ -d "$gitdir/$d" ] && STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$d/ exists — a rebase is in progress; finish or abort it first"
+    [ -d "$gitdir/$d" ] && state_problem "$d/ exists — a rebase is in progress; finish or abort it first"
   done
   # assume-unchanged / skip-worktree: `git status --porcelain` does not report modifications to
   # these files, so a "clean" tree can hide uncommitted work that the rollback would destroy.
-  while IFS= read -r bad; do
-    [ -n "$bad" ] || continue
-    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="$bad"
-  done < <(git ls-files -v | awk '
-    /^[a-z] / { print "assume-unchanged bit set on " substr($0,3) " — its changes are invisible to git status" }
-    /^S /     { print "skip-worktree bit set on "     substr($0,3) " — its changes are invisible to git status" }')
+  while IFS= read -r -d '' rec; do
+    [ -n "$rec" ] || continue
+    tag=${rec%% *}; path=${rec#* }
+    case "$tag" in
+      [a-z]) state_problem "assume-unchanged bit set on $(q "$path") — its changes are invisible to git status";;
+      S)     state_problem "skip-worktree bit set on $(q "$path") — its changes are invisible to git status";;
+    esac
+  done < <(git ls-files -v -z)
   [ "$(git config --bool core.sparseCheckout 2>/dev/null || echo false)" = "true" ] &&
-    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="core.sparseCheckout is enabled — parts of the tree are not present"
+    state_problem "core.sparseCheckout is enabled — parts of the tree are not present"
+  # Submodules: `git status` hides a dirty submodule when its `ignore` is set (including from a
+  # committed .gitmodules), and with submodule.recurse a rollback resets their working trees.
+  if submodules_present; then
+    [ "$(git config --bool submodule.recurse 2>/dev/null || echo false)" = "true" ] &&
+      state_problem "submodule.recurse is enabled and this repository has submodules — a rollback would reset their working trees"
+    sub=$(git status --porcelain --ignore-submodules=none 2>/dev/null || true)
+    hidden=$(comm -13 <(printf '%s\n' "$DIRTY" | LC_ALL=C sort) \
+                      <(printf '%s\n' "$sub"   | LC_ALL=C sort) | grep . || true)
+    if [ -n "$hidden" ]; then
+      while IFS= read -r rec; do
+        [ -n "$rec" ] || continue
+        state_problem "a submodule change is hidden from git status: $(q "${rec#???}")"
+      done < <(printf '%s\n' "$hidden")
+    fi
+  fi
   # HEAD must be a real branch tip: rollback resets to it and the agent commits on top of it.
   git rev-parse --verify HEAD >/dev/null 2>&1 ||
-    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="HEAD is unborn (no commits yet) — there is nothing to roll back to"
+    state_problem "HEAD is unborn (no commits yet) — there is nothing to roll back to"
   git symbolic-ref -q HEAD >/dev/null 2>&1 ||
-    STATE_PROBLEMS[${#STATE_PROBLEMS[@]}]="HEAD is detached — commit on a branch before migrating"
+    state_problem "HEAD is detached — commit on a branch before migrating"
   return 0
 }
 
 # ── rollback ─────────────────────────────────────────────────────────────────────────────────
 # The clean-state precondition is what makes this exact: the pre-migration state IS HEAD.
-# Armed as a trap so it also covers a kill or a full disk.
+# Armed as a trap so it also covers a kill or a full disk. The rolled-back report carries NO
+# move records: the moves were undone, and an agent that parsed them would edit references for
+# files sitting at their original paths.
 rollback() {
   local rc=$? i
   trap - EXIT INT TERM HUP
@@ -355,6 +420,7 @@ rollback() {
     i=$((i-1))
     [ -d "${CREATED_DIRS[$i]}" ] && rmdir "${CREATED_DIRS[$i]}" 2>/dev/null || true
   done
+  MOVE_SRC=(); MOVE_DST=(); CASE_DIR=(); CASE_FROM=(); EMPTIED=(); STAGE=(); STAGED_COUNT=0
   report rolled-back
   exit 7
 }
@@ -369,70 +435,44 @@ mkdir_tracked() {
 }
 
 # ── the report: this is the contract the upgrade skill consumes ──────────────────────────────
-renamed_count() {
-  if [ "$MODE" = "check" ]; then echo $(( ${#MOVE_SRC[@]} + ${#CASE_DIR[@]} )); else echo "${#MOVED_SRC[@]}"; fi
-}
-
-emit_renamed() {   # identical lines in --check and in a real run: the plan IS the outcome
-  local i=0
-  if [ "$MODE" = "check" ]; then
-    while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-      printf 'renamed: %s -> %s\n' "${MOVE_SRC[$i]}" "${MOVE_DST[$i]}"; i=$((i+1)); done
-    i=0
-    while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-      printf 'renamed: %s/%s -> %s/index.md\n' "${CASE_DIR[$i]}" "${CASE_FROM[$i]}" "${CASE_DIR[$i]}"
-      i=$((i+1)); done
-  else
-    while [ "$i" -lt "${#MOVED_SRC[@]}" ]; do
-      printf 'renamed: %s -> %s\n' "${MOVED_SRC[$i]}" "${MOVED_DST[$i]}"; i=$((i+1)); done
-  fi
-  return 0
-}
-
-emit_refs() {      # the exact old paths whose references now need attention
-  local i=0
-  if [ "$MODE" = "check" ]; then
-    while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
-      printf 'references-to-update: %s\n' "${MOVE_SRC[$i]}"; i=$((i+1)); done
-    i=0
-    while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
-      printf 'references-to-update: %s/%s\n' "${CASE_DIR[$i]}" "${CASE_FROM[$i]}"; i=$((i+1)); done
-  else
-    while [ "$i" -lt "${#MOVED_SRC[@]}" ]; do
-      printf 'references-to-update: %s\n' "${MOVED_SRC[$i]}"; i=$((i+1)); done
-  fi
-  return 0
-}
-
+# Emitted from the PLAN in both modes. On success the plan is exactly what happened; on failure
+# the rollback clears it. That is what makes `--check` and a real run differ only in `mode=`,
+# `staged=` and `result=` by construction rather than by coincidence.
 report() {
   local result="$1" i
   echo "---- ${SELF} report ----"
   echo "version=${KIT_VERSION}"
+  echo "$ENCODING_DOC"
   echo "mode=${MODE}"
-  echo "renamed=$(renamed_count)"
+  echo "renamed=$(( ${#MOVE_SRC[@]} + ${#CASE_DIR[@]} ))"
   echo "declined=${#DECL_PATH[@]}"
   echo "collisions=${#COLL_SRC[@]}"
   echo "failures=${#FAIL_SRC[@]}"
   echo "staged=${STAGED_COUNT}"
   echo "committed=no"
   echo "result=${result}"
-  emit_renamed
+  i=0; while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+    printf 'renamed: %s -> %s\n' "$(q "${MOVE_SRC[$i]}")" "$(q "${MOVE_DST[$i]}")"; i=$((i+1)); done
+  i=0; while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
+    printf 'renamed: %s -> %s\n' "$(q "${CASE_DIR[$i]}/${CASE_FROM[$i]}")" \
+                                 "$(q "${CASE_DIR[$i]}/index.md")"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#DECL_PATH[@]}" ]; do
-    printf 'declined: %s (%s)\n' "${DECL_PATH[$i]}" "${DECL_WHY[$i]}"; i=$((i+1)); done
+    printf 'declined: %s (%s)\n' "$(q "${DECL_PATH[$i]}")" "${DECL_WHY[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#COLL_SRC[@]}" ]; do
-    printf 'collision: %s -> %s (%s)\n' "${COLL_SRC[$i]}" "${COLL_DST[$i]}" "${COLL_WHY[$i]}"
-    i=$((i+1)); done
+    printf 'collision: %s -> %s (%s)\n' "$(q "${COLL_SRC[$i]}")" "$(q "${COLL_DST[$i]}")" \
+      "${COLL_WHY[$i]}"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#FAIL_SRC[@]}" ]; do
-    printf 'failure: %s -> %s\n' "${FAIL_SRC[$i]}" "${FAIL_DST[$i]}"; i=$((i+1)); done
+    printf 'failure: %s -> %s\n' "$(q "${FAIL_SRC[$i]}")" "$(q "${FAIL_DST[$i]}")"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
-    printf 'symlink: %s\n' "${SYMLINK_HITS[$i]}"; i=$((i+1)); done
+    printf 'symlink: %s\n' "$(q "${SYMLINK_HITS[$i]}")"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#STATE_PROBLEMS[@]}" ]; do
     printf 'repo-state: %s\n' "${STATE_PROBLEMS[$i]}"; i=$((i+1)); done
-  emit_refs
+  i=0; while [ "$i" -lt "${#MOVE_SRC[@]}" ]; do
+    printf 'references-to-update: %s\n' "$(q "${MOVE_SRC[$i]}")"; i=$((i+1)); done
+  i=0; while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
+    printf 'references-to-update: %s\n' "$(q "${CASE_DIR[$i]}/${CASE_FROM[$i]}")"; i=$((i+1)); done
   i=0; while [ "$i" -lt "${#EMPTIED[@]}" ]; do
     printf 'directory-emptied: %s\n' "${EMPTIED[$i]}"; i=$((i+1)); done
-  i=0; while [ "$i" -lt "${#NOTES[@]}" ]; do
-    printf 'note: %s\n' "${NOTES[$i]}"; i=$((i+1)); done
   echo "---- end ${SELF} report ----"
   return 0
 }
@@ -461,14 +501,13 @@ HEAD_AT_ENTRY=$(git rev-parse HEAD 2>/dev/null || echo "")
 DIRTY=$(git status --porcelain)
 
 build_plan
+predict_emptied
 repo_state_checks
 safety_checks
-record_emptied
 
 # ── dry run ──────────────────────────────────────────────────────────────────────────────────
 # A dry run changes nothing, so it is available on ANY tree — deciding whether the cleanup is
-# worth it is exactly when a preview is useful. Its report is line-for-line what the real run
-# will print, so it is a usable safety net rather than an approximation.
+# worth it is exactly when a preview is useful.
 if [ "$MODE" = "check" ]; then
   if [ "${#STATE_PROBLEMS[@]}" -gt 0 ]; then
     say "a real run will REFUSE: the repository state makes this unsafe"
@@ -506,7 +545,7 @@ fi
 if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
   say "REFUSED — symlinked paths are never followed:"
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
-    printf '  %s\n' "${SYMLINK_HITS[$i]}"; i=$((i+1)); done
+    printf '  %s\n' "$(q "${SYMLINK_HITS[$i]}")"; i=$((i+1)); done
   report refused-symlink
   exit 6
 fi
@@ -525,11 +564,10 @@ if [ "${#MOVE_SRC[@]}" -gt 0 ]; then
     mkdir_tracked "$(dirname "$dst")"
     MUTATED=1
     if git mv -- "$src" "$dst"; then
-      MOVED_SRC[${#MOVED_SRC[@]}]="$src"; MOVED_DST[${#MOVED_DST[@]}]="$dst"
       STAGE[${#STAGE[@]}]="$dst"
     else
       FAIL_SRC[${#FAIL_SRC[@]}]="$src"; FAIL_DST[${#FAIL_DST[@]}]="$dst"
-      say "move failed: $src -> $dst"
+      say "move failed: $(q "$src") -> $(q "$dst")"
       exit 1                                     # the trap rolls the whole run back
     fi
     i=$((i+1))
@@ -551,13 +589,11 @@ while [ "$i" -lt "${#CASE_DIR[@]}" ]; do
     FAIL_SRC[${#FAIL_SRC[@]}]="$dir/$from"; FAIL_DST[${#FAIL_DST[@]}]="$dir/index.md"
     exit 1
   fi
-  MOVED_SRC[${#MOVED_SRC[@]}]="$dir/$from"; MOVED_DST[${#MOVED_DST[@]}]="$dir/index.md"
   STAGE[${#STAGE[@]}]="$dir/index.md"
   i=$((i+1))
 done
 
 prune_dirs
-EMPTIED=(); record_emptied                       # observed, not predicted, after the prune
 
 # ── stage ────────────────────────────────────────────────────────────────────────────────────
 # By explicit literal pathspec, always. A blanket stage-everything sweep drags untracked
