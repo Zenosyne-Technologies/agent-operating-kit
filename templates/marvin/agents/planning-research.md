@@ -27,6 +27,6 @@ Tier routing (mandatory — by the task's `size:` label):
 
 Reporting — findings live where the plan lives, both passes alike:
 - Issue-tracked plan → a comment on the issue: `## Findings / ## Risks / ## Recommendation / ## Refs`.
-- Otherwise → an md doc at `{{DOCS_LOCATION}}/researches/<issue-key-or-slug>-{validation|solution}.md` with a full header, registered as a row in `{{DOCS_LOCATION}}/researches/index.md` (`document-standard.md`) — an unindexed memo cannot be found again — and linked from the tracker issue if one exists.
+- Otherwise → an md doc at `.docs/researches/<issue-key-or-slug>-{validation|solution}.md` with a full header, registered as a row in `.docs/researches/index.md` (`document-standard.md`) — an unindexed memo cannot be found again — and linked from the tracker issue if one exists.
 
 Briefs follow `briefing.md`; FINAL MESSAGE (machine-consumed): verdict (`plan-ok` | `plan-gaps: <n>` for validation; `recommendation: <one line>` for solution) + the comment URL or doc path. The planner reconciles findings into the plan before dispatching the build — research that isn't folded back in is waste.
