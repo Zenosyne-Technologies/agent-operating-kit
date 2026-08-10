@@ -45,7 +45,7 @@ When telemetry is enabled, write the repo-root `.claude/telemetry-context.json` 
 {"issue_key": "<KEY>", "project": "<name>", "size": "<size>", "summary": "<one sentence>"}
 ```
 
-Delete it when leaving tracker work (no active task). Capture stamps these fields onto events as they are written. Gitignored — install/upgrade add the ignore line. Attribution is last-declared-task: events land under whichever task was declared most recently, even across a race with a switch. That approximation is documented, not hidden.
+Capture reads `PROJECT-INFO.md`'s frontmatter (`.marvin/`, else `.docs/`) to stamp `project` with the repo's human name. Delete the sidecar when leaving tracker work (no active task). Capture stamps these fields onto events as they are written. Gitignored — install/upgrade add the ignore line. Attribution is last-declared-task: events land under whichever task was declared most recently, even across a race with a switch. That approximation is documented, not hidden.
 
 ## Snapshot `tokens` object
 
