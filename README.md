@@ -151,7 +151,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     K["Orchestrator writes the context sidecar<br/>issue key, project, size, one-sentence summary"] --> H["Telemetry capture hooks<br/>per-turn usage, zero model-token overhead"]
-    G["Git conventions<br/>milestone branches and issue-key commit prefixes"] --> H
+    G["Git conventions<br/>issue-key branch names and commit prefixes"] --> H
     H --> DB[("Central telemetry database<br/>events plus effective-dated pricing")]
     DB --> S["Stats snapshot<br/>label dimensions plus a tokens section"]
     S --> R1["Architect digest · milestone close-out · stakeholder page"]
@@ -193,13 +193,13 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
 
-**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, milestone-branch and autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
+**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
 
 **Labels as infrastructure.** `label-syntax.md` is a self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus a backfill-on-touch rule for unlabeled legacy issues. Any change bumps the registry's own version and adds a changelog row. An unlabeled item is invisible to reporting, which is the whole reason the discipline exists. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide *inside* the tracker, so agents and humans share one source of truth.
 
 **Collect once, render many.** A per-tracker stats brief snapshots every label dimension into versioned JSON under the project's reports folder. The three renders read that snapshot verbatim — an agent that recomputes a figure is doing it wrong — and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: no size or origin labels, no tiers, no agent names, product progress only.
 
-**Traceability by convention.** Each milestone works on a `milestone/<KEY>-<slug>` feature branch carrying its container issue key, merged back only after milestone validation. Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. Those two conventions are what let commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
+**Traceability by convention.** `git-strategy.md` is the single owner of everything git: a gitflow branch model (`main` holds released state only, `develop` integrates, one `feature/<KEY>-<slug>` per work item, `release/*` and `hotfix/*` merged both ways), annotated tags the orchestrator alone may cut, and semver classified by what a *consumer* must do. Every other file cites it and restates nothing — a copy of a branch rule elsewhere is the defect. Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. A milestone is a scope, not a branch: milestone- and release-scoped rollups resolve by issue-key set, which is what lets commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
 
 **Definition of Done as the contract.** The DoD is written by the planner, onto the issue, before build starts. It is the thing the builder targets, the thing two independent validators attack, the thing the documentation agent documents against, and the thing quoted in the close comment. Everything else in the lifecycle hangs off it.
 
