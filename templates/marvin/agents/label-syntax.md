@@ -27,7 +27,7 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 | `origin:` | every item | user-request (end users) · architect-request (the human managing the agent sessions) · agent-qa (QA sweeps, validators) · agent-dev (found by an agent while building) · roadmap (planned milestone work) |
 | `size:` | stories/tasks, at planning time | xs · s · m · l · xl — t-shirt scale for combined effort + complexity; drives the planning-research tier routing (`planning-research.md`); native estimate mapping in `tracker-config.md` |
 | `milestone:<slug>` | epics on 3-level trackers | virtual milestone container per `tracker-config.md` |
-| `release:v<version>` | issues in a frozen release scope, ONLY where `tracker-config.md` prescribes it | `release:v1.2.0` — `<version>` is bare semver, the `v` belongs to the tag name; mirrors that annotated tag, which stays canonical (`git-strategy.md`) |
+| `release:v<version>` | issues in a frozen release scope, ONLY where `tracker-config.md` prescribes it | `release:` + the release's tag name, spelled as `git-strategy.md` spells it (e.g. `release:v1.2.0`); that tag stays canonical |
 
 ## Reporting intent
 
