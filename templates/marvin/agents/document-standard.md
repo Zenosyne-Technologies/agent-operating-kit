@@ -17,7 +17,7 @@ A header exists so an agent can decide whether to open a body WITHOUT opening it
 | Key | Value |
 |---|---|
 | `doc:` | human title |
-| `type:` | plan · research · refactor · future · information · handbook · reference |
+| `type:` | plan · research · refactor · future · information · handbook · release-note · reference |
 | `status:` | active · draft · superseded · historical |
 | `summary:` | one or two sentences — the index row quotes this verbatim, so write it to be quoted |
 | `keywords:` | list |
