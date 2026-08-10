@@ -1,3 +1,11 @@
+---
+doc: Validation agent personas
+type: reference
+status: active
+summary: The completion and security validator personas, what each falsifies, and the evidence each must produce.
+updated: {{INSTALL_DATE}}
+---
+
 # Validation agents
 
 Done work is validated by FRESH agents that did not build it — briefed explicitly as validators, adversarial by default ("your job is to falsify the claim of done"). Two perspectives, two agents (heavy worker tier), run in SEQUENCE — completion first, security only after completion passes; security review never runs on work that is not done:
@@ -33,7 +41,7 @@ At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) w
 
 ## After a verdict
 
-PASS at completion → dispatch the security stage. PASS at security → the task is validated but NOT finished: dispatch `marvin:documenter` per `.docs/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL → back to the task's build tier with the findings; the re-run starts again at completion validation, never at documentation or close.
+PASS at completion → dispatch the security stage. PASS at security → the task is validated but NOT finished: dispatch `marvin:documenter` per `.marvin/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL → back to the task's build tier with the findings; the re-run starts again at completion validation, never at documentation or close.
 
 ## Why fresh agents
 

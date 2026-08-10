@@ -1,3 +1,11 @@
+---
+doc: Token economics contract
+type: reference
+status: active
+summary: The telemetry contract — cost queries, the pricing rule, the per-issue context sidecar, and how reporting degrades without telemetry.
+updated: {{INSTALL_DATE}}
+---
+
 # Token & cost telemetry contract
 
 The single description of the seam between the kit and the token-telemetry plugin. Every consumer (stats collection, reporting, documentation agent) reads this file instead of re-deriving these rules.
@@ -37,7 +45,7 @@ When telemetry is enabled, write the repo-root `.claude/telemetry-context.json` 
 {"issue_key": "<KEY>", "project": "<name>", "size": "<size>", "summary": "<one sentence>"}
 ```
 
-Delete it when leaving tracker work (no active task). Capture stamps these fields onto events as they are written. Gitignored — install/upgrade add the ignore line. Attribution is last-declared-task: events land under whichever task was declared most recently, even across a race with a switch. That approximation is documented, not hidden.
+Capture reads `PROJECT-INFO.md`'s frontmatter (`.marvin/`, else `.docs/`) to stamp `project` with the repo's human name. Delete the sidecar when leaving tracker work (no active task). Capture stamps these fields onto events as they are written. Gitignored — install/upgrade add the ignore line. Attribution is last-declared-task: events land under whichever task was declared most recently, even across a race with a switch. That approximation is documented, not hidden.
 
 ## Snapshot `tokens` object
 
@@ -45,4 +53,4 @@ Stats snapshots (schema v2) carry a `tokens` key, null when telemetry is absent 
 
 ## Secrets
 
-DB paths and cost figures are shareable. Transcript contents are not — no query or render built from this contract ever exposes transcript text. Anything posted to the PM tool (comments, attachments) stays governed by `.docs/agents/security.md`.
+DB paths and cost figures are shareable. Transcript contents are not — no query or render built from this contract ever exposes transcript text. Anything posted to the PM tool (comments, attachments) stays governed by `.marvin/agents/security.md`.

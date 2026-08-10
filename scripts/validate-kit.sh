@@ -10,7 +10,7 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" AREA_1 AREA_2 AREA_3 CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME SCOPE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
+KNOWN=" AREA_1 AREA_2 AREA_3 CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME SCOPE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
@@ -35,13 +35,18 @@ echo "$ver" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { fail json "plugin version
 [ "$ok" = 1 ] && pass json
 
 # ── 4. registry: label-syntax H1 version equals newest changelog row
-REG=templates/docs/agents/label-syntax.md
-h1=$(head -1 "$REG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | tr -d v)
+REG=templates/marvin/agents/label-syntax.md
+# the H1 is no longer line 1 — a reduced document header precedes it (document-standard.md)
+h1=$(grep -m1 '^# ' "$REG" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | tr -d v)
 newest=$(grep -E '^\| [0-9]+\.[0-9]+\.[0-9]+ \|' "$REG" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 [ -n "$h1" ] && [ "$h1" = "$newest" ] && pass registry || fail registry "H1 v$h1 != newest changelog row $newest"
 
 # ── 5. inventory: README inventory block ↔ tracked templates/ files (by basename, both directions)
-inv=$(awk '/^```$/{f=!f;next} f' README.md | grep -oE '[A-Za-z0-9._-]+\.(md|json)' | sort -u)
+inv=$(awk '
+  /^## Inventory$/ { inventory=1; next }
+  inventory && /^```$/ { if (!fence) { fence=1; next }; exit }
+  inventory && fence { print }
+' README.md | grep -oE '[A-Za-z0-9._-]+\.(md|json)' | sort -u)
 miss_repo=""; miss_inv=""
 for f in $(git ls-files templates/); do
   b=$(basename "$f"); echo "$inv" | grep -qx "$b" || miss_inv="$miss_inv $b"
@@ -70,6 +75,31 @@ fi
 
 # ── 8. upgrade-files: the current version's upgrades/v<version>.md must exist
 [ -f "upgrades/v$ver.md" ] && pass upgrade-files || fail upgrade-files "upgrades/v$ver.md missing (add it — see CLAUDE.md extension rule 9)"
+
+# ── 9. doc-headers: every consumer-bound template document carries its standard's header keys
+# (templates/marvin/agents/document-standard.md — full under templates/docs/, reduced for the cascade)
+FULL_KEYS="doc type status summary keywords level created updated"
+RED_KEYS="doc type status summary updated"
+# Headerless by exception, listed one exact path at a time: files with their own machine format,
+# and briefs that are dispatched from the plugin rather than installed. EVERY other templates/**/*.md
+# is treated as consumer-bound and MUST carry a header — a new file is classified here deliberately
+# or it fails (extension rule 2 adds per-tracker files; extend this list in the same PR).
+NOHDR=" templates/CLAUDE.core.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
+missing=""
+while IFS= read -r f; do
+  case "$NOHDR" in *" $f "*) continue;; esac
+  # default is the reduced header: anything consumer-bound that is not a .docs/ document
+  case "$f" in
+    templates/docs/*) keys="$FULL_KEYS";;
+    *) keys="$RED_KEYS";;
+  esac
+  if [ "$(head -1 "$f")" != "---" ]; then missing="$missing $f(no-header)"; continue; fi
+  hdr=$(awk 'NR==1{next} /^---$/{exit} {print}' "$f")
+  for k in $keys; do
+    printf '%s\n' "$hdr" | grep -qE "^$k:" || missing="$missing $f($k)"
+  done
+done < <(find templates -name '*.md' -type f | sort)
+[ -z "$missing" ] && pass doc-headers || fail doc-headers "missing header key(s):$missing"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

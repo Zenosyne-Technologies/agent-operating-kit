@@ -1,6 +1,14 @@
+---
+doc: Reporting definitions
+type: reference
+status: active
+summary: Collect once, render many — the statistics snapshot contract and the digest, close-out and stakeholder renders built from it.
+updated: {{INSTALL_DATE}}
+---
+
 # Producing reports
 
-All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the installed `.docs/agents/stats-collection-brief.md` (coordinates pre-resolved at install; fill SCOPE/PERIOD at dispatch), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v2). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
+All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the installed `.marvin/agents/stats-collection-brief.md` (coordinates pre-resolved at install; fill SCOPE/PERIOD at dispatch), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v2). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
 
 ## Renders
 

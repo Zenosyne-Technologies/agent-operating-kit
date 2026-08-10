@@ -1,3 +1,11 @@
+---
+doc: Tracker configuration — Jira
+type: reference
+status: active
+summary: Jira's hierarchy against the kit's four levels, the virtual-milestone rule, and the severity mapping to Jira Priority.
+updated: {{INSTALL_DATE}}
+---
+
 # Tracker configuration — Jira
 
 ## Levels: 3 of 4 → virtual milestones

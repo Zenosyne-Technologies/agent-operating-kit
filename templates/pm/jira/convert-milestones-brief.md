@@ -1,3 +1,11 @@
+---
+doc: Convert virtual milestones to Jira releases
+type: reference
+status: active
+summary: The dispatchable brief that turns every milestone slug label into a Jira release once the connector supports creating them, retiring the virtual-milestone workaround.
+updated: {{INSTALL_DATE}}
+---
+
 # Agent brief: convert virtual milestones to Jira releases
 
 Dispatch ONLY when the Jira MCP connector supports creating releases (v2). Fill the placeholders, then hand this brief verbatim to an agent (small-worker tier).
@@ -18,4 +26,4 @@ FINAL MESSAGE (machine-consumed): `releases: <created N>/<existing M>`, `issues:
 
 ---
 
-After it completes: update `.docs/agents/tracker-config.md` (levels 4 of 4, virtual-milestone section removed) and `.docs/PROJECT-INFO.md` frontmatter (`hierarchy_levels: 4/4`).
+After it completes: update `.marvin/agents/tracker-config.md` (levels 4 of 4, virtual-milestone section removed) and `.marvin/PROJECT-INFO.md` frontmatter (`hierarchy_levels: 4/4`).

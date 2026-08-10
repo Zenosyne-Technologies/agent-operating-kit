@@ -1,3 +1,11 @@
+---
+doc: Tracker configuration — Linear
+type: reference
+status: active
+summary: Linear's hierarchy against the kit's four levels, and how severity and size map onto Linear's native fields.
+updated: {{INSTALL_DATE}}
+---
+
 # Tracker configuration — Linear
 
 ## Levels: 4 of 4 (kit target met natively)
