@@ -101,6 +101,27 @@ while IFS= read -r f; do
 done < <(find templates -name '*.md' -type f | sort)
 [ -z "$missing" ] && pass doc-headers || fail doc-headers "missing header key(s):$missing"
 
+# ── 10. release-note: this repo runs its own payload's release cut, so the current version
+# owes docs/release-notes/v<version>.md — the text the annotated tag carries (git-strategy.md,
+# cut step 4). Its scope: header is what release-scoped rollups resolve against, so an empty
+# one is not a complete note (templates/docs/release-notes/index.md).
+RN="docs/release-notes/v$ver.md"
+if [ ! -f "$RN" ]; then
+  fail release-note "$RN missing (the release cut writes it — templates/marvin/agents/git-strategy.md step 4)"
+elif [ "$(head -1 "$RN")" != "---" ]; then
+  fail release-note "$RN has no YAML header"
+else
+  rnhdr=$(awk 'NR==1{next} /^---$/{exit} {print}' "$RN")
+  rnbad=""
+  printf '%s\n' "$rnhdr" | grep -qE '^type: *release-note *$' || rnbad="$rnbad type:(must be release-note)"
+  # scope: may be a flow list on one line or a block list on the lines under it — either way it
+  # must resolve to at least one issue key; anything less is a note a release rollup cannot use.
+  scopeval=$(printf '%s\n' "$rnhdr" | awk '/^scope:/{s=1;print;next} s&&/^[a-z_]+:/{exit} s{print}')
+  printf '%s\n' "$scopeval" | grep -qE '[A-Z][A-Z0-9]*-[0-9]+' \
+    || rnbad="$rnbad scope:(missing or empty — derive it per git-strategy.md cut step 4)"
+  [ -z "$rnbad" ] && pass release-note || fail release-note "$RN:$rnbad"
+fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
