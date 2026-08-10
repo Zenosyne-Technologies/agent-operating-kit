@@ -247,6 +247,7 @@ templates/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
+    guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
