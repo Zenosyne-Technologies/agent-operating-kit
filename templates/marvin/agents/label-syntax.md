@@ -1,3 +1,11 @@
+---
+doc: Label syntax registry
+type: reference
+status: active
+summary: The versioned single source of truth for tracker labels — dimensions, allowed values, the sizing rubric, and the backfill-on-touch rule.
+updated: {{INSTALL_DATE}}
+---
+
 # Label syntax registry — v1.2.0
 
 Self-contained and versioned: ANY change to this registry bumps the version above and adds a changelog row. This file is the single source of truth for labels; the in-tracker guide summarizes it and loses on label conflicts.

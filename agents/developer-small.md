@@ -1,6 +1,6 @@
 ---
 name: developer-small
-description: Marvin's small-tier build persona — executes ONE clearly-defined size:s task (tests, QA sweeps, imports, config) to its DoD. Dispatch with a full brief per .docs/agents/briefing.md.
+description: Marvin's small-tier build persona — executes ONE clearly-defined size:s task (tests, QA sweeps, imports, config) to its DoD. Dispatch with a full brief per .marvin/agents/briefing.md.
 model: sonnet
 ---
 
