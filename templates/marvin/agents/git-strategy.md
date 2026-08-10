@@ -46,13 +46,14 @@ Usually one milestone's scope — but never assume milestone == release. A relea
 1. Scope frozen — nothing further merges to `develop` for this version.
 2. `release/<version>` cut from `develop`.
 3. Version bumped, on that branch.
-4. Release note written to `.docs/release-notes/v<version>.md`. Its `scope:` header is DERIVED, not recalled: `git log <previous tag>..HEAD` over the frozen range, take each commit message's leading `<KEY>:` prefix, dedupe. Those keys are work-carrying by construction — commits are what work leaves behind — which is exactly the set cost rollups need, and it is why no tracker query (or label sweep, which would drag in containers) is the source here.
-5. Validation run on that branch; only fixes for what it finds land there.
+4. Release note written to `.docs/release-notes/v<version>.md`. Its `scope:` header is DERIVED, not recalled: `git log <range>..HEAD` over the frozen range, take each commit message's leading `<KEY>:` prefix, dedupe. `<range>` is the previous tag when one exists; on a first cut under this model there is none, so `<range>` is instead the commit where the previous release shipped (this repo's is `ec2cea4`). Whichever it was, the note must SAY so — the range used is part of the record, because an over-broad range silently inflates `scope_issue_keys` while still reporting `state: ok`. Those keys are work-carrying by construction — commits are what work leaves behind — which is exactly the set cost rollups need, and it is why no tracker query (or label sweep, which would drag in containers) is the source here.
+5. Validation run on that branch — the Release validation gate `.marvin/agents/validation-agent.md` adds on top of the composition sweep (version bump, release note completeness); only fixes for what it finds land there.
 6. Merge to `main`.
 7. Annotated tag on `main`, message = the release note (orchestrator only).
-8. Merge back to `develop`.
+8. Dispatch the selected tracker's release mapping (`.marvin/agents/tracker-config.md`) now that the tag exists — GitHub's tag-first/`--verify-tag` publish depends on it, Jira applies its `release:` label, Local sets its `release:` frontmatter field, Linear attaches its native Release. This step owns only the WHEN; the tracker config owns the WHAT.
+9. Merge back to `develop`.
 
-A hotfix runs the same eight steps, with step 2 reading "`hotfix/<version>` cut from `main`".
+A hotfix runs the same nine steps, with step 2 reading "`hotfix/<version>` cut from `main`".
 
 ## Who cites this file
 
