@@ -50,7 +50,7 @@ Two parts: counters (`next_issue: <n>`, `next_milestone: <n>`) and an open-item 
 
 ## Release mapping: the note, the tag, and a `release:` field
 
-A release is `.docs/release-notes/v<version>.md` plus its annotated tag — `.marvin/agents/git-strategy.md` owns both and this file restates neither. The tracker's part is one frontmatter field: at the release cut, every issue in the frozen scope gets `release: v<version>` (same shape as `milestone:`, and set on the same set the note records). The tag stays canonical; the field mirrors it, is never edited afterwards, and is omitted while an issue is unreleased. `release:*` LABELS are UNNECESSARY here for the reason `milestone:<slug>` labels are — the field is the real carrier. Milestone and release are independent axes, so an issue commonly carries both fields.
+A release is `.docs/release-notes/v<version>.md` plus its annotated tag — `.marvin/agents/git-strategy.md` owns both and this file restates neither. The tracker's part is one frontmatter field: at the release cut, every issue in the frozen scope gets `release: v<version>` (same shape as `milestone:`, set on exactly the key set the note's `scope:` header records — that header stays the source rollups resolve against, here as everywhere). The tag stays canonical; the field mirrors it, is never edited afterwards, and is omitted while an issue is unreleased. `release:*` LABELS are UNNECESSARY here for the reason `milestone:<slug>` labels are — the field is the real carrier. Milestone and release are independent axes, so an issue commonly carries both fields.
 
 ## Operations
 
