@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Git strategy — branches, versions, releases
 
-Everything about git is decided here. Another file may name a concrete INSTANCE it needs — the branch a brief sends an agent to (`feature/AOS-123-cache-keys`), the branch a gate runs on, the tag a release carries. No other file may restate the MODEL: which branch types exist, what each is cut from and merges to, when a branch dies, who may tag, or how a version is classified. Naming an instance is required; a second copy of the model is the defect, not a convenience.
+Everything about git is decided here. Another file may name a concrete INSTANCE it needs — the branch a brief sends an agent to (`feature/AOS-123-cache-keys`), the branch a gate runs on, the tag a release carries. No other file may restate the MODEL: which branch types exist, what each is cut from and merges to, when a branch dies, who may tag, how a version is classified, **how a version is spelled**, or **what a tag message may contain**. Those last two are in the list because a drifting second copy already produced a defect here (`release:vv1.2.0`) — spelling rules look too small to own until two files disagree about one. Naming an instance is required; a second copy of the model is the defect, not a convenience.
 
 ## Branch model (gitflow)
 
@@ -46,7 +46,7 @@ Usually one milestone's scope — but never assume milestone == release. A relea
 1. Scope frozen — nothing further merges to `develop` for this version.
 2. `release/<version>` cut from `develop`.
 3. Version bumped, on that branch.
-4. Release note written to `.docs/release-notes/v<version>.md`.
+4. Release note written to `.docs/release-notes/v<version>.md`. Its `scope:` header is DERIVED, not recalled: `git log <previous tag>..HEAD` over the frozen range, take each commit message's leading `<KEY>:` prefix, dedupe. Those keys are work-carrying by construction — commits are what work leaves behind — which is exactly the set cost rollups need, and it is why no tracker query (or label sweep, which would drag in containers) is the source here.
 5. Validation run on that branch; only fixes for what it finds land there.
 6. Merge to `main`.
 7. Annotated tag on `main`, message = the release note (orchestrator only).
