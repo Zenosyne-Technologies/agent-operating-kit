@@ -39,3 +39,12 @@ Kit target hierarchy: milestone container → feature grouping → work item →
 | size:m | 3 |
 | size:l | 5 |
 | size:xl | 8 |
+
+## Release mapping: virtual, for exactly the reason milestones are
+
+Same connector limitation, same answer. A Jira release IS a fixVersion, and the connector cannot create one — so a released version is VIRTUAL here too. The model behind the version (branches, tagging authority, semver) is `.marvin/agents/git-strategy.md`; only the Jira mapping is decided below.
+
+- At the release cut, the label `release:<version>` (`release:v1.2.0`) goes on every issue in the frozen scope — the same set `.docs/release-notes/v<version>.md` records. JQL: `labels = "release:v1.2.0"`.
+- The annotated tag stays canonical and the label mirrors it. Membership is encoded ONLY in the label, never in summaries or descriptions, so it stays losslessly convertible — the same rule the milestone label follows.
+- Milestone and version are INDEPENDENT axes with a label each (`milestone:<slug>`, `release:<version>`); an issue commonly carries both and neither is derivable from the other.
+- Conversion path: the SAME brief converts both (installed alongside this config, or `templates/pm/jira/convert-milestones-brief.md` in the kit) — each `milestone:<slug>` becomes a fixVersion named `<slug>`, each `release:<version>` a fixVersion named `v<version>`, labels dropped. An issue may hold several fixVersions, which is what lets the two axes coexist on one native field.
