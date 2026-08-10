@@ -17,7 +17,7 @@ A header exists so an agent can decide whether to open a body WITHOUT opening it
 | Key | Value |
 |---|---|
 | `doc:` | human title |
-| `type:` | plan · research · refactor · future · information · handbook · reference |
+| `type:` | plan · research · refactor · future · information · handbook · release-note · reference |
 | `status:` | active · draft · superseded · historical |
 | `summary:` | one or two sentences — the index row quotes this verbatim, so write it to be quoted |
 | `keywords:` | list |
@@ -31,6 +31,7 @@ Optional, and only when they earn their place:
 - `related:` / `supersedes:` / `superseded_by:` — repo-relative paths. ONE exception: handbook pages are an Obsidian vault, so their `related:` carries quoted `"[[Page Name]]"` wikilinks instead (`handbooks.md`); `supersedes:`/`superseded_by:` stay paths everywhere, including there.
 - `toc:` — genuinely large documents only; a handbook page for a complex subsystem may list the classes and methods it explains. **Size rule**: a header stays significantly shorter than its body — no hard cap, and `toc:` is the intended escape hatch, but split into referenced documents before growing a header. DRY, KISS, YAGNI, SINE.
 - `severity:` / `relevance:` — REQUIRED for `type: information`, defined in `information-guide.md`.
+- `scope:` — REQUIRED for `type: release-note`: the tracker issue keys that version froze, as a list, expanded to the items that carry WORK (never a bare epic/container key). It is metadata precisely so the body does not have to be: the body stays prose for a human reading it a year later, while release-scoped rollups — cost above all (`token-economics.md`) — resolve against this field, on every tracker including those whose issues carry no version marker of their own. Written once at the release cut and never edited after.
 
 ## Index entries
 

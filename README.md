@@ -76,7 +76,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 No plugin, four steps — and the first one runs FIRST:
 
 1. **Already have an older install? Migrate before you copy anything.** If the cascade sits in `docs/agents/` or `.docs/agents/`, do NOT move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan). It moves and stages the kit's files and prints a rename map; you then update the references it lists — judging each hit in context — and commit your edits together with the staged renames. **The order is load-bearing**: the script refuses a dirty tree (exit 2) and reports a collision for every destination a copy already occupies, so copying first makes it impossible to run — 13 collisions and 0 renames on a v0.20.0 layout. On exit 2 or 9, stop, clear what it names, and start again here. Nothing below is a fresh-install-only step; a clean repo simply has nothing to migrate.
-2. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; Jira only, `templates/pm/jira/convert-milestones-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; the estate seeds file by file, NOT as a directory copy — `templates/docs/index.md` (the crawl's entry point), `templates/docs/{plans,researches,refactor,future,information}/index.md` and `templates/docs/handbooks/index.md` each → the same path under `<repo>/.docs/`, then `templates/docs/handbooks/audience-index.md` → `<repo>/.docs/handbooks/developer/index.md`, `…/user/index.md` and `…/admin/index.md` (three copies under that one name; `audience-index.md` itself is never placed in `.docs/` — an unindexed file there is unreachable by the crawl, which means it does not exist). An index the repo already has is merged — keep its rows and prose, add only the rows it lacks: the missing sub-folder rows, and the `## Root-level documents` section with its issue-log row where that section does not exist yet; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Finally, list every `.md` under `.docs/` (outside `project-management/` and `reports/`) that no index row reaches — give each an index row where its folder is obvious, and name the rest: under these rules an unindexed document cannot be found.
+2. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; Jira only, `templates/pm/jira/convert-milestones-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; the estate seeds file by file, NOT as a directory copy — `templates/docs/index.md` (the crawl's entry point), `templates/docs/{plans,researches,refactor,future,information,release-notes}/index.md` and `templates/docs/handbooks/index.md` each → the same path under `<repo>/.docs/`, then `templates/docs/handbooks/audience-index.md` → `<repo>/.docs/handbooks/developer/index.md`, `…/user/index.md` and `…/admin/index.md` (three copies under that one name; `audience-index.md` itself is never placed in `.docs/` — an unindexed file there is unreachable by the crawl, which means it does not exist). An index the repo already has is merged — keep its rows and prose, add only the rows it lacks: the missing sub-folder rows, and the `## Root-level documents` section with its issue-log row where that section does not exist yet; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Finally, list every `.md` under `.docs/` (outside `project-management/` and `reports/`) that no index row reaches — give each an index row where its folder is obvious, and name the rest: under these rules an unindexed document cannot be found.
 3. **Fill every `{{PLACEHOLDER}}`** in the copied files — project facts, env preamble, tracker coordinates, `{{INSTALL_DATE}}` (today, in every header), and `{{DOCS_ISSUE_LOG_PATH}}` (ONE form, a bare repo-relative path, `.docs/issue-log.md` by default — the root index's record row already carries its default link target and holds no placeholder, so retarget that cell only for a non-default log, and delete the row unless the path resolves inside `.docs/` and outside `project-management/` and `reports/`). `{{SCOPE}}` and `{{PERIOD_DAYS}}` in `stats-collection-brief.md` stay unresolved on purpose — they are filled at dispatch. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 4. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -151,7 +151,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     K["Orchestrator writes the context sidecar<br/>issue key, project, size, one-sentence summary"] --> H["Telemetry capture hooks<br/>per-turn usage, zero model-token overhead"]
-    G["Git conventions<br/>milestone branches and issue-key commit prefixes"] --> H
+    G["Git conventions<br/>issue-key branch names and commit prefixes"] --> H
     H --> DB[("Central telemetry database<br/>events plus effective-dated pricing")]
     DB --> S["Stats snapshot<br/>label dimensions plus a tokens section"]
     S --> R1["Architect digest · milestone close-out · stakeholder page"]
@@ -193,13 +193,13 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
 
-**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, milestone-branch and autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
+**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
 
 **Labels as infrastructure.** `label-syntax.md` is a self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus a backfill-on-touch rule for unlabeled legacy issues. Any change bumps the registry's own version and adds a changelog row. An unlabeled item is invisible to reporting, which is the whole reason the discipline exists. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide *inside* the tracker, so agents and humans share one source of truth.
 
 **Collect once, render many.** A per-tracker stats brief snapshots every label dimension into versioned JSON under the project's reports folder. The three renders read that snapshot verbatim — an agent that recomputes a figure is doing it wrong — and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: no size or origin labels, no tiers, no agent names, product progress only.
 
-**Traceability by convention.** Each milestone works on a `milestone/<KEY>-<slug>` feature branch carrying its container issue key, merged back only after milestone validation. Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. Those two conventions are what let commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
+**Traceability by convention.** `git-strategy.md` is the single owner of everything git: a gitflow branch model (`main` holds released state only, `develop` integrates, one `feature/<KEY>-<slug>` per work item, `release/*` and `hotfix/*` merged both ways), annotated tags the orchestrator alone may cut, and semver classified by what a *consumer* must do. Inside the installed payload every other file names only the concrete branch or tag it needs — the literal branch a brief sends an agent to — and defers on the model; a second copy of the model is the defect. (This paragraph is the factory describing its own payload, not part of it — the factory runs the identical model for its own contributions; see [Contributing](#contributing).) Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. A milestone is a scope, not a branch: milestone- and release-scoped rollups resolve by issue-key set, which is what lets commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
 
 **Definition of Done as the contract.** The DoD is written by the planner, onto the issue, before build starts. It is the thing the builder targets, the thing two independent validators attack, the thing the documentation agent documents against, and the thing quoted in the close comment. Everything else in the lifecycle hangs off it.
 
@@ -213,7 +213,11 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 `templates/` is the payload that gets installed into consumer projects; everything else — skills, commands, upgrade notes, the plugin manifest, this README — is kit machinery. Never blur the two: a change that helps one specific project belongs in that project's installed files, and only lessons that generalise get promoted into templates. `CLAUDE.md` holds the full extension rules — new activity docs, new tracker support, template line budgets, and the version and changelog bumps each change owes.
 
-Every PR must pass the static release gate and the migration tests, both of which CI runs on every push:
+**This repo runs on the gitflow model its own payload ships** — `templates/marvin/agents/git-strategy.md` is the single owner of that model (branch table, tagging authority, semver, the release cut); it is not restated here. Concretely: `feature/AOS-<n>-slug` branches cut from `develop`, and the version bump plus annotated tag land on the `release/<version>` branch's cut to `main`. The factory is not self-installed, so it has no `.docs/` — its own release notes mirror the payload convention one level up, at `docs/release-notes/v<version>.md`, header contract and all; that file IS the annotated tag's message, and `scripts/validate-kit.sh` fails the release without it.
+
+**Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
+
+Every PR must pass the static release gate and the migration tests, both of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
@@ -227,7 +231,7 @@ The static gate's nine checks: known placeholders only · template line budgets 
 ```
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
-scripts/validate-kit.sh              nine-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              ten-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -242,6 +246,7 @@ templates/
   marvin/agents/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
+    git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
@@ -262,26 +267,27 @@ templates/
     future/index.md                deliberately deferred ideas
     information/index.md           the project's dynamic rule system (adds severity + relevance columns)
     handbooks/index.md             handbooks parent index: the three audience sub-folder rows
+    release-notes/index.md         one document per released version, mirroring that version's annotated tag
     handbooks/audience-index.md    generic handbook ToC skeleton (installed ×3 as developer|user|admin/index.md)
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/
       intake-structure-brief.md    agent brief that creates labels + intake guide
       tracker-config.md            4/4 levels native; severity → Linear Priority
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     jira/
       intake-structure-brief.md    agent brief that seeds the label taxonomy + intake guide
       tracker-config.md            3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
       convert-milestones-brief.md  dispatchable when the v2 connector adds release creation: milestone labels → releases
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     github/
       intake-structure-brief.md    agent brief that seeds labels via gh CLI + a pinned intake guide issue
       tracker-config.md            4/4 levels native; no priority/estimate field to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     local/
       intake-structure-brief.md    agent brief that scaffolds .docs/project-management/ + a file-local intake guide
       tracker-config.md            4/4 levels via files; labels in frontmatter, no native fields to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
 ```
 
 ## Portability notes
