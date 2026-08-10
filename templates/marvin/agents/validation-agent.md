@@ -41,7 +41,7 @@ At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) w
 
 ## Release validation
 
-A milestone is a scope and a release is a frozen version — independent axes, so this is a SEPARATE gate, not the milestone sweep under another name. It runs on the `release/*` (or `hotfix/*`) branch, at the step `.marvin/agents/git-strategy.md` places it, and it gates the merge to `main` and the tag that follows. Same composition sweep as above, plus what only a release has: the version bump is present and classified correctly for what a consumer must do, and `.docs/release-notes/v<version>.md` matches the scope actually frozen. Only fixes for what this gate finds may land on that branch — a finding that needs new scope defers to the next version instead. Branch names, merge order, tagging authority: cite that file, never restate it.
+A milestone is a scope and a release is a frozen version — independent axes, so this is a SEPARATE gate, not the milestone sweep under another name. It runs on the branch the version is being stabilised on, at the step `.marvin/agents/git-strategy.md` places it; that file alone says which branch that is, what the gate blocks, and what happens after. What this file owns is WHAT the gate checks: the composition sweep above, plus what only a release has — the version bump present and classified correctly for what a consumer must do, and `.docs/release-notes/v<version>.md` complete, meaning its body matches the scope actually frozen AND its `scope:` header lists that scope's work-carrying issue keys, since release cost reporting resolves against nothing else. Only fixes for what this gate finds may land there; a finding that needs new scope defers to the next version.
 
 ## After a verdict
 
