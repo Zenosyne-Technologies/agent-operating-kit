@@ -199,7 +199,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Collect once, render many.** A per-tracker stats brief snapshots every label dimension into versioned JSON under the project's reports folder. The three renders read that snapshot verbatim — an agent that recomputes a figure is doing it wrong — and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: no size or origin labels, no tiers, no agent names, product progress only.
 
-**Traceability by convention.** `git-strategy.md` is the single owner of everything git: a gitflow branch model (`main` holds released state only, `develop` integrates, one `feature/<KEY>-<slug>` per work item, `release/*` and `hotfix/*` merged both ways), annotated tags the orchestrator alone may cut, and semver classified by what a *consumer* must do. Every other file cites it and restates nothing — a copy of a branch rule elsewhere is the defect. Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. A milestone is a scope, not a branch: milestone- and release-scoped rollups resolve by issue-key set, which is what lets commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
+**Traceability by convention.** `git-strategy.md` is the single owner of everything git: a gitflow branch model (`main` holds released state only, `develop` integrates, one `feature/<KEY>-<slug>` per work item, `release/*` and `hotfix/*` merged both ways), annotated tags the orchestrator alone may cut, and semver classified by what a *consumer* must do. Inside the installed payload every other file names only the concrete branch or tag it needs — the literal branch a brief sends an agent to — and defers on the model; a second copy of the model is the defect. (This paragraph is the factory describing its own payload, not part of it.) Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. A milestone is a scope, not a branch: milestone- and release-scoped rollups resolve by issue-key set, which is what lets commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
 
 **Definition of Done as the contract.** The DoD is written by the planner, onto the issue, before build starts. It is the thing the builder targets, the thing two independent validators attack, the thing the documentation agent documents against, and the thing quoted in the close comment. Everything else in the lifecycle hangs off it.
 
@@ -270,20 +270,20 @@ templates/
     linear/
       intake-structure-brief.md    agent brief that creates labels + intake guide
       tracker-config.md            4/4 levels native; severity → Linear Priority
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     jira/
       intake-structure-brief.md    agent brief that seeds the label taxonomy + intake guide
       tracker-config.md            3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
       convert-milestones-brief.md  dispatchable when the v2 connector adds release creation: milestone labels → releases
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     github/
       intake-structure-brief.md    agent brief that seeds labels via gh CLI + a pinned intake guide issue
       tracker-config.md            4/4 levels native; no priority/estimate field to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
     local/
       intake-structure-brief.md    agent brief that scaffolds .docs/project-management/ + a file-local intake guide
       tracker-config.md            4/4 levels via files; labels in frontmatter, no native fields to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v2, optional tokens section) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
 ```
 
 ## Portability notes

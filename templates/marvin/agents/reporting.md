@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Producing reports
 
-All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the installed `.marvin/agents/stats-collection-brief.md` (coordinates pre-resolved at install; fill SCOPE/PERIOD at dispatch), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v2). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
+All reports render FROM a stats snapshot — never query the tracker directly. Collect first: dispatch the installed `.marvin/agents/stats-collection-brief.md` (coordinates pre-resolved at install; fill SCOPE/PERIOD at dispatch), which writes `.docs/reports/<date>-stats[-<scope>].json` (schema v3). Then dispatch ONE {{WORKER_MODEL}} render agent briefed with the snapshot path and the render type below. Renders are md files committed like any doc work.
 
 ## Renders
 
@@ -21,6 +21,6 @@ All reports render FROM a stats snapshot — never query the tracker directly. C
 - Snapshot first, always — a render without a fresh same-day snapshot starts by dispatching collection.
 - Render briefs follow `briefing.md` (machine-consumed FINAL MESSAGE: `report: <path>` plus `comment: <url>` for close-outs).
 - Numbers come from the snapshot verbatim — an agent that recomputes or estimates figures is doing it wrong.
-- `tokens: null` in the snapshot → every render omits its cost content silently.
+- The snapshot's `tokens` decides what every render prints, and there are THREE outcomes, not two (`.marvin/agents/token-economics.md`). `null` → telemetry absent, omit all cost content silently. `state: ok` → render the figures. `state: scope-unresolved` or `no-rows` → print NO currency figure anywhere, not even zero: the digest and close-out carry one line naming the state and the counts (`scope_issue_keys`, `control_events`), and the stakeholder page — which cannot show internals — omits its cost line entirely rather than implying the work was free.
 - Milestone close is a REPORTING event, not a git event: the close-out render (and its snapshot) is the whole deliverable. Branches, merges and tags belong to `.marvin/agents/git-strategy.md` and are never a report's business — no render may claim a milestone was tagged or a branch archived.
 - A RELEASE is a different scope from a milestone and has no render here: its narrative is `.docs/release-notes/v<version>.md`, written at the cut per that same file. When a report needs release figures, scope the snapshot by the release's issue-key set (`.marvin/agents/token-economics.md`) — never by a branch name.
