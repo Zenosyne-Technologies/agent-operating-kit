@@ -20,3 +20,12 @@ Kit target hierarchy: milestone container → feature grouping → work item →
 - Size labels are canonical, with NO native estimate field to mirror.
 - Native issue TYPE doesn't exist either — the `type:*` label is the only type dimension.
 - `milestone:<slug>` labels are UNNECESSARY here (native milestones exist) — do not create them.
+
+## Release mapping: native, and the reference case for the other trackers
+
+A GitHub Release ATTACHES to a git tag, so a version needs no simulation and no mirror here — but the two are created in that order, never in one step. The branch model, who may tag and how the version is classified are `.marvin/agents/git-strategy.md`'s; only the mapping is decided here.
+
+- Tag FIRST, publish second — `gh release create` against a tag that does not yet exist invents a LIGHTWEIGHT one, which the tag rule forbids: `git tag -a v<version> -m …` on the release branch's merge commit, `git push origin v<version>`, then `gh release create v<version> --verify-tag --notes-file <body>` (orchestrator only, `--verify-tag` refusing to invent anything).
+- `<body>` is the release note's BODY, extracted per `.marvin/agents/git-strategy.md` (which owns the rule that the header is never published): `awk 'NR==1 && /^---$/{h=1;next} h && /^---$/{h=0;next} !h' .docs/release-notes/v<version>.md > <body>`. Closing the header block on its second `---` is the whole point — a form that keeps consuming `^---$` also eats the body's horizontal rules, and the Release then silently differs from the tag message and the document.
+- Issues carry NO version marker. Native milestones are already the kit's milestone axis, and milestone and version are independent axes — spending the milestone field on a version would collapse two things that are not one. So the two scopes resolve from different places: MILESTONE scope from the native milestone (`gh issue list --milestone <slug>`), RELEASE scope from the note's `scope:` header field.
+- `release:*` labels are UNNECESSARY here for the same reason `milestone:<slug>` labels are — a hand-synced label would be a second source of truth for what the Release object already holds.

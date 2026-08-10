@@ -2,7 +2,7 @@ name: validate-kit
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop, 'release/**']
 jobs:
   static-checks:
     runs-on: ubuntu-latest
