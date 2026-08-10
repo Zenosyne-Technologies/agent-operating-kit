@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Git strategy — branches, versions, releases
 
-Everything about git is decided here. Any other file needing a branch name, a version rule or a tag rule CITES this one and states nothing itself — a copy of these rules living anywhere else is the defect, not a convenience.
+Everything about git is decided here. Another file may name a concrete INSTANCE it needs — the branch a brief sends an agent to (`feature/AOS-123-cache-keys`), the branch a gate runs on, the tag a release carries. No other file may restate the MODEL: which branch types exist, what each is cut from and merges to, when a branch dies, who may tag, or how a version is classified. Naming an instance is required; a second copy of the model is the defect, not a convenience.
 
 ## Branch model (gitflow)
 
@@ -20,7 +20,7 @@ Everything about git is decided here. Any other file needing a branch name, a ve
 | `release/<version>` | `develop` | `main` **and** `develop` | A frozen scope being stabilised: version bump, release note, fixes validation finds. No new scope. |
 | `hotfix/<version>` | `main` | `main` **and** `develop` | One urgent defect against the released state. |
 
-`<KEY>` is the tracker issue key that item's commits already carry (`<KEY>: <message>`), so a branch traces to the PM tool exactly the way its commits do. A milestone is NOT a branch: each of its tasks gets its own `feature/` branch, and milestone-scoped rollups (reports, telemetry) resolve by the milestone's issue-key set, never by a branch-name prefix. Merging `release/*` or `hotfix/*` back to `develop` is PART of that merge, never a follow-up: skip it and `main` carries commits `develop` has never seen, which the next release silently reverts.
+`<KEY>` is the tracker issue key that item's commits already carry (`<KEY>: <message>`), so a branch traces to the PM tool exactly the way its commits do. A milestone is NOT a branch: each of its tasks gets its own `feature/` branch, and milestone-scoped rollups (reports, telemetry) resolve by the milestone's issue-key set, never by a branch-name prefix. Merging `release/*` or `hotfix/*` back to `develop` is PART of that merge, never a follow-up: skip it and `main` carries commits `develop` has never seen, which the next release silently reverts. **When a branch dies**: every branch above except `main` and `develop` is DELETED as soon as its merges land — `feature/*` at its merge to `develop`, which happens when its issue closes (documentation landed) and is done by whoever closed it; `release/*` and `hotfix/*` only once BOTH their merges are in. Nothing is "archived": the issue key, the commits and the tag are the history, and a merged branch left lying around is just a second answer to "where does this work live".
 
 ## Tagging authority — the orchestrator ONLY
 
@@ -28,7 +28,7 @@ Everything about git is decided here. Any other file needing a branch name, a ve
 
 ## A tag carries its release note
 
-Release tags are ANNOTATED (`git tag -a v<version> -m …`), never lightweight, and the message IS the release summary — what changed, for whom, what a consumer must do. The same text is the body of `.docs/release-notes/v<version>.md`, and the two must match: a tag message is not reachable by the documentation crawl and cannot be linked from an index, so the document is how the release stays findable.
+Release tags are ANNOTATED (`git tag -a v<version> -m …`), never lightweight, and the message IS the release summary — what changed, for whom, what a consumer must do. `<version>` is bare semver everywhere (`1.2.0`); the leading `v` belongs to the tag name and to nothing else. That message is exactly the BODY of `.docs/release-notes/v<version>.md` — everything below the closing `---` of its YAML header. The header is machine metadata and is NEVER published: not in a tag message, not in a forge's release body. A tool that would publish the file wholesale (`--notes-file` on the raw document) is publishing the header; strip it first. The two texts must match, because a tag message is not reachable by the documentation crawl and cannot be linked from an index, so the document is how the release stays findable.
 
 ## Version classification (semver)
 
@@ -56,4 +56,4 @@ A hotfix runs the same eight steps, with step 2 reading "`hotfix/<version>` cut 
 
 ## Who cites this file
 
-`CLAUDE.md` (standing rules), `.marvin/agents/briefing.md` (the branch a brief names), `.marvin/agents/validation-agent.md` (what release validation gates), `.marvin/agents/token-economics.md` (branch and issue-key scoping), `.marvin/agents/reporting.md` (release-scoped renders), and `.docs/release-notes/index.md`. Change the model here and those are the files to re-read — none of them restates it.
+Find them, never trust a list: `rg -l 'git-strategy\.md' CLAUDE.md .marvin/ .docs/` returns every citer, and it is right the day someone adds one. A hand-kept roster here would be stale within a release and would quietly authorise the file it forgot. Change the model above and re-read what that command returns — each hit should name an instance and defer on the model; a hit that restates the model is the defect this file exists to prevent.
