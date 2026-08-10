@@ -15,13 +15,21 @@ the rationale; the wiring is AOS-63.
 `templates/CLAUDE.core.md` names `document-standard.md` and `information-guide.md` (with
 `information-severity.md` as its severity source) and carries the standing rule that plans,
 findings, debt, deferred ideas and warnings are written into `.docs/` rather than left in chat;
-install and upgrade both seed the six `.docs/` seeds plus a `.docs/handbooks/index.md` parent
+install and upgrade both seed the six `.docs/` seeds — `.docs/index.md` is the crawl's mandatory
+entry point, so every installed project now has one — plus a `.docs/handbooks/index.md` parent
 that links the three audience indexes (the audience skeleton became
 `templates/docs/handbooks/audience-index.md` so the parent could take the `index.md` slot);
 Jira installs get `convert-milestones-brief.md` in `.marvin/agents/`; `{{INSTALL_DATE}}`
 resolves to the install date and `{{DOCS_ISSUE_LOG_PATH}}` to `.docs/issue-log.md` by default,
 with the root index's record row kept only where the path resolves inside `.docs/` and outside
-`project-management/` and `reports/`.
+`project-management/` and `reports/`. A `.docs/index.md` or `handbooks/index.md` the consumer
+already owns (upgrade, or a legacy install) is **merged, never skipped**: every existing row and
+section stays; only the sub-folder rows and root-record section it lacks get added, matched by
+heading or link target so a re-run is a no-op. Both skills then **close the crawl**: walk from
+`.docs/index.md` and list every `.docs/**/*.md` (outside `project-management/` and `reports/`)
+no index row reaches, row the obvious ones — in that folder's own row shape, canonical or one of
+the two deviations below — and report the rest by path, since an unindexed document does not
+exist under this protocol.
 
 ## Index-crawl protocol, and why headers exist
 
