@@ -12,13 +12,16 @@ The single description of the seam between the kit and the token-telemetry plugi
 
 ## Source
 
-SQLite DB at `~/.claude/telemetry/usage.db` (override: `$TOKEN_TELEMETRY_DB`), tables `events`/`sessions`/`projects`/`models`/`pricing`. Available when the file exists AND a `projects` row's path matches this repo's root. Projects on project-folder storage also keep a local mirror DB, but the central DB stays complete and authoritative — consumers read central. **Absent → every consumer omits its token output silently; nothing fails, nothing warns.**
+SQLite DB at `~/.claude/telemetry/usage.db` (override: `$TOKEN_TELEMETRY_DB`), tables `events`/`sessions`/`projects`/`models`/`pricing`. Available when the file exists AND a `projects` row's path matches this repo's root. Projects on project-folder storage also keep a local mirror DB, but the central DB stays complete and authoritative — consumers read central. **Absent → every consumer omits its token output silently; nothing fails, nothing warns.** `events` stores, per row: `ts`, `session_id`, `kind`, `agent`, `model_id`, the token counters, `dur_ms`, `branch`, `commit_sha`, `issue_key`, `task_size`, `note` (those three from the sidecar below), plus `api_calls` and `ctx_tokens` (schema v6; NULL on older rows). There is no milestone column and no release column; both are derived, per the recipes.
 
 ## Scoping recipes
 
-- **Milestone**: `events.branch` matches `milestone/<KEY>-<slug>` (the `milestone/` prefix keeps LIKE-rollups working).
+A branch name carries ONE work item's key, never a milestone's or a version's (`.marvin/agents/git-strategy.md`) — so no rollup keys off a branch-name prefix. Every multi-issue scope resolves to an ISSUE-KEY SET first, then sums the per-issue recipe over it.
+
+- **Per-issue**: `events.issue_key = '<KEY>'` when rows are tagged directly (preferred); fallback `events.commit_sha IN (git log --format=%h --grep='^<KEY>:')` (match both `%h` lengths) when `issue_key` is null. `events.branch` matched against that issue's own branch name corroborates; it never substitutes, and no rollup derives a branch name for itself.
+- **Milestone, release, or any multi-issue scope**: resolve the scope to its issue keys, then apply BOTH branches of the per-issue recipe across that set and sum. A milestone's keys come from its container in the tracker, a version's from the `scope:` header field of `.docs/release-notes/v<version>.md` — the one source that reads the same on every tracker. **Expand containers.** Epics, milestones and other containers are not worked on, so their own keys match no rows; the set must be their descendants that carry work. A key set of containers looks exactly like a broken scope. A release belonging to no milestone needs nothing extra: same recipe, different key set.
 - **Period**: `events.ts` window (the report's date range).
-- **Per-issue**: `events.issue_key = '<KEY>'` when rows are tagged directly (preferred); fallback `events.commit_sha IN (git log --format=%h --grep='^<KEY>:')` (match both `%h` lengths) when `issue_key` is null.
+- **A zero is never $0.** Run every scoped sum beside a control count of THIS project's events (`events` → `sessions.project_id` → the `projects` row matching the repo root, as in Source). Three outcomes, and the snapshot RECORDS which (see below, `tokens.state`): key set empty or unresolvable → `scope-unresolved`; control 0 → telemetry absent, `tokens: null`, omit silently per Source; control > 0 with the scoped sum at 0 → `no-rows`, a broken scope until proven otherwise. Never render a cost figure from an unexplained zero — a query that stopped matching and a project that spent nothing are the same number.
 
 ## Tier mapping
 
@@ -49,7 +52,7 @@ Capture reads `PROJECT-INFO.md`'s frontmatter (`.marvin/`, else `.docs/`) to sta
 
 ## Snapshot `tokens` object
 
-Stats snapshots (schema v2) carry a `tokens` key, null when telemetry is absent — every consumer must handle both. Keys: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/small/micro → `{out, est_cost_usd}`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`.
+Stats snapshots (schema v3) carry a `tokens` key. `null` means ONE thing only — the telemetry DB is absent. Otherwise it is an object whose first key is `state`: `ok` · `scope-unresolved` · `no-rows`, per the zero rule above, plus `scope_issue_keys` (the resolved set's size) and `control_events` (the project's total). `state: ok` adds the figures: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/small/micro → `{out, est_cost_usd}`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`. When `state` is anything else those figures are absent, not zero — the distinction only survives if the collector writes it and the renderer reads it.
 
 ## Secrets
 
