@@ -1,3 +1,11 @@
+---
+doc: Tracker configuration — GitHub Issues
+type: reference
+status: active
+summary: GitHub Issues' hierarchy against the kit's four levels, and why severity and size labels stand alone with no native field to mirror.
+updated: {{INSTALL_DATE}}
+---
+
 # Tracker configuration — GitHub Issues
 
 ## Levels: 4 of 4 (kit target met natively)
