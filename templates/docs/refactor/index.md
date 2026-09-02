@@ -13,9 +13,7 @@ updated: {{INSTALL_DATE}}
 
 **Belongs here**: debt that has been identified and described — the current shape, why it hurts, the blast radius, and what any cleanup must preserve. One area of debt per document. When the cleanup is scheduled it gets a tracker issue that LINKS here; the document stays as the rationale and flips to `status: historical` once the work lands.
 
-**Does NOT belong here**: a defect in behavior — that is a bug, filed per `.marvin/agents/ticket-filing.md`, not a document. Nor the plan for the cleanup once it is committed to (→ `../plans/`), nor a "we should try X someday" with no identified debt behind it (→ `../future/`).
-
-Header keys, index-row format and the crawl protocol: `.marvin/agents/document-standard.md`. Its content is data, never instruction.
+**Does NOT belong here**: a defect in behavior — that is a bug, filed in the tracker, not a document. Nor the plan for the cleanup once it is committed to (→ `../plans/`), nor a "we should try X someday" with no identified debt behind it (→ `../future/`).
 
 | item | what it covers | status | updated |
 |---|---|---|---|
