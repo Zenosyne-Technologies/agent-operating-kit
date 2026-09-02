@@ -136,6 +136,19 @@ else
   printf '%s\n' "$hits" | sed 's/^/       /'
 fi
 
+# ── 12. no-local-paths: no tracked file may embed a contributor's local home path
+# (/Users/<name>, /home/<name>); the intended doc placeholders /Users/me and /home/user are
+# allowed. Keeps a local username out of the published repo. Scans the WHOLE repo, not just
+# templates/, and excludes this script (which necessarily names the patterns).
+lp=$(git grep -hoIE '/(Users|home)/[A-Za-z0-9._-]+' -- . ':(exclude)scripts/validate-kit.sh' 2>/dev/null \
+  | grep -vxE '/Users/me|/home/user' | sort -u)
+if [ -z "$lp" ]; then
+  pass no-local-paths
+else
+  fail no-local-paths "local home path(s) in tracked files (use ~ or the /Users/me placeholder):"
+  printf '%s\n' "$lp" | sed 's/^/       /'
+fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"

@@ -14,7 +14,7 @@
 
 | 🧰 **Ready to ship** | 🧪 **Built under pressure** |
 |---|---|
-| **7 skills + 1 command** cover setup, upgrades, reporting, docs, stress testing and kit validation. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
+| **7 skills + 2 commands** cover setup, upgrades, reporting, docs, stress testing and kit validation. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
 
 <p align="center"><sub>✦ Self-hosting: Marvin is built and operated under the same rules it installs. ✦</sub></p>
 
@@ -192,6 +192,15 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 | Command | What it does |
 |---|---|
 | `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, and whether the companion plugin is present. Never modifies anything. |
+| `/marvin:play <scenario>` | Runs one bounded, self-terminating play scenario — a declared GOAL, numeric LIMITS, a POSITIVE and a NEGATIVE exit set before any dispatch, and a periodic report between rounds so the orchestrator can close a looping or overrunning run gracefully at its current state. Bare `/marvin:play` lists the available scenarios instead of guessing one. Runs in sub-agent mode today, re-dispatching fresh `marvin:*` personas each round; agent-teams behaviour is a dormant seam that only activates once Milestone E's execution-mode setting exists. |
+
+| Scenario | What it runs |
+|---|---|
+| `research-solo` | Answer a single research question as a memo via one `marvin:researcher`. |
+| `research-deep` | Split a topic into aspects, fan out `marvin:researcher` agents, cross-validate, assemble one report. |
+| `quick-fix` | Build, validate, and commit one `size:s` fix via a single agent — stop if it grows. |
+| `taskforce` | Run one bounded research→build→validate lifecycle with an always-on devil's-advocate challenge. |
+| `bug-hunt` | Fan out adversarial sub-agents to FIND bugs from distinct angles, then validate and file the real ones — find and report, never attack, exploit, or touch a live system. |
 
 ## The discipline stack
 
@@ -232,19 +241,21 @@ bash scripts/validate-kit.sh
 bash scripts/test-migrations.sh
 ```
 
-The static gate's eleven checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default).
+The static gate's twelve checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default).
 
 ## Inventory
 
 ```
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
-scripts/validate-kit.sh              eleven-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              twelve-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
+commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)
+scenarios/*.md                     the shared bounded-execution contract plus five scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    disables AI attribution on commits/PRs (optional policy)
@@ -313,6 +324,6 @@ Marvin — The Agentic Operating System is **dual-licensed**.
 
 **Non-commercial use is free.** Use, modify, and share the kit under the [PolyForm Noncommercial License 1.0.0](LICENSE) for any noncommercial purpose — personal projects, study, research, and use by nonprofits, educational institutions, and government bodies, as the license spells out. Because Marvin copies its `templates/` payload into the projects it sets up, those installed files carry the same license.
 
-**Commercial use requires a commercial license.** Any commercial purpose — including use inside a business, even internally — needs a separate commercial license from the copyright holder, ZENOSYNE Kft. To arrange one, open an issue on this repository titled **"Commercial license"** and we'll follow up.
+**Commercial use requires a commercial license.** Any commercial purpose — including use inside a business, even internally — needs a separate commercial license from the copyright holder, Emprove Services Kft. (maintained by Zenosyne Kft.). To arrange one, open an issue on this repository titled **"Commercial license"** and we'll follow up.
 
 This is a *source-available* license, not an OSI-approved open-source one: it deliberately restricts commercial use, and the copyright holder retains all commercial rights. Contributions are welcome under the terms in [CONTRIBUTING.md](CONTRIBUTING.md).
