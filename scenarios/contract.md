@@ -64,7 +64,7 @@ mode; only an explicit setting activates it.
 ## 4. Find, never attack — safety
 
 Adversarial scenarios (e.g. a bug-hunt) **FIND and REPORT** weaknesses. They NEVER attack,
-exploit, or run destructive proof-of-concepts against any live system, and never make a
+exploit, run destructive proof-of-concepts, touch a live system, or make a
 state-changing call to prove a finding. The rules are owned, not restated here: follow the
 installed `.marvin/agents/security.md` (security surfaces, find-not-exploit) and
 `.marvin/agents/guardrails.md` (the DO NOT dispositions and the escalation chain). A scenario
