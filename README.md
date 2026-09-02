@@ -243,6 +243,7 @@ templates/
   marvin/
     PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .marvin/PROJECT-INFO.md)
     MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .marvin/MEMORY.md)
+    LICENSE                        self-scoped PolyForm Noncommercial notice for the kit files (installed to .marvin/LICENSE)
   marvin/agents/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
