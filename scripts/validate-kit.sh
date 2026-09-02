@@ -123,6 +123,19 @@ else
   [ -z "$rnbad" ] && pass release-note || fail release-note "$RN:$rnbad"
 fi
 
+# ── 11. docs-self-contained: the .docs/ estate is tool-agnostic and must ship without Marvin,
+# so nothing under templates/docs/ may reference .marvin/ or name the orchestrator. The dependency
+# runs ONE WAY (.marvin → .docs); an agent reaches the document standard via the cascade, not via a
+# pointer embedded in a doc (templates/marvin/agents/document-standard.md). {{...}} placeholders are
+# fine — only .marvin and the word Marvin are forbidden.
+hits=$(grep -rnE '\.marvin|\bMarvin\b' templates/docs/ 2>/dev/null)
+if [ -z "$hits" ]; then
+  pass docs-self-contained
+else
+  fail docs-self-contained "templates/docs/ must not reference .marvin or name Marvin:"
+  printf '%s\n' "$hits" | sed 's/^/       /'
+fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
