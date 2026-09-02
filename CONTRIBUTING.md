@@ -6,7 +6,7 @@ Thanks for your interest in Marvin — The Agentic Operating System.
 
 Marvin is **dual-licensed**. It is offered to the public under the
 [PolyForm Noncommercial License 1.0.0](LICENSE), and the copyright holder
-(Zenosyne Technologies) separately grants **commercial** licenses to anyone who
+(ZENOSYNE Kft.) separately grants **commercial** licenses to anyone who
 wants to use it for a commercial purpose. See the **License** section of the
 [README](README.md) for what each covers.
 
