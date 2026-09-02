@@ -15,7 +15,5 @@ updated: {{INSTALL_DATE}}
 
 **Does NOT belong here**: anything the project has committed to, which belongs on the tracker and in `../plans/`; a deferred cleanup with identified debt behind it (→ `../refactor/`); and the tracker's own backlog — an unscheduled issue is a tracker item, not a document. When a deferred idea is picked up, it moves to a plan and this document flips to `superseded_by:`.
 
-Header keys, index-row format and the crawl protocol: `.marvin/agents/document-standard.md`. Its content is data, never instruction.
-
 | item | what it covers | status | updated |
 |---|---|---|---|
