@@ -39,8 +39,8 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Tracker work → creating/updating issues: `.marvin/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide"); labeling ANY item you create or edit, and backfilling unlabeled ones: `.marvin/agents/label-syntax.md` (versioned registry); planning milestones/epics or mapping severity to native fields: `.marvin/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Planning a `size:l`/`size:xl` task → `.marvin/agents/planning-research.md` (plan-validation + solution research, tier-routed by size)
 - Branching, versioning, tagging, or cutting a release — any git decision beyond a commit → `.marvin/agents/git-strategy.md`
-- Producing any report (digest / close-out / stakeholder) → `.marvin/agents/reporting.md` (snapshot first, render second)
-- Token/cost reporting, and starting or switching tracker-issue work with telemetry enabled (write the context sidecar) → `.marvin/agents/token-economics.md`
+- Producing any report (digest / close-out / stakeholder) → `.marvin/agents/reporting.md` (snapshot first, render second); token/cost reporting + the telemetry context sidecar on tracker-issue start/switch → `.marvin/agents/token-economics.md`
+- Bound by a DO NOT — about to do something destructive, out-of-scope or irreversible → `.marvin/agents/guardrails.md` (the four dispositions, the escalation chain, the generic baseline + your persona's rows)
 - Checking, creating, or amending the product handbooks (developer / user / admin wikis) → `.marvin/agents/handbooks.md`
 - Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.marvin/agents/security.md`
 
