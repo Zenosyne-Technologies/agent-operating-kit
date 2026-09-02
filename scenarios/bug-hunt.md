@@ -10,7 +10,7 @@ restated here. This file only layers this scenario's specific shape on top.
 
 **The hunters LOCATE and REPORT weaknesses; they do NOT attack, exploit, run destructive
 proof-of-concepts, or touch a live system, and never make a state-changing call to prove a
-finding.** This is the hard line of the scenario. The rules are owned, not restated here: follow
+finding.** This is the hard line of the scenario, stated here for emphasis; the rule is owned (not re-defined) by
 `scenarios/contract.md` (§4, find-never-attack), `.marvin/agents/security.md` (security surfaces,
 find-not-exploit), and `.marvin/agents/guardrails.md` (the DO NOT dispositions and the escalation
 chain). Any angle that could only be confirmed by crossing that line is reported as a suspected
