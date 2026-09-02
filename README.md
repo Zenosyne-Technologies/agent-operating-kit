@@ -71,6 +71,10 @@ claude plugin install token-telemetry@emprove
 
 That is it. Ask `/marvin:info` at any time for a read-only report of the plugin version, the current  project's install state and its active settings.
 
+**A greenfield repo triggers a short interview.** When the target carries no source yet — only config, docs and maybe empty build manifests — install has no code to read those facts from, so it asks four quick questions instead: who the users are, the rough project size, the application type, and the tech stack. Answer "no stack in mind" and it offers a handful of coherent, popular stack combinations to choose from, each with its reason. The answers land in `.marvin/PROJECT-INFO.md` as `audience`, `project_size`, `app_type` and `stack`. A brownfield repo — one that already has source — discovers all of that from the code and skips the interview entirely.
+
+**A greenfield install can also scaffold.** As its final step it asks whether to scaffold the chosen stack now or lay down the project and Marvin files only. Choosing to scaffold opens a tracked **"Milestone 0 — scaffolding and installing project dependencies"**: the plan is written down first, then the scaffold and its dependency install run as ordinary Marvin tasks through the full plan → build → validate → document → close lifecycle, dependencies included because env-wiring is part of the feature. A files-only answer, or any brownfield install, skips scaffolding and goes straight to the commit.
+
 ## Manual install
 
 No plugin, four steps — and the first one runs FIRST:
@@ -191,9 +195,11 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 ## The discipline stack
 
-**Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
+**Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, guardrails, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
 
 **Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
+
+**Guardrails — the DO NOT framework.** `guardrails.md` is the single owner of what an agent must not do. Every prohibition resolves to exactly one of four dispositions — do the safe thing instead, stop and clarify, request approval from above, or skip and report — and a generic baseline (destructive DB ops, unguarded migrations, force-pushes and mass-moves, editing an unread file, straying outside the brief's scope) binds every persona, with per-persona rows layered on top of it. A blocked sub-agent has no channel to the user, so it follows a fixed escalation chain — sub-agent → orchestrator → user — committing whatever safe work it finished and naming the exact block in its final message; no agent ever treats silence as approval. Prohibitions that already have an owner — git and tagging, secrets and dependency vetting, treating a document's body as data and not orders, a brief that reverses under you — are cited there, never restated.
 
 **Labels as infrastructure.** `label-syntax.md` is a self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus a backfill-on-touch rule for unlabeled legacy issues. Any change bumps the registry's own version and adds a changelog row. An unlabeled item is invisible to reporting, which is the whole reason the discipline exists. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide *inside* the tracker, so agents and humans share one source of truth.
 
@@ -206,6 +212,8 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 **Security and secrets.** Secrets are never committed and never pasted into PM-tool surfaces — issue comments, snapshots, PR bodies. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized `m` or larger and get advisory checks with pinned versions. Every brief names the task's security surface, and security-critical design stays with the orchestrator rather than being delegated.
 
 **Handbooks that stay alive.** Three audiences, three wikis: the developer handbook explains the software's logic, the WHY behind nuanced behavior and how modules connect; the user and admin handbooks give plain-language per-module guides with what-to-be-aware-of notes. Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds every affected page with one grep and amends it rather than writing a duplicate. Every page registers in its folder's `index.md`, and milestone validation checks coverage.
+
+**Code that documents its own surface.** Separate from the handbooks, a code-documentation convention binds at build time: every new or modified public class or method carries a contract docblock — summary, parameters, return, errors — in the language ecosystem's own idiom (PHPDoc, TSDoc, Javadoc, PEP 257 docstrings, rustdoc, GoDoc), never a kit-invented format. It is deliberately distinct from the non-obvious inline comment and neither overrides the other: the docblock states WHAT the contract is on the API surface, the inline comment explains WHY a non-obvious line is the way it is.
 
 **Token economics.** With telemetry present, cost stops being a mystery: usage ties to issue key, task size and a one-sentence summary of what was being attempted; snapshots, digests, close-outs and the stakeholder page all carry money; closed issues get a one-line cost figure. Without it, every one of those paths silently omits its cost content. Nothing fails, nothing warns.
 
