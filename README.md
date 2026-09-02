@@ -313,6 +313,6 @@ Marvin — The Agentic Operating System is **dual-licensed**.
 
 **Non-commercial use is free.** Use, modify, and share the kit under the [PolyForm Noncommercial License 1.0.0](LICENSE) for any noncommercial purpose — personal projects, study, research, and use by nonprofits, educational institutions, and government bodies, as the license spells out. Because Marvin copies its `templates/` payload into the projects it sets up, those installed files carry the same license.
 
-**Commercial use requires a commercial license.** Any commercial purpose — including use inside a business, even internally — needs a separate commercial license from the copyright holder, ZENOSYNE Kft. To arrange one, open an issue on this repository titled **"Commercial license"** and we'll follow up.
+**Commercial use requires a commercial license.** Any commercial purpose — including use inside a business, even internally — needs a separate commercial license from the copyright holder, Emprove Services Kft. (maintained by Zenosyne Kft.). To arrange one, open an issue on this repository titled **"Commercial license"** and we'll follow up.
 
 This is a *source-available* license, not an OSI-approved open-source one: it deliberately restricts commercial use, and the copyright holder retains all commercial rights. Contributions are welcome under the terms in [CONTRIBUTING.md](CONTRIBUTING.md).
