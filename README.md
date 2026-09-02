@@ -98,7 +98,7 @@ Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable au
 
 Updating the *plugin* does not touch projects you already installed into — run the `upgrade-agent-os` skill in each repo to bring its installed files to the current version. That skill walks the per-release notes under `upgrades/` in order, so a project several versions behind still gets every migration step applied.
 
-**From v0.21.0, do that promptly in every repo.** All seven `marvin:*` personas hard-point at `.marvin/agents/*` with no fallback to the old `.docs/agents/` location, so in the window between updating the plugin and upgrading a given repo, every persona dispatched there reads a path that does not exist. The plugin update alone fixes nothing inside a project.
+**From v0.21.0, do that promptly in every repo.** The seven `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
 
 **A symlink on any path the upgrade touches refuses the whole of its step 4** — `CLAUDE.md`, `.marvin`, `.marvin/agents`, `.marvin/backups`, `.docs`, `.claude/agents` and their ancestors are all tested. The `CLAUDE.md → AGENTS.md` monorepo layout hits this, as does a `.claude/agents` symlinked into a dotfiles repo. It is a refusal to **clear**, not a bug — replace the link with a real file, or move it aside for the run: writing (or, for the persona cleanup, deleting) through a link destroys files outside the repository while `git status` stays clean, with nothing backed up to reconcile from.
 
@@ -224,7 +224,7 @@ bash scripts/validate-kit.sh
 bash scripts/test-migrations.sh
 ```
 
-The static gate's nine checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default).
+The static gate's ten checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key.
 
 ## Inventory
 
@@ -243,10 +243,12 @@ templates/
   marvin/
     PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .marvin/PROJECT-INFO.md)
     MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .marvin/MEMORY.md)
+    LICENSE                        self-scoped PolyForm Noncommercial notice for the kit files (installed to .marvin/LICENSE)
   marvin/agents/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
+    guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
