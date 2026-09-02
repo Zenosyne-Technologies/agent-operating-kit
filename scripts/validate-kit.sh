@@ -10,7 +10,7 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" AREA_1 AREA_2 AREA_3 CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME SCOPE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
+KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
@@ -121,6 +121,19 @@ else
   printf '%s\n' "$scopeval" | grep -qE '[A-Z][A-Z0-9]*-[0-9]+' \
     || rnbad="$rnbad scope:(missing or empty — derive it per git-strategy.md cut step 4)"
   [ -z "$rnbad" ] && pass release-note || fail release-note "$RN:$rnbad"
+fi
+
+# ── 11. docs-self-contained: the .docs/ estate is tool-agnostic and must ship without Marvin,
+# so nothing under templates/docs/ may reference .marvin/ or name the orchestrator. The dependency
+# runs ONE WAY (.marvin → .docs); an agent reaches the document standard via the cascade, not via a
+# pointer embedded in a doc (templates/marvin/agents/document-standard.md). {{...}} placeholders are
+# fine — only .marvin and the word Marvin are forbidden.
+hits=$(grep -rnE '\.marvin|\bMarvin\b' templates/docs/ 2>/dev/null)
+if [ -z "$hits" ]; then
+  pass docs-self-contained
+else
+  fail docs-self-contained "templates/docs/ must not reference .marvin or name Marvin:"
+  printf '%s\n' "$hits" | sed 's/^/       /'
 fi
 
 echo "----"

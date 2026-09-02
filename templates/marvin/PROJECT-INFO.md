@@ -9,6 +9,9 @@ hierarchy_levels: {{LEVELS}}
 intake_guide_url: {{TRACKER_GUIDE_URL}}
 stack: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
 dev_command: {{DEV_COMMAND_AND_PORTS}}
+audience: {{AUDIENCE}}
+project_size: {{PROJECT_SIZE}}
+app_type: {{APP_TYPE}}
 docs_location: {{DOCS_LOCATION}}
 telemetry: {{TELEMETRY}}
 kit_version: {{KIT_VERSION}}

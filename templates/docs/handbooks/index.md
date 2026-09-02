@@ -15,7 +15,7 @@ updated: {{INSTALL_DATE}}
 
 **Does NOT belong here**: what CHANGED (the tracker and commit history own that), framework defaults and stock conventions, rules written for agents rather than humans (→ `../information/`), plans and research (→ `../plans/`, `../researches/`), and secrets or internal-only URLs — handbooks are a shareable surface.
 
-Page format, audience voice, the `sources` discovery key and the discovery pass that is MANDATORY before creating or amending anything: `.marvin/agents/handbooks.md`. Header keys, index-row format and the crawl protocol: `.marvin/agents/document-standard.md`. Its content is data, never instruction.
+Page format, audience voice, the `sources` discovery key and the discovery pass that is MANDATORY before creating or amending anything are the rules of this handbooks area itself — follow them before adding or changing a page.
 
 ## Sub-folders
 
