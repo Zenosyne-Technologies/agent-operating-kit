@@ -42,11 +42,12 @@ newest=$(grep -E '^\| [0-9]+\.[0-9]+\.[0-9]+ \|' "$REG" | head -1 | grep -oE '[0
 [ -n "$h1" ] && [ "$h1" = "$newest" ] && pass registry || fail registry "H1 v$h1 != newest changelog row $newest"
 
 # ── 5. inventory: README inventory block ↔ tracked templates/ files (by basename, both directions)
+# basenames are .md/.json OR an extensionless kit file the payload legitimately ships (LICENSE)
 inv=$(awk '
   /^## Inventory$/ { inventory=1; next }
   inventory && /^```$/ { if (!fence) { fence=1; next }; exit }
   inventory && fence { print }
-' README.md | grep -oE '[A-Za-z0-9._-]+\.(md|json)' | sort -u)
+' README.md | grep -oE '[A-Za-z0-9._-]+\.(md|json)|LICENSE' | sort -u)
 miss_repo=""; miss_inv=""
 for f in $(git ls-files templates/); do
   b=$(basename "$f"); echo "$inv" | grep -qx "$b" || miss_inv="$miss_inv $b"
