@@ -78,7 +78,8 @@ A scenario runs as a sequence of gated rounds:
 2. Dispatch one or more named Marvin personas for the round, each with a scoped brief per
    `.marvin/agents/briefing.md`. The personas a scenario may use are exactly the installed set:
    `marvin:researcher`, `marvin:developer`, `marvin:developer-small`,
-   `marvin:validator-completion`, `marvin:validator-security`, `marvin:ponytail`. Pick the tier
+   `marvin:validator-completion`, `marvin:validator-security`, `marvin:validator-visual`,
+   `marvin:ponytail`. Pick the tier
    the task warrants; a scenario file names which persona(s) it uses.
 3. Each dispatched sub-agent returns the section-2 periodic-report block.
 4. **Gate before the next round:** the orchestrator evaluates every report against the POSITIVE

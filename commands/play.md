@@ -1,6 +1,6 @@
 ---
 description: Run a bounded Marvin play scenario — research, fixes, taskforce, or bug-hunt
-argument-hint: [research-solo|research-deep|quick-fix|taskforce|bug-hunt]
+argument-hint: [research-solo|research-deep|quick-fix|taskforce|bug-hunt|visual-sweep]
 ---
 
 Run a Marvin **play scenario** — a bounded, orchestrated multi-round run. The scenario to run is
