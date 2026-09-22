@@ -6,7 +6,7 @@ summary: The versioned single source of truth for tracker labels — dimensions,
 updated: {{INSTALL_DATE}}
 ---
 
-# Label syntax registry — v1.3.0
+# Label syntax registry — v1.4.0
 
 Self-contained and versioned: ANY change to this registry bumps the version above and adds a changelog row. This file is the single source of truth for labels; the in-tracker guide summarizes it and loses on label conflicts.
 
@@ -26,12 +26,13 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 | `sev1..sev4` | defects only | sev1-critical · sev2-high · sev3-medium · sev4-low (definitions in `ticket-filing.md`) |
 | `origin:` | every item | user-request (end users) · architect-request (the human managing the agent sessions) · agent-qa (QA sweeps, validators) · agent-dev (found by an agent while building) · roadmap (planned milestone work) |
 | `size:` | stories/tasks, at planning time | xs · s · m · l · xl — t-shirt scale for combined effort + complexity; drives the planning-research tier routing (`planning-research.md`); native estimate mapping in `tracker-config.md` |
+| `finding:` | issues raised by a specialised quality validator | visual (design/visual review — `visual-validation.md`) — an ORTHOGONAL axis: the issue still carries its own `area:`/`type:`, and `finding:` marks which cross-cutting quality review surfaced it |
 | `milestone:<slug>` | epics on 3-level trackers | virtual milestone container per `tracker-config.md` |
 | `release:v<version>` | issues in a frozen release scope, ONLY where `tracker-config.md` prescribes it | `release:` + the release's tag name, spelled as `git-strategy.md` spells it (e.g. `release:v1.2.0`); that tag stays canonical |
 
 ## Reporting intent
 
-type = work mix · area = component load · sev = quality posture · origin = demand source (users vs architect vs agents) · size = effort/complexity mix · milestone = scope progress · release = which shipped version carries an issue (an axis independent of milestone).
+type = work mix · area = component load · sev = quality posture · origin = demand source (users vs architect vs agents) · size = effort/complexity mix · milestone = scope progress · release = which shipped version carries an issue (an axis independent of milestone) · finding = which cross-cutting quality review surfaced an issue (visual/design today), sliceable independently of `area:`.
 
 ## Sizing rubric
 
@@ -47,6 +48,7 @@ When torn between two sizes, take the larger — under-sizing skips the research
 
 | Version | Change |
 |---|---|
+| 1.4.0 | Adds the `finding:` dimension (value `visual`) — a dedicated, ORTHOGONAL reporting axis for issues a specialised quality validator surfaces, so design/visual load is sliceable without colliding with the mandatory single-valued `area:`. Required on validator-raised findings only; grows a value per future cross-cutting validator. |
 | 1.3.0 | Adds `release:v<version>` — a virtual release scope, prescribed ONLY where `tracker-config.md` says the tracker has no native release object (Jira today; GitHub, Linear and Local map natively and must NOT use it). Mirrors the annotated tag, which stays canonical. |
 | 1.2.0 | Adds the sizing rubric (objective xs..xl criteria; round up when torn). No dimension/value changes. |
 | 1.1.0 | Adds `size:` dimension (t-shirt scale xs..xl, required on stories/tasks at planning time); sizes gate the planning-research tier routing. |

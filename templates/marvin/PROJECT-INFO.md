@@ -13,6 +13,8 @@ dev_command: {{DEV_COMMAND_AND_PORTS}}
 audience: {{AUDIENCE}}
 project_size: {{PROJECT_SIZE}}
 app_type: {{APP_TYPE}}
+screens_guide: {{SCREENS_GUIDE}}
+visual_validation: {{VISUAL_VALIDATION}}
 docs_location: {{DOCS_LOCATION}}
 telemetry: {{TELEMETRY}}
 kit_version: {{KIT_VERSION}}
@@ -25,5 +27,6 @@ Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Th
 
 - Repository layout: {{MONOREPO_OR_SINGLE + one-line top-level map}}
 - Hierarchy details, virtual milestones, severity/size native mappings: `.marvin/agents/tracker-config.md`
+- `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`)
 - Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
 - Operating rules: `CLAUDE.md` + the `.marvin/agents/` rules cascade
