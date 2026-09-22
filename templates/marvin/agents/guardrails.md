@@ -43,4 +43,5 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 - **researcher** — DO NOT change product code or file tracker items; findings go in the memo, per `planning-research.md`.
 - **validator-completion** — DO NOT patch a finding or confirm instead of falsify; report it, per `validation-agent.md`.
 - **validator-security** — DO NOT change product code or widen to a whole-repo audit; stay on the changed surface, per `validation-agent.md`.
+- **validator-visual** — DO NOT patch a finding or redesign the UI; capture, judge, report per `visual-validation.md`.
 - **documenter** — DO NOT document the builder's intentions over the validated result, and DO NOT alter product code, per `documentation-agent.md`.

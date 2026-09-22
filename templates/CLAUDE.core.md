@@ -32,7 +32,7 @@ No task enters build without a **DoD** — verifiable done-statements written at
 Keep context lean: load a reference ONLY when performing that activity, and cite it in the sub-agent brief instead of inlining its content.
 
 - Writing any agent brief → `.marvin/agents/briefing.md`
-- Validating done work (BA + security personas, E2E script) → `.marvin/agents/validation-agent.md`
+- Validating done work (BA + security personas, E2E script) → `.marvin/agents/validation-agent.md`; visual/design review of UI work → `.marvin/agents/visual-validation.md`
 - Documenting after a done task → `.marvin/agents/documentation-agent.md`
 - Writing, updating OR SEARCHING FOR any document (start every search at `.docs/index.md`; never glob or grep-sweep to find one) → `.marvin/agents/document-standard.md` (header keys, index rows, crawl protocol)
 - Recording a durable rule, constraint or warning — or being bound by one → `.marvin/agents/information-guide.md` (tagging, indexing, briefing duty; severity levels and their read obligations: `.marvin/agents/information-severity.md`)
