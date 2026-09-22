@@ -291,6 +291,7 @@ templates/
     handbooks/index.md             handbooks parent index: the three audience sub-folder rows
     release-notes/index.md         one document per released version, mirroring that version's annotated tag
     handbooks/audience-index.md    generic handbook ToC skeleton (installed ×3 as developer|user|admin/index.md)
+    handbooks/developer/screens/index.md  screen catalog — the declared UI surfaces (route, how to reach, breakpoints) the design/visual review resolves against
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/
