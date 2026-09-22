@@ -258,7 +258,7 @@ commands/*.md                      two commands: /marvin:info (state report) and
 scenarios/*.md                     the shared bounded-execution contract plus five scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
-  settings.json                    disables AI attribution on commits/PRs (optional policy)
+  settings.json                    attribution policy for commits/PRs — ships the "Emprove Marvin (Claude)" branded trailer; install blanks it to disable, or skips it to keep default
   marvin/
     PROJECT-INFO.md                project meta page — YAML frontmatter machine contract + human body (installed to .marvin/PROJECT-INFO.md)
     MEMORY.md                      Marvin's self-managed project-memory skeleton (installed to .marvin/MEMORY.md)
@@ -316,7 +316,7 @@ templates/
 - Model names are placeholders — map the tiers (`frontier` / `heavy worker` / `small worker` / `micro`) to whatever is current.
 - Tracker-specific parts are confined to the coordinates line in `ticket-filing.md` plus `templates/pm/<tracker>/` (currently `linear/`, `jira/`, `github/` and `local/`; `templates/pm/INSTALL.md` holds the tool-neutral selection, sensecheck and project-key flow the skills follow). Adding a PM tool is one new folder — intake brief, `tracker-config.md`, `stats-collection-brief.md` — plus an entry in that reference's selection and sensecheck tables. Taxonomy and filing template carry over 1:1; sev1..sev4 labels stay canonical everywhere.
 - Tools exposing only three hierarchy levels use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a native release or milestone once the tool or its connector allows. The conversion ships as a prepared brief, not just a rule.
-- The attribution policy — no AI co-author lines anywhere — is an owner preference. Delete `settings.json` and the matching core rule to keep default attribution.
+- The attribution policy is an owner preference chosen at install: keep Claude Code's default attribution (skip `settings.json`, delete the core rule), disable it entirely (`settings.json` with empty `attribution.commit`/`attribution.pr`, keep the "Attribution: none" rule), or brand it "Emprove Marvin (Claude)" (`settings.json` as shipped, with the branded core rule).
 
 ## License
 

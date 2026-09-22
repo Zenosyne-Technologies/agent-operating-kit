@@ -1,6 +1,6 @@
 # Stack advisory — recommending a greenfield stack
 
-Factory-side reference for the `install-agent-os` skill's greenfield interview (step 2, question 4).
+Factory-side reference for the `install-agent-os` skill's greenfield interview (step 2, question 5).
 Like `templates/pm/INSTALL.md`, the skill READS this and applies it — it is **never copied into a
 consumer project**. It lives under `skills/` (factory machinery), so it is structurally outside the
 `templates/` payload and cannot land in any copy step. Only the CHOSEN stack is written into the
@@ -22,7 +22,7 @@ no stack in mind and asks for a recommendation.
 
 ## How to build the four options
 
-Key the proposal off the three answers already gathered — app type (Q3), size (Q2), audience (Q1):
+**Start from the project brief (Q1).** The free-text "what are you building?" answer is the frame every proposal serves — a stack that does not fit what the user described is wrong however well it matches the other three answers. Read it for the concrete demands it implies (realtime, heavy data, offline, integrations, a named ecosystem the user already lives in) and let those steer, then key the depth and surface off the three structured answers — app type (Q4), size (Q3), audience (Q2):
 
 - **app type** picks the surface: web → a web framework (SPA or SSR as size dictates); desktop →
   Tauri/Electron or a native toolkit; mobile → React Native/Flutter or native. A *combination*

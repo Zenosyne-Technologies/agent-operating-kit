@@ -1,6 +1,7 @@
 ---
 project: {{PROJECT_NAME}}
 description: {{ONE_SENTENCE_DESCRIPTION}}
+brief: {{PROJECT_BRIEF}}
 owner: {{OWNER_ORG_OR_PERSON}}
 pm_tool: {{PM_TOOL}}
 tracker_coordinates: {{TRACKER_COORDINATES}}
