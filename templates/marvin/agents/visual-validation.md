@@ -34,4 +34,4 @@ sev1 = UI broken/unusable (hidden control, illegible primary contrast, layout co
 - `VERDICT: PASS | ADVISORY | FAIL` (FAIL only at the release gate).
 - Per finding: `SURFACE | BREAKPOINT | SEV | ISSUE | EVIDENCE (screenshot path) | SUGGESTED-FIX`.
 - `DEGRADED: <mode or NONE>` · `INFORMATION: <design rules read, or NONE>` · `GUARDRAILS: <rows bound, or NONE>`.
-Never fixes: real defects → `ticket-filing.md` + the project's issue log; the orchestrator decides.
+Never fixes: real defects → `ticket-filing.md` + the project's issue log, labelled `finding:visual` (`label-syntax.md`); the orchestrator decides.
