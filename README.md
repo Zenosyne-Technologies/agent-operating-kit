@@ -102,7 +102,7 @@ Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable au
 
 Updating the *plugin* does not touch projects you already installed into — run the `upgrade-agent-os` skill in each repo to bring its installed files to the current version. That skill walks the per-release notes under `upgrades/` in order, so a project several versions behind still gets every migration step applied.
 
-**From v0.21.0, do that promptly in every repo.** The seven `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
+**From v0.21.0, do that promptly in every repo.** The eight `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
 
 **A symlink on any path the upgrade touches refuses the whole of its step 4** — `CLAUDE.md`, `.marvin`, `.marvin/agents`, `.marvin/backups`, `.docs`, `.claude/agents` and their ancestors are all tested. The `CLAUDE.md → AGENTS.md` monorepo layout hits this, as does a `.claude/agents` symlinked into a dotfiles repo. It is a refusal to **clear**, not a bug — replace the link with a real file, or move it aside for the run: writing (or, for the persona cleanup, deleting) through a link destroys files outside the repository while `git status` stays clean, with nothing backed up to reconcile from.
 
@@ -253,7 +253,7 @@ scripts/migrate-v<version>.sh        executable layout migration — moves and s
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
-agents/*.md                        Marvin's seven sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models)
+agents/*.md                        Marvin's eight sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)
 scenarios/*.md                     the shared bounded-execution contract plus five scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt
 templates/
@@ -273,6 +273,7 @@ templates/
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
     planning-research.md           size-gated plan-validation + solution research, tier routing
     validation-agent.md            BA + security validator personas, E2E hook
+    visual-validation.md           visual/design validator persona — surface resolution, capture + degradation ladder, generic design checklist, severity, reporting
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
     ponytail.md                    small-model micro-task profile
@@ -290,6 +291,7 @@ templates/
     handbooks/index.md             handbooks parent index: the three audience sub-folder rows
     release-notes/index.md         one document per released version, mirroring that version's annotated tag
     handbooks/audience-index.md    generic handbook ToC skeleton (installed ×3 as developer|user|admin/index.md)
+    handbooks/developer/screens/index.md  screen catalog — the declared UI surfaces (route, how to reach, breakpoints) the design/visual review resolves against
   pm/
     INSTALL.md                     factory-side PM subsystem reference: selection, sensecheck, project-key flow (NOT installed)
     linear/
