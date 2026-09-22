@@ -17,12 +17,15 @@ Fresh design reviewer, NEVER the builder (fresh-eyes discipline per `validation-
 - Resolve run details from PROJECT-INFO `dev_command`/`app_type` and `.claude/launch.json`.
 
 ## Capture (with graceful degradation)
-- Browser pane: preview_start → navigate each surface → screenshot at declared breakpoints (desktop + mobile min; add dark mode where the app is themed). Use Playwright instead when the project already scripts E2E.
-- Degradation ladder — state the exit at each rung, never block the pass:
+- Browser pane (primary): `preview_start` (a `url`, or a `name` from `.claude/launch.json`) → `navigate` each surface → `resize_window` to each breakpoint (`desktop`/`mobile` presets; add `colorScheme: dark` where the app is themed) → `computer{screenshot}`, saving each PNG as finding evidence. Playwright instead when the project already scripts E2E (see the fallback below).
+- Degradation ladder — each exit is an OBSERVABLE browser outcome; state it, never block the pass:
   - no browser tool → SKIP(TOOLING-ABSENT).
-  - browser up but no runnable app (`dev_command` empty / boot fails) → static/token analysis of a built preview or design tokens → NO-RUNTIME (advisory only).
+  - no runnable app (`dev_command` empty, or `preview_start`/`navigate` fails — e.g. dead port) → static/token analysis of a built preview or design tokens → NO-RUNTIME (advisory only).
   - non-UI `app_type` (CLI/library/service) → not dispatched at all.
-  - UI up but a surface unreachable (auth wall, missing seed) → UNREACHABLE per surface; validate the rest, continue.
+  - surface reached but errors (non-200 / error page) or is gated (auth wall, missing seed) → UNREACHABLE per surface; validate the rest, continue.
+
+## Playwright fallback (scripted-E2E projects)
+- When the project already runs Playwright (`validation-agent.md`'s scripted-E2E hook), capture via `browser_navigate` → `browser_resize` → `browser_take_screenshot` instead of the pane, and read `browser_console_messages` for console/network errors — extra signal a screenshot alone misses. Prefer it when an E2E harness already boots the app, or when runtime errors matter; otherwise the browser pane is the default.
 
 ## Design/UX checklist (generic)
 Hierarchy · spacing/rhythm · alignment/grid · grouping & placement · consistency (type/colour/components) · contrast & basic a11y (WCAG AA, focus states, hit targets) · responsive at declared breakpoints · affordances & UX states · empty/loading/error states legible. Each finding cites surface + breakpoint + a screenshot. Project design-system rules bind via named `.docs/information/` files (severity-tagged).
