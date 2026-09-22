@@ -255,7 +255,7 @@ scripts/mutate-migrations.sh         mutation harness — reverts one guard at a
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's eight sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)
-scenarios/*.md                     the shared bounded-execution contract plus five scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt
+scenarios/*.md                     the shared bounded-execution contract plus six scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt, visual-sweep
 templates/
   CLAUDE.core.md                   always-loaded core (placeholdered)
   settings.json                    attribution policy for commits/PRs — ships the "Emprove Marvin (Claude)" branded trailer; install blanks it to disable, or skips it to keep default
