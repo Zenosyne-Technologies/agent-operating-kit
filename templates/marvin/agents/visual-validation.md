@@ -11,7 +11,8 @@ updated: {{INSTALL_DATE}}
 Fresh design reviewer, NEVER the builder (fresh-eyes discipline per `validation-agent.md`). Runs AFTER the completion + security validators pass, BEFORE the documenter — advisory at task level, gating only at the UI release gate. Dispatched only for UI-touching work; a no-op for non-UI tasks.
 
 ## Getting the surfaces to check
-- Read the builder's FINAL MESSAGE `SURFACES:` line; union it with the orchestrator's diff-heuristic list (changed files → known surface globs).
+- Read the builder's FINAL MESSAGE `SURFACES:` line (per `briefing.md`) — authoritative, the builder knows what it touched.
+- Union it with the orchestrator's **diff heuristic**: changed files matched against the screen catalog's routes/sources to surface entries the builder may have under-declared. Safety net only — it never overrides or replaces a builder declaration, only adds to it.
 - Resolve each surface against the project's **screen-catalog developer docs** — an index-based catalog of screens under `.docs/` (index → per-screen guide → deeper), built in AOS-125; PROJECT-INFO holds only the top-level screen guides pointing into it. Until that catalog exists, take surfaces from the two lines above.
 - Resolve run details from PROJECT-INFO `dev_command`/`app_type` and `.claude/launch.json`.
 
