@@ -2,7 +2,7 @@
 doc: Escalation ladder
 type: reference
 status: active
-summary: What happens when a task fails twice — the orchestrator climbs an EFFORT ladder on its own model, asks the user at the max gate whether to swap to the frontier tier instead, and stops at the user when the last rung fails.
+summary: What happens when a build task fails twice — the orchestrator climbs an EFFORT ladder on its own model, asks the user at the max gate whether to swap to the frontier tier instead, and stops at the user when the last rung fails.
 updated: {{INSTALL_DATE}}
 ---
 
@@ -18,7 +18,7 @@ A completion or security FAIL returns the task to the persona that built the fai
 
 A CLARIFY/REQUEST_APPROVAL/SKIP stop is NOT a failed attempt, but the orchestrator RESOLVES it before re-dispatching — answers it, or carries it to the user per `guardrails.md`. NEVER re-dispatch the same rung with an unchanged brief.
 
-**Off the ladder.** Only the build personas above climb. EVERY other persona — `marvin:researcher`, `marvin:documenter`, the validators, and any persona added later — is off the ladder by definition: a non-build pass that fails twice (not done, or its output rejected) is taken inline by the orchestrator (the ceiling) or carried to the user — never a third dispatch, never a rung, since rungs run under developer rows that would let it change product code. A validator that errors without a verdict is re-run fresh; a second error → the user. Inside a `/marvin:play` scenario the ladder does not run: that scenario's gate and LIMITS govern (`scenarios/contract.md`).
+**Off the ladder.** Only the build personas above climb. EVERY other persona — `marvin:researcher`, `marvin:documenter`, the validators, and any persona added later — is off the ladder by definition: a non-build pass that fails twice (not done, or its output rejected) is taken inline by the orchestrator (the ceiling) or carried to the user — except a validator, which always goes to the user (validation stays fresh; the orchestrator never grades its own sign-off) — never a third dispatch, never a rung, since rungs run under developer rows that would let it change product code. A validator that errors without a verdict is re-run fresh; a second error → the user. Inside a `/marvin:play` scenario the ladder does not run: that scenario's gate and LIMITS govern (`scenarios/contract.md`).
 
 ## Entering the ladder
 

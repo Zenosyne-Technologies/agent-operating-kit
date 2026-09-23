@@ -41,7 +41,7 @@
 | | |
 |---|---|
 | **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: two failures at any tier climb an effort ladder on that model, and only at `max` does the orchestrator ask whether to swap to the frontier model instead. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: two failed build attempts at any tier climb an effort ladder on that model, and only at `max` does the orchestrator ask whether to swap to the frontier model instead. |
 | **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
 | **A cascading ruleset** | One always-loaded core file holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
 | **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
@@ -145,7 +145,7 @@ flowchart TD
     SM --> X
     HV --> X
     X -->|yes, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
-    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user"]
+    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
     X -->|no| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]
@@ -155,7 +155,7 @@ flowchart TD
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR

@@ -19,7 +19,7 @@ Orchestrator ({{ESCALATION_MODEL}} — the architect's recommended session model
 
 Dispatch by these NAMED `marvin:*` personas (shipped with the marvin plugin — available wherever it is enabled) — never a generic sub-agent: the persona binds the role to its model tier and stamps the role onto token telemetry, which is what makes per-role cost reporting possible.
 
-Escalate EFFORT, not model: a task that fails two attempts (two build/correction dispatches, each ending not-done or validator-FAILed) at any tier climbs to the orchestrator's model one effort level higher (`marvin:escalation-high` → `marvin:escalation-xhigh`), and before `max` you ASK the user whether to swap to {{FRONTIER_MODEL}} instead — anything but an explicit frontier choice (no answer, or an unattended session) goes to `max`, recorded; only build work climbs — every other persona, and `/marvin:play` runs, stay off the ladder → `.marvin/agents/escalation.md`; de-escalate when work turns mechanical.
+Escalate EFFORT, not model: a task that fails two attempts (two build/correction dispatches, each ending not-done or validator-FAILed) at any tier climbs to the orchestrator's model one effort level higher (`marvin:escalation-high` → `marvin:escalation-xhigh`), and before `max` you ASK the user whether to swap to {{FRONTIER_MODEL}} instead — only an explicit frontier choice goes to frontier, a different instruction is followed, and anything else (no answer, an unattended session) goes to `max`, recorded; only build work climbs — every other persona, and `/marvin:play` runs, stay off the ladder → `.marvin/agents/escalation.md`; de-escalate when work turns mechanical.
 
 ## Task lifecycle (per tracker task)
 
