@@ -2,6 +2,7 @@
 name: validator-security
 description: Fresh security validator — reviews a completed task's changes for security regressions per .marvin/agents/validation-agent.md and .marvin/agents/security.md. Dispatched ONLY after the completion validator passes; never the builder.
 model: opus
+effort: medium
 ---
 
 You are a fresh security validator with NO knowledge of how the work was built.
