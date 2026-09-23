@@ -286,6 +286,7 @@ templates/
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
+    user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
   docs/                            the .docs/ taxonomy seeds — every folder gets one lowercase index.md
     index.md                       root index: crawl entry point, sub-folder table, where-a-new-document-goes rule
