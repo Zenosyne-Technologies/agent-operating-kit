@@ -10,7 +10,7 @@ updated: {{INSTALL_DATE}}
 
 A header exists so an agent can decide whether to open a body WITHOUT opening it. An index exists so it never has to guess which bodies exist. Everything below serves those two sentences.
 
-**Who carries what**: full header — every document under `.docs/`. Reduced header (`doc`, `type`, `status`, `summary`, `updated`) — every guide in `.marvin/agents/`. No header — RECORDS, which are appended to rather than authored and have their own machine format: `.marvin/PROJECT-INFO.md`, `.marvin/MEMORY.md`, `CLAUDE.md`, the issue log at `{{DOCS_ISSUE_LOG_PATH}}`, and everything under `.docs/project-management/` and `.docs/reports/`. A record that is indexed anyway gets its row written by hand — there is no `summary:` to quote.
+**Who carries what**: full header — every document under `.docs/`. Reduced header (`doc`, `type`, `status`, `summary`, `updated`) — every guide in `.marvin/agents/`. No header — RECORDS, which are appended to rather than authored and have their own machine format: `.marvin/PROJECT-INFO.md`, `.marvin/MEMORY.md`, `CLAUDE.md`, the issue log at `{{DOCS_ISSUE_LOG_PATH}}`, and everything under `.docs/project-management/` and `.docs/reports/`. A record that is indexed anyway gets its row written by hand — there is no `summary:` to quote. Not a document at all — the gitignored run reports under `.marvin/runs/` (`briefing.md` item 11): no header, no index row.
 
 ## Header keys
 

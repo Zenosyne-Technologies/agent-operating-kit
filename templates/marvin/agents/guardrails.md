@@ -27,7 +27,7 @@ sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has 
 |---|---|
 | Run a destructive DB op (DROP/TRUNCATE, DELETE/UPDATE with no scoped WHERE) | REQUEST_APPROVAL |
 | Apply an irreversible or unguarded migration (no dry-run, no guard, data-destroying) | REQUEST_APPROVAL |
-| Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree | REQUEST_APPROVAL |
+| Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree (not the milestone-close prune of `.marvin/runs/` the core rules order — `briefing.md` item 11) | REQUEST_APPROVAL |
 | Delete or overwrite a file you have not read | DO_INSTEAD — read it first |
 | Act outside your brief's scope, or touch paths you do not own | CLARIFY |
 | Guess your way through a destructive or irreversible step when unsure | CLARIFY |

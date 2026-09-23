@@ -33,7 +33,7 @@ When the project has a scripted E2E suite (Playwright or equivalent): validators
 
 ## Reporting
 
-Verdict PASS/FAIL + severity-ranked findings, shaped by `briefing.md` item 11's cap — evidence and reproduction steps in the report file the brief names. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
+Verdict PASS/FAIL + severity-ranked findings, shaped by `briefing.md` item 11's cap — evidence and reproduction steps in the run report the brief names; only the verdict summary reaches the tracker. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
 
 ## Milestone validation
 
