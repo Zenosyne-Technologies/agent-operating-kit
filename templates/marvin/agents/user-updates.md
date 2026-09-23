@@ -20,7 +20,7 @@ Columns are `item | result | where`. `where` names the ticket, commit, file or r
 
 | item | result | where |
 |---|---|---|
-| AOS-12 cache keys | ✅ merged | `a1b2c3d` |
+| AOS-12 cache keys | ✅ documented | AOS-12 comment |
 | AOS-13 export CSV | ❌ validator failed | AOS-13 comment |
 | AOS-14 docs | ⏭️ deferred | `.docs/future/export.md` |
 
@@ -42,8 +42,11 @@ A two-column table (`point | detail`) with the same five rows is an equal altern
 This is a short list at the end of the message. It is the ONLY part that repeats across messages. Everything above it is said once.
 
 **Next**
-- validate AOS-12 security
+
+- merge AOS-12
+
 **Open questions**
+
 - ship AOS-14 docs in this release or the next?
 
 Leave a heading out when its list is empty. A message that changes nothing the user cares about is not sent.
