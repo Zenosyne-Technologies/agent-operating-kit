@@ -33,7 +33,7 @@ Hierarchy · spacing/rhythm · alignment/grid · grouping & placement · consist
 ## Severity
 sev1 = UI broken/unusable (hidden control, illegible primary contrast, layout collapse at a supported breakpoint, clipped/inaccessible content); sev2 = major hierarchy/consistency break on a primary flow; sev3/sev4 = advisory polish. Only sev1/sev2 gate at the UI release gate; everything is advisory at task level.
 
-## Reporting (machine-consumed FINAL MESSAGE)
+## Reporting (machine-consumed FINAL MESSAGE, capped per `briefing.md` item 11 — sev order, the rest in the named report)
 - `VERDICT: PASS | ADVISORY | FAIL` (FAIL only at the release gate).
 - Per finding: `SURFACE | BREAKPOINT | SEV | ISSUE | EVIDENCE (screenshot path) | SUGGESTED-FIX`.
 - `DEGRADED: <mode or NONE>` · `INFORMATION: <design rules read, or NONE>` · `GUARDRAILS: <rows bound, or NONE>`.

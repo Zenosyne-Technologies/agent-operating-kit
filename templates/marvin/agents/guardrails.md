@@ -36,7 +36,7 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 
 ## Per-persona additions (ADDITIONS ONLY — the baseline still binds each)
 
-- **Orchestrator** — DO NOT bulk-implement, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
+- **Orchestrator** — DO NOT bulk-implement, DO NOT bulk-read, DO NOT run tracker bookkeeping or release mechanics inline, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
 - **developer** — DO NOT validate your own work; DO NOT ship a missing env/config/migration silently — wire it or name the gap loudly.
 - **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`.
 - **ponytail** — DO NOT improvise on any judgment call, ambiguous match, or unexpected state; STOP and report, per `ponytail.md`.

@@ -41,7 +41,7 @@ Classify by what a CONSUMER of this project must do:
 
 ## What a release is, and cutting one
 
-Usually one milestone's scope — but never assume milestone == release. A release is whatever scope was frozen: a milestone, one patch, a hotfix, or a batch of reported bugs belonging to no milestone. Milestones and releases are independent axes. The cut runs in this order:
+Usually one milestone's scope — but never assume milestone == release. A release is whatever scope was frozen: a milestone, one patch, a hotfix, or a batch of reported bugs belonging to no milestone. Milestones and releases are independent axes. The cut runs in this order; its decisions (scope, classification, the note's content) stay with the orchestrator, its mechanical steps are micro-tier work per `ponytail.md` — tagging never is:
 
 1. Scope frozen — nothing further merges to `develop` for this version.
 2. `release/<version>` cut from `develop`.

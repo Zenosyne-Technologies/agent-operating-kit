@@ -20,4 +20,4 @@ Non-negotiables (mirror of the guide — the guide wins on filing workflow; `lab
 - QA sweeps: one tracking issue ("QA sweep — <scope> <date>"), findings filed as related issues.
 - Comment discipline: any agent that fixes, solves, or catches something on an issue leaves a SHORT summarized comment — what was done or found, the outcome, and refs (commits by issue key, docs, PRs). Outstanding items caught in passing get a comment even when not fixed. Write for the next reader; never a work log.
 
-Filing with fully-prepared content is ponytail (micro-model) work; drafting content from raw findings is small-worker work.
+Filing with fully-prepared content is ponytail (micro-model) work, like every tracker call whose content is decided (`ponytail.md`); drafting content from raw findings is small-worker work.
