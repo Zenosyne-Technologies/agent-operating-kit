@@ -50,7 +50,7 @@ Usually one milestone's scope — but never assume milestone == release. A relea
 5. Validation run on that branch — the Release validation gate `.marvin/agents/validation-agent.md` adds on top of the composition sweep (version bump, release note completeness); only fixes for what it finds land there.
 6. Merge to `main`.
 7. Annotated tag on `main`, message = the release note (orchestrator only).
-8. Dispatch the selected tracker's release mapping (`.marvin/agents/tracker-config.md`) now that the tag exists — GitHub's tag-first/`--verify-tag` publish depends on it, Jira applies its `release:` label, Local sets its `release:` frontmatter field, Linear attaches its native Release. This step owns only the WHEN; the tracker config owns the WHAT.
+8. Run the selected tracker's release mapping (`.marvin/agents/tracker-config.md`) now that the tag exists: its tracker-side bookkeeping is dispatched to the micro tier (`ponytail.md`) — Jira applies its `release:` label, Local sets its `release:` frontmatter field, Linear attaches its native Release — while GitHub's tag-first/`--verify-tag` publish, which depends on the tag, is orchestrator-inline (publishing, above). This step owns only the WHEN; the tracker config owns the WHAT.
 9. Merge back to `develop`.
 
 A hotfix runs the same nine steps, with step 2 reading "`hotfix/<version>` cut from `main`".
