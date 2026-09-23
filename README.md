@@ -140,11 +140,12 @@ flowchart TD
     O["Orchestrator, the ceiling model at medium effort<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
     R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
     R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs"]
-    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, both validators"]
+    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, the validators"]
     MI --> X{"Two failed attempts?"}
     SM --> X
     HV --> X
-    X -->|yes| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
+    X -->|yes, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
+    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user"]
     X -->|no| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]

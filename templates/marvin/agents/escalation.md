@@ -18,22 +18,22 @@ A completion or security FAIL returns the task to the persona that built the fai
 
 A CLARIFY/REQUEST_APPROVAL/SKIP stop is NOT a failed attempt, but the orchestrator RESOLVES it before re-dispatching — answers it, or carries it to the user per `guardrails.md`. NEVER re-dispatch the same rung with an unchanged brief.
 
-**Off the ladder.** The ladder is for build work only. A validator that errors without a verdict is re-run fresh; twice → the user. A `marvin:researcher` pass that fails twice is taken inline by the orchestrator (the ceiling) or carried to the user — research never climbs, since rungs run under developer rows that would let it change product code. Inside a `/marvin:play` scenario the ladder does not run: that scenario's gate and LIMITS govern (`scenarios/contract.md`).
+**Off the ladder.** Only the build personas above climb. EVERY other persona — `marvin:researcher`, `marvin:documenter`, the validators, and any persona added later — is off the ladder by definition: a non-build pass that fails twice (not done, or its output rejected) is taken inline by the orchestrator (the ceiling) or carried to the user — never a third dispatch, never a rung, since rungs run under developer rows that would let it change product code. A validator that errors without a verdict is re-run fresh; a second error → the user. Inside a `/marvin:play` scenario the ladder does not run: that scenario's gate and LIMITS govern (`scenarios/contract.md`).
 
 ## Entering the ladder
 
-A task entering the ladder KEEPS its `size:` label — the digest's heavy-spend-on-small-issues signal (`reporting.md`) is how mis-sizing surfaces, so relabelling would hide it. Escalation personas run under the heavy `marvin:developer`'s guardrail rows plus the failed task's scope — NEVER `developer-small`'s or `ponytail`'s discretion-STOP rows, whatever the task's size.
+A task entering the ladder KEEPS its `size:` label — a small-sized issue that needed the ladder IS the mis-sizing evidence (`reporting.md`'s call-out), so relabelling would erase it. Escalation personas run under the heavy `marvin:developer`'s guardrail rows plus the failed task's scope — NEVER `developer-small`'s or `ponytail`'s discretion-STOP rows, whatever the task's size.
 
 ## The ladder
 
-Any task that fails 2 attempts at its assigned persona (any tier, `marvin:developer` included) climbs. Each rung gets 2 attempts:
+Any BUILD task that fails 2 attempts at its assigned build persona (any tier, `marvin:developer` included) climbs. Each rung gets 2 attempts:
 
 1. `marvin:escalation-high` — the ceiling model at `high` effort.
 2. `marvin:escalation-xhigh` — the ceiling model at `xhigh` effort.
 3. **MAX GATE** — before going to `max`, the orchestrator asks the user ONE question: swap this task to the frontier tier ({{FRONTIER_MODEL}}, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb), or go to `max` effort on the ceiling model (`marvin:escalation-max`)? The answer applies to THIS task only — never a standing preference.
-   - **Interactive session** → ask with the host's question tool. Only an explicit frontier choice dispatches `marvin:escalation-frontier`; ANY other outcome — max chosen, the question dismissed or skipped, or a reply that picks neither — dispatches `marvin:escalation-max`. No answer means max.
+   - **Interactive session** → ask with the host's question tool. Only an explicit frontier choice dispatches `marvin:escalation-frontier`; a reply giving a different instruction ("stop, I'll take it") is followed instead; ANY other outcome — max chosen, the question dismissed or skipped, or a reply that picks neither — dispatches `marvin:escalation-max`. No answer means max.
    - **Unattended** — a scheduled, headless or background session, the user having said to proceed without them, or no interactive question tool → do not ask; dispatch `marvin:escalation-max` immediately.
-   - Either way, RECORD in the task's report and tracker comment which way the gate went and why (chosen / no answer / unattended). Never silently.
+   - Either way, RECORD in the task's report and tracker comment which way the gate went and why (frontier chosen / max chosen / no answer or neither / other instruction / unattended). Never silently.
 4. The chosen final rung fails twice → **STOP**. The ladder terminates; never loop back to a lower rung. Escalate to the user per `guardrails.md`'s escalation chain with the full attempt history.
 
 `marvin:escalation-frontier` is deliberately UNPINNED on effort: it inherits the session's effort, because the swap is a model change, not an effort climb. The max-gate question tells the user so.
