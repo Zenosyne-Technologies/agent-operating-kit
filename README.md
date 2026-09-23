@@ -148,7 +148,7 @@ flowchart TD
     X -->|no| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]
-    MG -->|no, or unattended — auto-pass, recorded| EM["Orchestrator's model at max effort"]
+    MG -->|no, no answer, or unattended — recorded| EM["Orchestrator's model at max effort"]
     EF --> ST["Still failing: stop and escalate to the user"]
     EM --> ST
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
