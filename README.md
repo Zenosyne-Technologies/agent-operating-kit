@@ -41,7 +41,7 @@
 | | |
 |---|---|
 | **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. Two failures at any tier escalate to the frontier model. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: two failed build attempts at any tier climb an effort ladder on that model, and only at `max` does the orchestrator ask whether to swap to the frontier model instead. |
 | **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
 | **A cascading ruleset** | One always-loaded core file holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
 | **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
@@ -102,7 +102,7 @@ Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable au
 
 Updating the *plugin* does not touch projects you already installed into — run the `upgrade-agent-os` skill in each repo to bring its installed files to the current version. That skill walks the per-release notes under `upgrades/` in order, so a project several versions behind still gets every migration step applied.
 
-**From v0.21.0, do that promptly in every repo.** The eight `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
+**From v0.21.0, do that promptly in every repo.** The twelve `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
 
 **A symlink on any path the upgrade touches refuses the whole of its step 4** — `CLAUDE.md`, `.marvin`, `.marvin/agents`, `.marvin/backups`, `.docs`, `.claude/agents` and their ancestors are all tested. The `CLAUDE.md → AGENTS.md` monorepo layout hits this, as does a `.claude/agents` symlinked into a dotfiles repo. It is a refusal to **clear**, not a bug — replace the link with a real file, or move it aside for the run: writing (or, for the persona cleanup, deleting) through a link destroys files outside the repository while `git status` stays clean, with nothing backed up to reconcile from.
 
@@ -137,20 +137,25 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    O["Orchestrator, frontier tier<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
+    O["Orchestrator, the ceiling model at medium effort<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
     R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
     R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs"]
-    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, both validators"]
+    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, the validators"]
     MI --> X{"Two failed attempts?"}
     SM --> X
     HV --> X
-    X -->|yes| ES["Escalate to the frontier model"]
+    X -->|yes, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
+    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
     X -->|no| DN["Task complete"]
-    ES --> O
+    EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
+    MG -->|yes| EF["Frontier tier, this task only"]
+    MG -->|no, no answer, or unattended — recorded| EM["Orchestrator's model at max effort"]
+    EF --> ST["Still failing: stop and escalate to the user"]
+    EM --> ST
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` plan gets adversarial plan-validation plus solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip it — findings land as issue comments or docs and get folded into the plan before a line is built. De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -253,7 +258,7 @@ scripts/migrate-v<version>.sh        executable layout migration — moves and s
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
-agents/*.md                        Marvin's eight sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual
+agents/*.md                        Marvin's twelve sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual and the four escalation rungs (escalation-high, -xhigh, -max, -frontier)
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)
 scenarios/*.md                     the shared bounded-execution contract plus six scenarios: research-solo, research-deep, quick-fix, taskforce, bug-hunt, visual-sweep
 templates/
@@ -267,6 +272,7 @@ templates/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
+    escalation.md                  the effort escalation ladder — high → xhigh → the ask-at-max frontier gate → stop at the user
     guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
@@ -297,25 +303,25 @@ templates/
     linear/
       intake-structure-brief.md    agent brief that creates labels + intake guide
       tracker-config.md            4/4 levels native; severity → Linear Priority
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     jira/
       intake-structure-brief.md    agent brief that seeds the label taxonomy + intake guide
       tracker-config.md            3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
       convert-milestones-brief.md  dispatchable when the v2 connector adds release creation: milestone labels → releases
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     github/
       intake-structure-brief.md    agent brief that seeds labels via gh CLI + a pinned intake guide issue
       tracker-config.md            4/4 levels native; no priority/estimate field to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     local/
       intake-structure-brief.md    agent brief that scaffolds .docs/project-management/ + a file-local intake guide
       tracker-config.md            4/4 levels via files; labels in frontmatter, no native fields to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
 ```
 
 ## Portability notes
 
-- Model names are placeholders — map the tiers (`frontier` / `heavy worker` / `small worker` / `micro`) to whatever is current.
+- Model names are placeholders — map the tiers (`frontier` / `heavy worker` / `small worker` / `micro`) to whatever is current. The orchestrator runs on the heavy-worker model, which is the ceiling; the heavy-worker personas pin `medium` effort, the escalation ladder's base rung; `frontier` is opt-in, reached only through the escalation ladder's ask-at-max gate.
 - Tracker-specific parts are confined to the coordinates line in `ticket-filing.md` plus `templates/pm/<tracker>/` (currently `linear/`, `jira/`, `github/` and `local/`; `templates/pm/INSTALL.md` holds the tool-neutral selection, sensecheck and project-key flow the skills follow). Adding a PM tool is one new folder — intake brief, `tracker-config.md`, `stats-collection-brief.md` — plus an entry in that reference's selection and sensecheck tables. Taxonomy and filing template carry over 1:1; sev1..sev4 labels stay canonical everywhere.
 - Tools exposing only three hierarchy levels use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a native release or milestone once the tool or its connector allows. The conversion ships as a prepared brief, not just a rule.
 - The attribution policy is an owner preference chosen at install: keep Claude Code's default attribution (skip `settings.json`, delete the core rule), disable it entirely (`settings.json` with empty `attribution.commit`/`attribution.pr`, keep the "Attribution: none" rule), or brand it "Emprove Marvin (Claude)" (`settings.json` as shipped, with the branded core rule).
