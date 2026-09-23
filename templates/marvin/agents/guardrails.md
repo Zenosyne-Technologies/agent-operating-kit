@@ -27,7 +27,7 @@ sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has 
 |---|---|
 | Run a destructive DB op (DROP/TRUNCATE, DELETE/UPDATE with no scoped WHERE) | REQUEST_APPROVAL |
 | Apply an irreversible or unguarded migration (no dry-run, no guard, data-destroying) | REQUEST_APPROVAL |
-| Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree | REQUEST_APPROVAL |
+| Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree (except the run-report prune, orchestrator only, exactly as `briefing.md` item 11 defines it, symlink refusal included) | REQUEST_APPROVAL |
 | Delete or overwrite a file you have not read | DO_INSTEAD — read it first |
 | Act outside your brief's scope, or touch paths you do not own | CLARIFY |
 | Guess your way through a destructive or irreversible step when unsure | CLARIFY |
@@ -36,7 +36,7 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 
 ## Per-persona additions (ADDITIONS ONLY — the baseline still binds each)
 
-- **Orchestrator** — DO NOT bulk-implement, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
+- **Orchestrator** — DO NOT bulk-implement, DO NOT bulk-read, DO NOT run tracker bookkeeping or release mechanics inline, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
 - **developer** — DO NOT validate your own work; DO NOT ship a missing env/config/migration silently — wire it or name the gap loudly.
 - **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`.
 - **ponytail** — DO NOT improvise on any judgment call, ambiguous match, or unexpected state; STOP and report, per `ponytail.md`.
