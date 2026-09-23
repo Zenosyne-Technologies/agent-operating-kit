@@ -5,7 +5,7 @@ description: Plan and backfill missing product documentation — the orchestrato
 
 # Plan the documentation
 
-Orchestrator-level work (frontier session): the survey and the collected findings ARE the value — do the thinking inline, delegate only the page-writing.
+Orchestrator-level work (orchestrator-level session): the survey and the collected findings ARE the value — do the thinking inline, delegate only the page-writing.
 
 **Pre-v0.21.0 fallback — every read below carries it**: a file absent from `.marvin/` may still sit at its pre-v0.21.0 location (`.docs/PROJECT-INFO.md`, the cascade in `.docs/agents/`, handbook indexes named `INDEX.md`, or `docs/…` pre-v0.15.0) — read there before concluding it does not exist. Finding the legacy layout is not "not installed": say so and tell the user to run `upgrade-agent-os`.
 

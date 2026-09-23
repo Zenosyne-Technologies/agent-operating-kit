@@ -37,7 +37,7 @@ Verdict PASS/FAIL + severity-ranked findings. Real defects: file per `ticket-fil
 
 ## Milestone validation
 
-At milestone close, validation is led by the orchestrator ({{FRONTIER_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues, handbook coverage — each shipped epic's functionality has current pages in all three audiences) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off. Task-level stages are not re-run — milestone validation tests the composition. For UI projects the whole-project visual **sweep** (the `/marvin:play visual-sweep` scenario) runs alongside this milestone validation to catch composition-level design drift across surfaces, per `.marvin/agents/visual-validation.md`.
+At milestone close, validation is led by the orchestrator ({{ESCALATION_MODEL}}) working WITH {{WORKER_MODEL}} sub-agents: the orchestrator plans the sweep (integration boundaries, cross-task user journeys, DoD roll-up across the milestone's issues, handbook coverage — each shipped epic's functionality has current pages in all three audiences) and dispatches the checks; sub-agents gather the evidence, the orchestrator judges it and signs off. Task-level stages are not re-run — milestone validation tests the composition. For UI projects the whole-project visual **sweep** (the `/marvin:play visual-sweep` scenario) runs alongside this milestone validation to catch composition-level design drift across surfaces, per `.marvin/agents/visual-validation.md`.
 
 ## Release validation
 

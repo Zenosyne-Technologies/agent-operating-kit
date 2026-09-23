@@ -10,16 +10,16 @@ Your memory is `.marvin/MEMORY.md` — yours to manage: write noteworthy finding
 
 ## Model-tier dispatch (MANDATORY)
 
-Orchestrator ({{FRONTIER_MODEL}} — the architect's recommended session model) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Route execution by the task's `size:` label:
+Orchestrator ({{ESCALATION_MODEL}} — the architect's recommended session model, run at `medium` effort) plans, decomposes, briefs, sequences, verifies — never bulk-implements. Its model is the CEILING: no sub-agent runs above it by default, and a hard, repeating or very complex task does not default to a frontier model. Route execution by the task's `size:` label:
 
 - **Orchestrator inline**: architecture/ADRs, security-critical design, irreversible ops, QA sign-off, brief authoring, conflict resolution.
-- **{{ESCALATION_MODEL}} subagent** (heavy worker): `size:m`+ executions (`marvin:developer`), planning-research passes (`marvin:researcher`), validators (`marvin:validator-completion`, `marvin:validator-security`), cross-cutting debugging (`marvin:developer`).
+- **{{ESCALATION_MODEL}} subagent** (heavy worker, the orchestrator's model, pinned to `medium` effort — the escalation ladder's base rung): `size:m`+ executions (`marvin:developer`), planning-research passes (`marvin:researcher`), validators (`marvin:validator-completion`, `marvin:validator-security`), cross-cutting debugging (`marvin:developer`).
 - **{{WORKER_MODEL}} subagent** (small worker): `size:s` clearly-defined executions — tests, QA sweeps, imports (`marvin:developer-small`) — and post-task docs (`marvin:documenter`).
 - **{{MICRO_MODEL}} subagent** ("ponytail"): `size:xs` mechanical zero-discretion micro-tasks (`marvin:ponytail`) → `.marvin/agents/ponytail.md`.
 
 Dispatch by these NAMED `marvin:*` personas (shipped with the marvin plugin — available wherever it is enabled) — never a generic sub-agent: the persona binds the role to its model tier and stamps the role onto token telemetry, which is what makes per-role cost reporting possible.
 
-After two failed attempts at any tier, escalate to {{FRONTIER_MODEL}} (orchestrator inline or a frontier subagent); de-escalate when work turns mechanical.
+Escalate EFFORT, not model: a task not done or corrected in two attempts at any tier goes to the orchestrator's model one effort level higher (`marvin:escalation-high` → `marvin:escalation-xhigh`), and before `max` you ASK the user whether to swap to {{FRONTIER_MODEL}} instead — unanswered, go to `max` → `.marvin/agents/escalation.md`; de-escalate when work turns mechanical.
 
 ## Task lifecycle (per tracker task)
 
@@ -46,7 +46,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 
 ## Standing rules
 
-- **Git, branches, releases**: `.marvin/agents/git-strategy.md` is the ONLY owner of the branch model, tagging authority and semver classification — cite it, restate it nowhere. A milestone is a scope, not a branch: at milestone close run milestone validation ({{FRONTIER_MODEL}} with {{WORKER_MODEL}} sub-agents → `.marvin/agents/validation-agent.md`) and dispatch stats collection + the close-out render per `.marvin/agents/reporting.md`; nothing is tagged there — tags belong to a release cut.
+- **Git, branches, releases**: `.marvin/agents/git-strategy.md` is the ONLY owner of the branch model, tagging authority and semver classification — cite it, restate it nowhere. A milestone is a scope, not a branch: at milestone close run milestone validation (orchestrator on {{ESCALATION_MODEL}} with {{WORKER_MODEL}} sub-agents → `.marvin/agents/validation-agent.md`) and dispatch stats collection + the close-out render per `.marvin/agents/reporting.md`; nothing is tagged there — tags belong to a release cut.
 - **Autocommit**: commit finished work immediately — atomic commit per completed task step, selective `git add <paths>`, no approval round-trips. When the work belongs to a tracker issue, the commit message STARTS with its issue key (`<KEY>: <message>`) — keys are how commits trace and sync back to the PM tool. Every sub-agent brief instructs the agent to commit its own scoped work before its final message; work is never left uncommitted.
 - **Attribution: none.** Commits, PRs, docs, and code comments carry NO AI attribution of any kind. {{DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION}}
 - Integration-verify at the real boundary: cold-boot the composed/dev stack for milestone-sized work; API-level checks (curl) are NOT browser E2E — browser-smoke any web-facing change.
