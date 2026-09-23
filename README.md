@@ -148,13 +148,13 @@ flowchart TD
     X -->|no| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]
-    MG -->|no, or unanswered| EM["Orchestrator's model at max effort"]
+    MG -->|no, or unattended — auto-pass, recorded| EM["Orchestrator's model at max effort"]
     EF --> ST["Still failing: stop and escalate to the user"]
     EM --> ST
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` plan gets adversarial plan-validation plus solution research at the escalation tier, `size:l` at the worker tier, smaller sizes skip it — findings land as issue comments or docs and get folded into the plan before a line is built. A task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -302,20 +302,20 @@ templates/
     linear/
       intake-structure-brief.md    agent brief that creates labels + intake guide
       tracker-config.md            4/4 levels native; severity → Linear Priority
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     jira/
       intake-structure-brief.md    agent brief that seeds the label taxonomy + intake guide
       tracker-config.md            3/4 levels + virtual-milestone rule; severity → Jira Priority / JSM Impact
       convert-milestones-brief.md  dispatchable when the v2 connector adds release creation: milestone labels → releases
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     github/
       intake-structure-brief.md    agent brief that seeds labels via gh CLI + a pinned intake guide issue
       tracker-config.md            4/4 levels native; no priority/estimate field to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
     local/
       intake-structure-brief.md    agent brief that scaffolds .docs/project-management/ + a file-local intake guide
       tracker-config.md            4/4 levels via files; labels in frontmatter, no native fields to mirror
-      stats-collection-brief.md    label-dimension stats snapshot (schema v3, tokens section with its state) to .docs/reports/
+      stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .docs/reports/
 ```
 
 ## Portability notes

@@ -12,16 +12,28 @@ The orchestrator's model ({{ESCALATION_MODEL}}) is the CEILING: no sub-agent run
 
 ## What counts as a failed attempt
 
-One attempt = one dispatch of one persona on the task. It FAILED when the task is not done at the end of it, or when a validator FAIL it was dispatched to correct is still standing (re-validation fails again). A CLARIFY/REQUEST_APPROVAL stop is NOT a failed attempt — resolve it per `guardrails.md` and re-dispatch the same rung.
+One attempt = one dispatch of a build or correction persona on the task. It FAILS when the task is not done at the end of that dispatch, OR when the validator that checks it FAILs. So: build (claims done) → validator FAIL = attempt 1 failed; correction dispatch → validator FAIL = attempt 2 failed → climb. "Two attempts" means two dispatches per rung — never two validator runs of one dispatch.
+
+A completion or security FAIL returns the task to the persona that built the failing attempt — on the ladder, its CURRENT rung, never back down to the original build tier — with the findings, and counts as one of that rung's 2 attempts.
+
+A CLARIFY/REQUEST_APPROVAL stop is NOT a failed attempt, but the orchestrator RESOLVES it before re-dispatching — answers it, or carries it to the user per `guardrails.md`. NEVER re-dispatch the same rung with an unchanged brief.
+
+## Entering the ladder
+
+A task entering the ladder demonstrably needed more than its tier: re-size it to at least `size:m` and record the re-size on the tracker issue (`label-syntax.md`: when torn, take the larger). Escalation personas run under the heavy `marvin:developer`'s guardrail rows plus the failed task's scope — NEVER `developer-small`'s or `ponytail`'s discretion-STOP rows.
 
 ## The ladder
 
-Any task not done or corrected within 2 attempts at its assigned persona (any tier, `marvin:developer` included) climbs. Each rung gets 2 attempts:
+Any task that fails 2 attempts at its assigned persona (any tier, `marvin:developer` included) climbs. Each rung gets 2 attempts:
 
 1. `marvin:escalation-high` — the ceiling model at `high` effort.
 2. `marvin:escalation-xhigh` — the ceiling model at `xhigh` effort.
-3. **MAX GATE** — before going to `max`, the orchestrator asks the user ONE question: swap this task to the frontier tier ({{FRONTIER_MODEL}}, `marvin:escalation-frontier`), or go to `max` effort on the ceiling model (`marvin:escalation-max`)? If the session is unattended or the question goes unanswered, dispatch `marvin:escalation-max`. The answer applies to THIS task only — it is never a standing preference.
+3. **MAX GATE** — before going to `max`, the orchestrator asks the user ONE question: swap this task to the frontier tier ({{FRONTIER_MODEL}}, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb), or go to `max` effort on the ceiling model (`marvin:escalation-max`)? The answer applies to THIS task only — never a standing preference.
+   - **Interactive session** → ask with the host's question tool and WAIT for the answer.
+   - **Unattended** — a `/marvin:play` scenario run, a scheduled, headless or background session, the user having said to proceed without them, or no interactive question tool available → dispatch `marvin:escalation-max` immediately and RECORD in the task's report and tracker comment that the gate auto-passed (unattended). Never silently.
 4. The chosen final rung fails twice → **STOP**. The ladder terminates; never loop back to a lower rung. Escalate to the user per `guardrails.md`'s escalation chain with the full attempt history.
+
+`marvin:escalation-frontier` is deliberately UNPINNED on effort: it inherits the session's effort, because the swap is a model change, not an effort climb. The max-gate question tells the user so.
 
 The ladder is the orchestrator's to climb. Escalation personas never self-escalate or dispatch agents — they report back in their FINAL MESSAGE and the orchestrator decides the next rung.
 

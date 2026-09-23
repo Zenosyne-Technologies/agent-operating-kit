@@ -31,10 +31,11 @@ By ROLE, not model — the orchestrator runs on the heavy tier's model (`escalat
 |---|---|
 | main session (`kind = 0`, `agent` NULL) | orchestrator |
 | `marvin:developer` · `marvin:researcher` · `marvin:validator-*` | heavy |
-| `marvin:escalation-*` | escalation (report per rung: high · xhigh · max · frontier) |
-| `marvin:developer-small` · `marvin:documenter` / `marvin:ponytail` | small / micro |
+| `marvin:escalation-*` | ladder (per rung from `events.agent`: high · xhigh · max · frontier) |
+| `marvin:developer-small` · `marvin:documenter` | small |
+| `marvin:ponytail` | micro |
 
-Any other agent falls back to its model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` escalation.
+Any other agent falls back to its model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` ladder.
 
 ## Pricing
 
@@ -52,7 +53,7 @@ Capture reads `PROJECT-INFO.md`'s frontmatter (`.marvin/`, else `.docs/`) to sta
 
 ## Snapshot `tokens` object
 
-Stats snapshots (schema v3) carry a `tokens` key. `null` means ONE thing only — the telemetry DB is absent. Otherwise it is an object whose first key is `state`: `ok` · `scope-unresolved` · `no-rows`, per the zero rule above, plus `scope_issue_keys` (the resolved set's size) and `control_events` (the project's total). `state: ok` adds the figures: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/escalation/small/micro → `{out, est_cost_usd}`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`. When `state` is anything else those figures are absent, not zero — the distinction only survives if the collector writes it and the renderer reads it.
+Stats snapshots (schema v4) carry a `tokens` key. `null` means ONE thing only — the telemetry DB is absent. Otherwise it is an object whose first key is `state`: `ok` · `scope-unresolved` · `no-rows`, per the zero rule above, plus `scope_issue_keys` (the resolved set's size) and `control_events` (the project's total). `state: ok` adds the figures: `in`, `out`, `cache_r`, `cache_w`, `cache_hit_pct`, `by_tier` (orchestrator/heavy/small/micro → `{out, est_cost_usd}`; `ladder` → `{out, est_cost_usd, by_rung: {high, xhigh, max, frontier → {out, est_cost_usd}}}`, rungs from `events.agent`), `by_model`, `main_vs_subagent`, `est_cost_usd`, `events`. When `state` is anything else those figures are absent, not zero — the distinction only survives if the collector writes it and the renderer reads it.
 
 ## Secrets
 
