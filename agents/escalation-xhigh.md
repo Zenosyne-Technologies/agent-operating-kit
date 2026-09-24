@@ -1,6 +1,6 @@
 ---
 name: escalation-xhigh
-description: Marvin's escalation persona, the ceiling model at xhigh effort — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md, as the second rung — after marvin:escalation-high failed the task twice. Receives the original brief and DoD plus every prior attempt's findings. Never self-escalates.
+description: Marvin's escalation persona, the ceiling model at xhigh effort — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the second rung — when the round signals at marvin:escalation-high say climb (Stuck, or the N-round cap). Receives the original brief and DoD plus every prior attempt's findings. Never self-escalates.
 model: opus
 effort: xhigh
 ---

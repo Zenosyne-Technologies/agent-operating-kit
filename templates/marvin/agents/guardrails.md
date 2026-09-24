@@ -40,9 +40,9 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 - **developer** — DO NOT validate your own work; DO NOT ship a missing env/config/migration silently — wire it or name the gap loudly.
 - **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`. As the brief falsifier: DO NOT write or commit anything but its run report, per `developer-small`.
 - **ponytail** — DO NOT improvise on any judgment call, ambiguous match, or unexpected state; STOP and report, per `ponytail.md`.
-- **researcher** — DO NOT change product code or file tracker items; findings go in the memo, per `planning-research.md`.
+- **researcher** — DO NOT change product code or file tracker items; findings go in the memo, per `planning-research.md` (a RETHINK pass: `escalation.md`).
 - **validator-completion** — DO NOT patch a finding or confirm instead of falsify; report it, per `validation-agent.md`.
 - **validator-security** — DO NOT change product code or widen to a whole-repo audit; stay on the changed surface, per `validation-agent.md`.
 - **validator-visual** — DO NOT patch a finding or redesign the UI; capture, judge, report per `visual-validation.md`.
 - **documenter** — DO NOT document the builder's intentions over the validated result, and DO NOT alter product code, per `documentation-agent.md`.
-- **escalation-high / -xhigh / -max / -frontier** — bound by the **developer** rows above plus the failed task's scope, NEVER by developer-small's or ponytail's discretion-STOP rows (whatever the task's `size:` label); DO NOT widen scope beyond the failed task; DO NOT self-escalate or dispatch agents — report back and let the orchestrator climb, per `escalation.md`.
+- **escalation-high / -xhigh / -max / -frontier** — bound by the **developer** rows above plus the failed task's scope, NEVER by developer-small's or ponytail's discretion-STOP rows (whatever the task's `size:` label); DO NOT widen scope beyond the failed task; DO NOT self-escalate or dispatch agents — report back and let the orchestrator climb, per `escalation-ladder.md`.

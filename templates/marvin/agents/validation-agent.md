@@ -33,7 +33,7 @@ When the project has a scripted E2E suite (Playwright or equivalent): validators
 
 ## Reporting
 
-Verdict PASS/FAIL + severity-ranked findings, shaped by `briefing.md` item 11's cap — evidence and reproduction steps in the run report the brief names; only the verdict summary reaches the tracker. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
+Verdict PASS/FAIL + severity-ranked findings, shaped by `briefing.md` item 11's cap — evidence and reproduction steps in the run report the brief names; only the verdict summary reaches the tracker. **Round tags** — the one owner of the format: every completion and security brief carries the task ledger's finding list (each ID + one line, open and closed — `briefing.md` item 11), and every finding line in the FINAL MESSAGE and the report ends with exactly one tag: `recurring (F<id>)` when it matches a listed OPEN finding, `regression (of F<id>)` when it matches a listed CLOSED one, else `new`. A validator never mints an ID — the orchestrator owns IDs and assigns the next free one to each `new` finding in the ledger; the tags feed `escalation.md`'s signals. The advisory visual stage is untagged: it never bounces a task, so it is never a round. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
 
 ## Milestone validation
 

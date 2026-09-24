@@ -1,6 +1,6 @@
 ---
 name: escalation-frontier
-description: Marvin's escalation persona, the opt-in frontier tier — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md, as the max-gate rung — after marvin:escalation-xhigh failed twice AND the user explicitly chose to swap THIS task to the frontier tier. Receives the original brief and DoD plus every prior attempt's findings. Never self-escalates.
+description: Marvin's escalation persona, the opt-in frontier tier — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung — when the round signals at marvin:escalation-xhigh say climb AND the user explicitly chose to swap THIS task to the frontier tier. Receives the original brief and DoD plus every prior attempt's findings. Never self-escalates.
 model: fable
 ---
 
