@@ -13,7 +13,15 @@
 set -u
 
 is_semver() {
-  printf '%s' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+  # Bound the string BEFORE any regex or numeric work: an unbounded component (e.g. 100,000
+  # digits) makes version_gt's O(n^2) substring peeling burn CPU for seconds, and a component of
+  # 20+ digits overflows the `[ -ne ]` numeric test in version_gt with "integer expression
+  # expected" on stderr. A shell length check runs in constant time regardless of content, so it
+  # goes first; the regex (each component capped at 4 digits, well under 10^4-1 — plenty for any
+  # real semver) only ever runs against an already-short string.
+  local v="$1"
+  [ "${#v}" -le 20 ] || return 1
+  printf '%s' "$v" | grep -Eq '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$'
 }
 
 # version_gt <a> <b> — true (exit 0) iff a > b, both already-validated X.Y.Z semver strings,
@@ -85,11 +93,50 @@ is_semver "$plugin_version" || plugin_version=""
 # A symlinked PROJECT-INFO.md is refused (treated as unknown) before it is ever read.
 kit_version=""
 project_info="$marvin_dir/PROJECT-INFO.md"
+# [ -f ] alone accepts only a regular file (never a FIFO, device, or directory); combined with the
+# ! -L check above it also rejects a symlink, so only a genuine on-disk regular file is read.
 if [ ! -L "$project_info" ] && [ -f "$project_info" ]; then
   # Only the YAML frontmatter — between the first two literal "---" lines — is trusted; a
   # "kit_version:" string appearing later in the document body must never be read as the value.
-  frontmatter=$(awk '{ sub(/\r$/, "") } NR==1 && $0=="---" { f=1; next } f && $0=="---" { exit } f' \
-    "$project_info" 2>/dev/null)
+  # The read is bounded two ways: at most the first 40 lines (a hostile file with a huge body and
+  # no closing "---" must not stream unbounded content into a shell variable), and time-bounded
+  # against TOCTOU — the -f check above and the open below are two different moments, and a FIFO
+  # swapped in between them must not block the hook. Same choice as the stdin read above: prefer
+  # timeout(1) when present. Fallback (macOS bash 3.2, no timeout(1) on PATH, exercised here):
+  # open the path read-write with `<>` — per POSIX this never blocks on a FIFO (unlike a plain
+  # read-only open, which blocks until a writer connects), and is equivalent to a normal open for
+  # the expected case, a regular file — then bound every line read with `read -t`, the same
+  # builtin the stdin fallback uses. A regular file we cannot write to fails this open immediately
+  # (not a hang) and falls through to "couldn't read", the same safe outcome as any other
+  # unreadable PROJECT-INFO.md.
+  frontmatter=""
+  if command -v timeout >/dev/null 2>&1; then
+    frontmatter=$(timeout 2 head -n 40 -- "$project_info" 2>/dev/null \
+      | awk '{ sub(/\r$/, "") } NR==1 && $0=="---" { f=1; next } f && $0=="---" { exit } f')
+  elif exec 3<>"$project_info" 2>/dev/null; then
+    # `-n 200` caps a single read at 200 bytes even short of a newline: bash's `read -t` reads a
+    # byte at a time (to support the timeout/select), so one real line of ~1,000,000 bytes with no
+    # newline costs ~1,000,000 syscalls (seconds) even though the line count is bounded to 40. A
+    # line this long is never a real "kit_version:" value, so truncating it is safe — worst case
+    # it is later rejected by is_semver, same as today.
+    line_no=0
+    in_fm=0
+    while [ "$line_no" -lt 40 ] && IFS= read -r -t 2 -u 3 -n 200 line; do
+      line_no=$((line_no + 1))
+      line="${line%$'\r'}"
+      if [ "$line_no" -eq 1 ]; then
+        [ "$line" = "---" ] || break
+        in_fm=1
+        continue
+      fi
+      if [ "$in_fm" -eq 1 ]; then
+        [ "$line" = "---" ] && break
+        frontmatter="$frontmatter$line
+"
+      fi
+    done
+    exec 3<&-
+  fi
   raw=$(printf '%s\n' "$frontmatter" | grep -m1 '^kit_version:' | sed -E 's/^kit_version:[[:space:]]*//')
   kit_version=$(printf '%s' "$raw" | sed -E 's/^[[:space:]"'"'"']+//; s/[[:space:]"'"'"']+$//')
 fi

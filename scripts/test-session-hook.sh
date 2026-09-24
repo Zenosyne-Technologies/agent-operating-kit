@@ -223,6 +223,56 @@ if [ "$ELAPSED" -le 3 ]; then ok "returned in ${ELAPSED}s with stdin never close
 else bad "took ${ELAPSED}s — an open stdin with no EOF is not bounded"; fi
 assert_rc 0 "hook still exits cleanly"
 
+hd "T16 1 MB all-digit kit_version (huge first component, AOS-166 security report's own repro) — couldn't-read line, finishes within 2s"
+digits_1mb=$(head -c 1000000 /dev/zero | tr '\0' '7')
+rm -rf "$WORK/proj-huge-digits"; mkdir -p "$WORK/proj-huge-digits/.marvin"
+printf -- '---\nkit_version: %s.0.0\n---\n' "$digits_1mb" > "$WORK/proj-huge-digits/.marvin/PROJECT-INFO.md"
+mk_plugin "$WORK/plugin-huge-digits" "0.32.0"
+t0=$(date +%s)
+run_hook "$HOOK" "$WORK/proj-huge-digits" "$WORK/plugin-huge-digits"
+t1=$(date +%s)
+elapsed=$((t1 - t0))
+assert_rc 0
+assert_out "couldn't read this project's kit_version"
+if [ "$elapsed" -le 2 ]; then ok "finished in ${elapsed}s"
+else bad "took ${elapsed}s — a 1 MB digit component must be rejected before any O(n^2) numeric work"; fi
+
+hd "T17 25-character semver-shaped kit_version — over the 20-char bound, couldn't-read line"
+rm -rf "$WORK/proj-25char"; mkdir -p "$WORK/proj-25char/.marvin"
+printf -- '---\nkit_version: 1234567890.1234567890.123\n---\n' > "$WORK/proj-25char/.marvin/PROJECT-INFO.md"
+mk_plugin "$WORK/plugin-25char" "0.32.0"
+run_hook "$HOOK" "$WORK/proj-25char" "$WORK/plugin-25char"
+assert_rc 0
+assert_out "couldn't read this project's kit_version" "25 chars, semver-shaped, must still be rejected by the length bound"
+assert_no_out "1234567890"
+
+hd "T18 PROJECT-INFO.md with no closing --- and a 50 MB body — finishes within 2s"
+rm -rf "$WORK/proj-noclose-huge"; mkdir -p "$WORK/proj-noclose-huge/.marvin"
+{ printf -- '---\n'; yes 'kit_version: 0.32.0 padding padding padding padding padding padding padding' | head -c 50000000; } \
+  > "$WORK/proj-noclose-huge/.marvin/PROJECT-INFO.md"
+mk_plugin "$WORK/plugin-noclose-huge" "0.32.0"
+t0=$(date +%s)
+run_hook "$HOOK" "$WORK/proj-noclose-huge" "$WORK/plugin-noclose-huge"
+t1=$(date +%s)
+elapsed=$((t1 - t0))
+assert_rc 0
+assert_out "couldn't read this project's kit_version" "no closing --- within 40 lines, so no trustworthy frontmatter"
+if [ "$elapsed" -le 2 ]; then ok "finished in ${elapsed}s"
+else bad "took ${elapsed}s — a 50 MB body with no closing --- must not be read past the 40-line bound"; fi
+
+hd "T19 PROJECT-INFO.md is a FIFO — refused without reading, no hang, returns within 3s"
+rm -rf "$WORK/proj-fifo-info"; mkdir -p "$WORK/proj-fifo-info/.marvin"
+mkfifo "$WORK/proj-fifo-info/.marvin/PROJECT-INFO.md"
+mk_plugin "$WORK/plugin-fifo-info" "0.32.0"
+t0=$(date +%s)
+run_hook "$HOOK" "$WORK/proj-fifo-info" "$WORK/plugin-fifo-info"
+t1=$(date +%s)
+elapsed=$((t1 - t0))
+assert_rc 0
+assert_out "couldn't read this project's kit_version" "a FIFO is not a regular file, so [ -f ] refuses it before any read is attempted"
+if [ "$elapsed" -le 3 ]; then ok "returned in ${elapsed}s"
+else bad "took ${elapsed}s — a FIFO placed at PROJECT-INFO.md must never block the hook"; fi
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 # ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -260,7 +310,7 @@ mutation_check() {  # mutation_check <name> <mutant_hook_path> <project_dir> <pl
 
 hd "M1 mutation: is_semver() accepts anything (guards T4/T7's garbage rejection)"
 M1="$WORK/mutant-m1.sh"
-mutate_replace_line "$HOOK" "$M1" "  printf '%s' \"\$1\" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\$'" "  return 0"
+mutate_replace_line "$HOOK" "$M1" "  printf '%s' \"\$v\" | grep -Eq '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}\$'" "  return 0"
 if cmp -s "$M1" "$HOOK"; then
   bad "M1 mutation did not change the script — sed target is stale, fix this harness"
 else
@@ -356,6 +406,113 @@ else
     bad "mutation M5-stdin-bound NOT caught — the mutant still returned within 3s"
   else
     ok "mutation M5-stdin-bound caught — the mutant stalled for ${ELAPSED}s waiting on stdin, as it must"
+  fi
+fi
+
+hd "M6 mutation: is_semver's length/digit bound is dropped, reverting to the pre-fix unbounded pattern (guards T16, DoD item 1)"
+M6="$WORK/mutant-m6.sh"
+IS_SEMVER_OLD_BODY=$(cat <<'EOF'
+  printf '%s' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'
+EOF
+)
+awk -v repl="$IS_SEMVER_OLD_BODY" '
+  BEGIN { skipping = 0; done = 0 }
+  {
+    if (!done && !skipping && $0 == "is_semver() {") {
+      print
+      print repl
+      skipping = 1
+      next
+    }
+    if (skipping) {
+      if ($0 == "}") { print; skipping = 0; done = 1 }
+      next
+    }
+    print
+  }
+' "$HOOK" > "$M6"
+if cmp -s "$M6" "$HOOK"; then
+  bad "M6 mutation did not change the script — is_semver() block detection is stale, fix this harness"
+else
+  chmod +x "$M6"
+  # Exercise is_semver()+version_gt() directly, bypassing the hook's stdin/file plumbing: T16's
+  # end-to-end timing on THIS machine is also shielded by the frontmatter read's own per-line -n
+  # 200 truncation (needed independently, so a giant single line can't cost one syscall per byte),
+  # which on a fallback (no timeout(1)) system already keeps any single raw value short before it
+  # ever reaches is_semver. That truncation is a different guard from item 1's bound and must not
+  # be allowed to mask a broken is_semver() on systems where the frontmatter reaches it un-
+  # truncated (the timeout(1)+awk path). A direct call sidesteps that and pins item 1 on its own.
+  extract_functions() {  # extract_functions <src-hook> <out-file> — is_semver()+version_gt(), verbatim
+    awk '
+      /^is_semver\(\) \{/ { grab = 1 }
+      grab { print }
+      grab && /^version_gt\(\) \{/ { in_vg = 1 }
+      grab && in_vg && /^\}/ { exit }
+    ' "$1" > "$2"
+  }
+  run_semver_case() {  # run_semver_case <funcs-file> <value> — mirrors the hook's own control flow:
+    # version_gt only ever runs on a value that already passed is_semver.
+    local funcs="$1" v="$2"
+    ( . "$funcs"; is_semver "$v" && version_gt "$v" "0.32.0" ) >/dev/null 2>&1
+  }
+  FUNCS_REAL="$WORK/funcs-real.sh"; FUNCS_M6="$WORK/funcs-m6.sh"
+  extract_functions "$HOOK" "$FUNCS_REAL"
+  extract_functions "$M6" "$FUNCS_M6"
+  # 100,000 digits — well under T16's 1 MB fixture, but already 3s+ per the AOS-166 report's own
+  # timing table once it reaches version_gt's O(n^2) substring peeling.
+  digits_100k=$(head -c 100000 /dev/zero | tr '\0' '7')
+  v="${digits_100k}.0.0"
+  t0=$(date +%s); run_semver_case "$FUNCS_REAL" "$v"; real_elapsed=$(( $(date +%s) - t0 ))
+  t0=$(date +%s); run_semver_case "$FUNCS_M6" "$v"; m6_elapsed=$(( $(date +%s) - t0 ))
+  if [ "$real_elapsed" -le 2 ] && [ "$m6_elapsed" -gt 2 ]; then
+    ok "mutation M6-is_semver-bound caught — real is_semver()+version_gt() took ${real_elapsed}s (rejected before version_gt), the mutant took ${m6_elapsed}s"
+  else
+    bad "mutation M6-is_semver-bound NOT caught — real=${real_elapsed}s mutant=${m6_elapsed}s (want real<=2s, mutant>2s)"
+  fi
+fi
+
+hd "M7 mutation: the frontmatter read's 40-line/time bound is dropped, reverting to the pre-fix unbounded awk (guards T18, DoD item 2)"
+M7="$WORK/mutant-m7.sh"
+OLD_FRONTMATTER_BLOCK=$(cat <<'EOF'
+  frontmatter=$(awk '{ sub(/\r$/, "") } NR==1 && $0=="---" { f=1; next } f && $0=="---" { exit } f' \
+    "$project_info" 2>/dev/null)
+EOF
+)
+awk -v repl="$OLD_FRONTMATTER_BLOCK" '
+  BEGIN { skipping = 0; done = 0 }
+  {
+    if (!done && !skipping && $0 == "  frontmatter=\"\"") {
+      print repl
+      skipping = 1
+      next
+    }
+    if (skipping) {
+      if ($0 == "  fi") { skipping = 0; done = 1 }
+      next
+    }
+    print
+  }
+' "$HOOK" > "$M7"
+if cmp -s "$M7" "$HOOK"; then
+  bad "M7 mutation did not change the script — frontmatter-block detection is stale, fix this harness"
+else
+  chmod +x "$M7"
+  # against the mutant, the frontmatter read is a single unbounded awk over the whole file again.
+  # Use a larger body than T18's 50 MB (150 MB — comfortably past the report's own "100 MB takes
+  # about 3s" data point) so a 1-second-granularity clock reliably shows the mutant over T18's 2s
+  # bound rather than landing right on the boundary.
+  rm -rf "$WORK/proj-m7"; mkdir -p "$WORK/proj-m7/.marvin"
+  { printf -- '---\n'; yes 'kit_version: 0.32.0 padding padding padding padding padding padding padding' | head -c 150000000; } \
+    > "$WORK/proj-m7/.marvin/PROJECT-INFO.md"
+  mk_plugin "$WORK/plugin-m7" "0.32.0"
+  t0=$(date +%s)
+  run_hook "$M7" "$WORK/proj-m7" "$WORK/plugin-m7"
+  t1=$(date +%s)
+  m7_elapsed=$((t1 - t0))
+  if [ "$m7_elapsed" -gt 2 ]; then
+    ok "mutation M7-frontmatter-bound caught — the mutant took ${m7_elapsed}s, past T18's 2s bound, as it must"
+  else
+    bad "mutation M7-frontmatter-bound NOT caught — the mutant still finished in ${m7_elapsed}s"
   fi
 fi
 
