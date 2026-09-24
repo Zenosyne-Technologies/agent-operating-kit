@@ -149,6 +149,20 @@ else
   printf '%s\n' "$lp" | sed 's/^/       /'
 fi
 
+# ── 13. model-names: concrete model names live ONLY in the version's model profile
+# (templates/marvin/agents/model-profile.md — CLAUDE.md "The division"); every other template names
+# tiers and cites the profile. Whole-word, case-insensitive, so words that merely contain a name
+# (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it.
+MP=templates/marvin/agents/model-profile.md
+[ -d templates ] || fail model-names "templates/ missing"
+mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ | awk -F: -v mp="$MP" '$1 != mp')
+if [ -z "$mn" ]; then
+  pass model-names
+else
+  fail model-names "model name(s) outside $MP (name the tier and cite the profile):"
+  printf '%s\n' "$mn" | sed 's/^/       /'
+fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
