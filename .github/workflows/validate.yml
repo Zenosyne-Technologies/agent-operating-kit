@@ -12,3 +12,5 @@ jobs:
         run: bash scripts/validate-kit.sh
       - name: Run migration tests
         run: bash scripts/test-migrations.sh
+      - name: Run CLAUDE.md split planner tests
+        run: bash scripts/test-claude-md-split.sh
