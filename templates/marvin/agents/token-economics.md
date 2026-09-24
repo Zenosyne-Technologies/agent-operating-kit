@@ -35,7 +35,7 @@ By ROLE, not model — the orchestrator runs on the heavy tier's model (`escalat
 | `marvin:developer-small` · `marvin:documenter` | small |
 | `marvin:ponytail` | micro |
 
-Any other agent falls back to its model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` ladder.
+Any other agent falls back to the tier its model prefix maps to — the prefix → tier list is `model-profile.md`'s.
 
 ## Pricing
 
