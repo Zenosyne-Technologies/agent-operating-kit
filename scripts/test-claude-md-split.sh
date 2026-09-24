@@ -35,7 +35,7 @@ hd()  { CURRENT="$1"; printf '\n== %s\n' "$1"; }
 ok()  { PASSED=$((PASSED+1)); printf '   ok    %s\n' "$1"; }
 bad() { FAILED=$((FAILED+1)); printf '   FAIL  [%s] %s\n' "$CURRENT" "$1"; }
 chk() { if [ "$1" = 0 ]; then ok "$2"; else bad "$2"; fi; }
-run() { OUT=$(bash "$1" "$2" 2>/dev/null); RC=$?; }   # run <planner> <repo-dir>
+run() { OUT=$(bash "$1" --mode "${3:-upgrade}" "$2" 2>/dev/null); RC=$?; }   # run <planner> <repo-dir> [install|upgrade]
 has() { printf '%s\n' "$OUT" | grep -Fxq -- "$1"; chk $? "report has: $1"; }
 cls() { printf '%s\n' "$OUT" | awk -v n="$1" '$1=="line:" && $2==n {print $3}'; }  # class of line n
 lines_of() { printf '%s\n' "$OUT" | awk -v c="$1" '$1=="line:" && $3==c {print $2}' | tr '\n' ' '; }
@@ -69,8 +69,9 @@ mkrepo() { rm -rf "$1"; mkdir -p "$1"; }
 # ── fixtures — each takes the planner under test ───────────────────────────────────────────
 P1() {  # a fresh stub (what install step 4 writes) needs nothing
   local p="$1" d="$WORK/p1"; mkrepo "$d"; render "$STUB" b > "$d/CLAUDE.md"
-  run "$p" "$d"; chk $([ "$RC" = 0 ]; echo $?) "exit 0"
-  has "result=nothing-to-do"; has "import: present"; has "counts: kit=0 near-kit=0 review=0 attribution=1 title=1 project=3"
+  run "$p" "$d" install; chk $([ "$RC" = 0 ]; echo $?) "exit 0"
+  has "mode=install"; has "result=nothing-to-do"; has "import: present"; has "counts: kit=0 near-kit=0 review=0 attribution=1 title=1 project=3"
+  run "$p" "$d" upgrade; has "result=nothing-to-do"
 }
 
 P2() {  # every history version rendered: kit lines are kit; facts, conventions, attribution never
@@ -126,6 +127,19 @@ P10() {  # only customised kit lines left (no kit line), no import yet: still sp
   run "$p" "$d"; has "result=nothing-to-do"
 }
 
+P11() {  # install mode: a never-installed repo has no customised kit lines — rule-like project prose is project
+  local p="$1" d="$WORK/p11"; mkrepo "$d"; cp "$REPO_DIR/CLAUDE.md" "$d/CLAUDE.md"
+  run "$p" "$d" install
+  has "result=nothing-to-do"; [ -z "$(lines_of near-kit)$(lines_of review)" ]; chk $? "kit repo's own CLAUDE.md: no near-kit/review in install mode"
+  run "$p" "$d" upgrade; [ "$RC" = 0 ]; chk $? "same file in upgrade mode is classified (review allowed)"
+  printf '%s\n' '# Legacy' '' 'Facts.' '' \
+    '- Always commit finished work immediately with a selective git add; never leave work uncommitted.' \
+    '- Cold-boot the dev stack before merging; browser-smoke every web-facing change.' \
+    '- Write plans to docs/plans and index them in the same commit.' > "$d/CLAUDE.md"
+  run "$p" "$d" install
+  has "counts: kit=0 near-kit=0 review=0 attribution=0 title=1 project=4"; has "result=nothing-to-do"
+}
+
 P4() {  # CLAUDE.md -> AGENTS.md is refused: exit 6 and no report record at all
   local p="$1" d="$WORK/p4"; mkrepo "$d"; printf '# Agents\n\n- **Autocommit**: x\n' > "$d/AGENTS.md"
   ln -s AGENTS.md "$d/CLAUDE.md"; run "$p" "$d"
@@ -135,7 +149,7 @@ P4() {  # CLAUDE.md -> AGENTS.md is refused: exit 6 and no report record at all
 
 P5() {  # AGENTS.md with no CLAUDE.md: install must add @AGENTS.md above the kit import
   local p="$1" d="$WORK/p5"; mkrepo "$d"; printf '# Agents\n' > "$d/AGENTS.md"
-  run "$p" "$d"; has "agents-md: present"; has "claude-md: absent"; has "result=nothing-to-do"
+  run "$p" "$d" install; has "agents-md: present"; has "claude-md: absent"; has "result=nothing-to-do"
 }
 
 P6() {  # an import in backticks or inside a fence is inert: in-code-span, never present
@@ -150,7 +164,7 @@ P6() {  # an import in backticks or inside a fence is inert: in-code-span, never
 
 sim_edit() {  # the agent's edit, as a sed: drop every kit line, append the import if absent
   local p="$1" d="$2" rep dels
-  rep=$(bash "$p" "$d" 2>/dev/null)
+  rep=$(bash "$p" --mode upgrade "$d" 2>/dev/null)
   dels=$(printf '%s\n' "$rep" | awk '$1=="line:" && $3=="kit" {printf "%sd;", $2}')
   if [ -n "$dels" ]; then sed -e "$dels" "$d/CLAUDE.md" > "$d/x" && mv "$d/x" "$d/CLAUDE.md"; fi
   printf '%s\n' "$rep" | grep -qx 'import: present' || printf '\n%s\n' "$IMPORT_LINE" >> "$d/CLAUDE.md"
@@ -171,22 +185,24 @@ P8() {  # the planner never writes: whole-tree cksum and git status unchanged, e
   git -C "$d" init -q && git -C "$d" add -A && git -C "$d" -c user.name=t -c user.email=t@t commit -qm init
   snap() { (cd "$d" && find . -path ./.git -prune -o -print0 | sort -z | xargs -0 perl -MTime::HiRes=lstat -e 'for (@ARGV) { my @s = lstat($_); print "$_ $s[2] $s[7] $s[9]\n" }'; find . -type f -print0 | sort -z | xargs -0 cksum; git status --porcelain); }
   before=$(snap)
-  bash "$p" "$d" > /dev/null 2>&1; bash "$p" "$d" --bogus > /dev/null 2>&1
-  (cd "$d" && bash "$p" > /dev/null 2>&1)
+  bash "$p" --mode upgrade "$d" > /dev/null 2>&1; bash "$p" --mode install "$d" > /dev/null 2>&1
+  bash "$p" --mode upgrade "$d" --bogus > /dev/null 2>&1; (cd "$d" && bash "$p" --mode upgrade > /dev/null 2>&1)
   after=$(snap); [ "$before" = "$after" ]; chk $? "tree, cksums and git status unchanged (report, usage error, cwd modes)"
   rm "$d/CLAUDE.md"; ln -s AGENTS.md "$d/CLAUDE.md"
-  before=$(snap); bash "$p" "$d" > /dev/null 2>&1; after=$(snap)
+  before=$(snap); bash "$p" --mode upgrade "$d" > /dev/null 2>&1; after=$(snap)
   [ "$before" = "$after" ]; chk $? "tree, cksums and git status unchanged (symlink refusal)"
 }
 
 P0() {  # usage errors exit 4
   local p="$1"
-  bash "$p" --bogus > /dev/null 2>&1; [ $? = 4 ]; chk $? "unknown flag exits 4"
-  bash "$p" "$WORK" "$WORK" > /dev/null 2>&1; [ $? = 4 ]; chk $? "extra argument exits 4"
-  bash "$p" "$WORK/does-not-exist" > /dev/null 2>&1; [ $? = 4 ]; chk $? "missing directory exits 4"
+  bash "$p" --mode upgrade --bogus > /dev/null 2>&1; [ $? = 4 ]; chk $? "unknown flag exits 4"
+  bash "$p" --mode upgrade "$WORK" "$WORK" > /dev/null 2>&1; [ $? = 4 ]; chk $? "extra argument exits 4"
+  bash "$p" --mode upgrade "$WORK/does-not-exist" > /dev/null 2>&1; [ $? = 4 ]; chk $? "missing directory exits 4"
+  bash "$p" "$WORK" > /dev/null 2>&1; [ $? = 4 ]; chk $? "missing --mode exits 4 (never inferred)"
+  bash "$p" --mode guess "$WORK" > /dev/null 2>&1; [ $? = 4 ]; chk $? "unknown --mode exits 4"
 }
 
-for f in P0 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10; do hd "$f"; "$f" "$PLANNER"; done
+for f in P0 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11; do hd "$f"; "$f" "$PLANNER"; done
 
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 MROOT="$WORK/mut"; mkdir -p "$MROOT/scripts" "$MROOT/templates/marvin"
@@ -217,11 +233,14 @@ mutate symlink-guard-removed P4 \
   ':'
 
 mutate review-class-disabled P9 \
-  '      if (!defined $cls) { $cls = close_to_kit($t) ? "review" : "project"; }' \
-  '      if (!defined $cls) { $cls = "project"; }'
+  '      if (!defined $cls && $customised) { $cls = "review" if close_to_kit($t); }' \
+  '      1;'
 mutate review-threshold-loosened P9 \
   '    return 1 if $shared >= 4 && $shared / $min >= 0.6; }' \
   '    return 1 if $shared >= 1; }'
+mutate mode-guard-ignored P11 \
+  'my $customised = $mode eq "upgrade";   # mode guard: near-kit/review exist only over a prior install' \
+  'my $customised = 1;'
 mutate near-kit-only-skips-gate P10 \
   'my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);' \
   'my $split = $cnt{kit} > 0;'

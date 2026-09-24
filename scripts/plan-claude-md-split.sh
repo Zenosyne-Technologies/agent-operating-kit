@@ -50,10 +50,18 @@
 # migrate-v0.21.0.sh encodes paths (its `encoding=` line); no consumer line text is ever
 # printed — lines are named by number only.
 #
-# Usage: bash plan-claude-md-split.sh [<repo-root>]     (default: the current directory)
+# MODE is explicit, never inferred from content (`--mode`, required):
+#   install  the repo has no kit install (no PROJECT-INFO `kit_version`): nothing in it can be a
+#            customised kit line, so every line that is not an exact `kit` match is `project` —
+#            `near-kit` and `review` do not exist in this mode, and only `kit` lines make
+#            `split-needed` (a prior install the install skill hands to upgrade-agent-os)
+#   upgrade  a kit install exists (the upgrade and re-install paths): all classes apply
+#
+# Usage: bash plan-claude-md-split.sh --mode install|upgrade [<repo-root>]   (default root: .)
 # Exit codes:
 #   0  report printed (result=split-needed or result=nothing-to-do)
-#   4  usage error: unknown flag, extra argument, repo root not a directory, CLAUDE.md not a file
+#   4  usage error: missing/unknown --mode, unknown flag, extra argument, repo root not a
+#      directory, CLAUDE.md not a file
 #   5  the reference set is missing (a broken plugin install)
 #   6  refused: CLAUDE.md is a symlink — nothing is read, no report record is printed
 set -uo pipefail
@@ -63,11 +71,21 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 HIST_DIR="$SCRIPT_DIR/claude-core-history"
 KIT_CORE="$SCRIPT_DIR/../templates/marvin/CLAUDE.marvin.md"
 
-usage() { printf 'usage: bash %s.sh [<repo-root>]\n' "$SELF" >&2; }
+usage() { printf 'usage: bash %s.sh --mode install|upgrade [<repo-root>]\n' "$SELF" >&2; }
 
-case "${1:-}" in -h|--help) usage; exit 0;; -*) usage; exit 4;; esac
-[ "$#" -le 1 ] || { usage; exit 4; }
-ROOT="${1:-.}"
+MODE=""; ROOT=""; nroot=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage; exit 0;;
+    --mode) [ "$#" -ge 2 ] || { usage; exit 4; }; MODE="$2"; shift 2;;
+    --mode=*) MODE="${1#--mode=}"; shift;;
+    -*) usage; exit 4;;
+    *) ROOT="$1"; nroot=$((nroot+1)); shift;;
+  esac
+done
+case "$MODE" in install|upgrade) ;; *) usage; exit 4;; esac
+[ "$nroot" -le 1 ] || { usage; exit 4; }
+ROOT="${ROOT:-.}"
 [ -d "$ROOT" ] || { printf '%s: not a directory\n' "$SELF" >&2; exit 4; }
 CM="$ROOT/CLAUDE.md"
 AG="$ROOT/AGENTS.md"
@@ -84,7 +102,8 @@ kit_core=""; [ -f "$KIT_CORE" ] && kit_core="$KIT_CORE"
 
 LC_ALL=C perl -e '
 use strict; use warnings;
-my ($cm_state, $cm, $ag_state, $hist, $kit_core) = @ARGV;
+my ($cm_state, $cm, $ag_state, $hist, $kit_core, $mode) = @ARGV;
+my $customised = $mode eq "upgrade";   # mode guard: near-kit/review exist only over a prior install
 
 # ── encoding: migrate-v0.21.0.sh q() exactly (git core.quotePath); named enc — q is a Perl operator
 sub enc { my $p = shift;
@@ -169,8 +188,9 @@ for my $l (@lines) {
         last;
       }
       if (!defined $cls && !$title_seen && $t =~ /\A#\s+\S/) { $cls = "title"; }
-      if (!defined $cls) { my @lab = label_of($t); $cls = "near-kit" if @lab && $labels{"$lab[0]:$lab[1]"}; }
-      if (!defined $cls) { $cls = close_to_kit($t) ? "review" : "project"; }
+      if (!defined $cls && $customised) { my @lab = label_of($t); $cls = "near-kit" if @lab && $labels{"$lab[0]:$lab[1]"}; }
+      if (!defined $cls && $customised) { $cls = "review" if close_to_kit($t); }
+      $cls //= "project";
     }
     if (!defined $logpath && $cls ne "kit" && $t =~ /(?:A real bug|Real bugs)\s*\xe2\x86\x92\s*`([^`]+)`/) { $logpath = $1; }
   }
@@ -182,6 +202,7 @@ $imp = "in-code-span" if $imp eq "absent" && $code_imp;
 print "plan-claude-md-split: read-only planner report — it changed nothing\n";
 print "encoding=values are printed raw when they match [A-Za-z0-9._/\@+-]+, otherwise C-quoted in double quotes with \\n \\t \\r \\\" \\\\ and \\ooo escapes (git core.quotePath convention); exactly one record per line; no CLAUDE.md line text is ever printed\n";
 print "reference=", join(",", map { (my $b = $_) =~ s{.*/}{}; $b } @refs), "\n";
+print "mode=$mode\n";
 print "claude-md: $cm_state\n";
 print "$_\n" for @rec;
 print "counts: ", join(" ", map { "$_=$cnt{$_}" } qw(kit near-kit review attribution title project)), "\n";
@@ -191,4 +212,4 @@ print "issue-log-path: ", (defined $logpath ? enc($logpath) : "not-found"), "\n"
 print "model-values: ", join(" ", map { "$_=" . (defined $mv{$_} ? enc($mv{$_}) : "not-found") } qw(ESCALATION_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL)), "\n";
 my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);
 print "result=", ($split ? "split-needed" : "nothing-to-do"), "\n";
-' "$cm_state" "$CM" "$ag_state" "$HIST_DIR" "$kit_core"
+' "$cm_state" "$CM" "$ag_state" "$HIST_DIR" "$kit_core" "$MODE"
