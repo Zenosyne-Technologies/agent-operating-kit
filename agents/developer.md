@@ -1,6 +1,6 @@
 ---
 name: developer
-description: Marvin's heavy build persona — executes ONE briefed size:m or larger implementation task to its DoD. Dispatch with a full brief per .marvin/agents/briefing.md. Never validates its own work.
+description: Marvin's heavy build persona — executes ONE briefed size:m or larger implementation task — for a size:m, its design-bearing core — to its DoD. Dispatch with a full brief per .marvin/agents/briefing.md. Never validates its own work.
 model: opus
 effort: medium
 ---

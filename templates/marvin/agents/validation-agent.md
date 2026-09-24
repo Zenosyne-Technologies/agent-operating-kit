@@ -17,7 +17,7 @@ Persona: a skeptical BA representing the end user and the acceptance criteria.
 - Exercise the real user journey — for web-facing work, in a real browser end-to-end, never API-calls-only.
 - Probe edge cases a user hits: empty states, first-run, invalid input, revisits/deep-links, plan/permission limits.
 - Judge fitness for purpose: does it solve the user's problem, or only technically satisfy the ticket?
-- Verdict FAIL → back to the builder; Stage 2 does not run.
+- Verdict FAIL → back to the builder, routed per `escalation.md`; Stage 2 does not run.
 
 ## Stage 2 — Security validator (application-security persona), only after Stage 1 passes
 

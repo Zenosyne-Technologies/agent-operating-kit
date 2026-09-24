@@ -38,7 +38,7 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 
 - **Orchestrator** — DO NOT bulk-implement, DO NOT bulk-read, DO NOT run tracker bookkeeping or release mechanics inline, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
 - **developer** — DO NOT validate your own work; DO NOT ship a missing env/config/migration silently — wire it or name the gap loudly.
-- **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`.
+- **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`. As the brief falsifier: DO NOT write or commit anything but its run report, per `developer-small`.
 - **ponytail** — DO NOT improvise on any judgment call, ambiguous match, or unexpected state; STOP and report, per `ponytail.md`.
 - **researcher** — DO NOT change product code or file tracker items; findings go in the memo, per `planning-research.md`.
 - **validator-completion** — DO NOT patch a finding or confirm instead of falsify; report it, per `validation-agent.md`.

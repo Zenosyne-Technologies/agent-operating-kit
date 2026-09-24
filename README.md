@@ -139,8 +139,8 @@ flowchart LR
 flowchart TD
     O["Orchestrator, the ceiling model at medium effort<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
     R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
-    R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs"]
-    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, the validators"]
+    R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs,<br/>size-m peripheral pieces, specified fixes, the brief falsifier"]
+    R -->|m / l / xl| HV["Heavy worker<br/>design-bearing builds, planning research, the validators"]
     MI --> X{"Two failed attempts?"}
     SM --> X
     HV --> X
@@ -155,7 +155,7 @@ flowchart TD
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A correction whose fix list the orchestrator fully specified goes to the small tier (`planning-research.md`, `escalation.md`). A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -277,7 +277,7 @@ templates/
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
-    planning-research.md           size-gated plan-validation + solution research, tier routing
+    planning-research.md           size-gated planning: size:m build decomposition, size:m+ brief falsifier, size:l/xl plan-validation + solution research
     validation-agent.md            BA + security validator personas, E2E hook
     visual-validation.md           visual/design validator persona — surface resolution, capture + degradation ladder, generic design checklist, severity, reporting
     documentation-agent.md         post-task documentation scope
