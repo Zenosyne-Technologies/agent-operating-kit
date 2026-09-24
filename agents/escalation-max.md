@@ -1,6 +1,6 @@
 ---
 name: escalation-max
-description: Marvin's escalation persona, the ceiling model at max effort — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung — when the round signals at marvin:escalation-xhigh say climb AND the user chose max, gave no answer or picked neither option, or the session was unattended (the orchestrator records which). Receives the original brief and DoD plus every prior attempt's findings. Never self-escalates.
+description: Marvin's escalation persona, the ceiling model at max effort — dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung — when the round signals at marvin:escalation-xhigh say climb AND the user chose max, gave no answer or picked neither option, or the session was unattended (the orchestrator records which). Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.
 model: opus
 effort: max
 ---
