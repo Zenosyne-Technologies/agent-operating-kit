@@ -155,7 +155,7 @@ fi
 # (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it.
 MP=templates/marvin/agents/model-profile.md
 [ -d templates ] || fail model-names "templates/ missing"
-mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ | grep -vF "$MP:")
+mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ | awk -F: -v mp="$MP" '$1 != mp')
 if [ -z "$mn" ]; then
   pass model-names
 else
