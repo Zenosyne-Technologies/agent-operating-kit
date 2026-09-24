@@ -154,7 +154,8 @@ fi
 # tiers and cites the profile. Whole-word, case-insensitive, so words that merely contain a name
 # (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it.
 MP=templates/marvin/agents/model-profile.md
-mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ 2>/dev/null | grep -v "^$MP:")
+[ -d templates ] || fail model-names "templates/ missing"
+mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ | grep -vF "$MP:")
 if [ -z "$mn" ]; then
   pass model-names
 else
