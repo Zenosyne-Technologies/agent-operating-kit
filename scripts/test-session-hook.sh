@@ -56,6 +56,42 @@ mk_project() {  # mk_project <dir> <kit_version_raw_or_empty-for-no-file>
 
 RULES_MARK="user-update rules"
 
+# run_hook_with_open_stdin <hook_path> <plugin_dir> <fifo_path> <hold_secs> <deadline_secs>
+# Runs the hook (CLAUDE_PROJECT_DIR forced empty, to exercise the stdin-reading path) with stdin
+# from a fifo whose write end a background job holds open (writing nothing) for <hold_secs>
+# seconds before closing it naturally, so the hook's stdin never reaches EOF on its own. Polls for
+# the hook's own completion, in a way that needs no `timeout` binary (not guaranteed present, e.g.
+# stock macOS), up to <deadline_secs> — which must exceed <hold_secs> so an UNBOUNDED hook still
+# gets to finish naturally when the writer closes the pipe, instead of being force-killed, which
+# would corrupt the very exit code / timing this is measuring.
+# Sets OUT, RC, ELAPSED.
+run_hook_with_open_stdin() {
+  local hook="$1" proot="$2" fifo="$3" hold="$4" deadline="$5"
+  rm -f "$fifo"; mkfifo "$fifo"
+  ( exec 4>"$fifo"; sleep "$hold" >&4 ) &
+  local writer_pid=$!
+  local outfile rcfile hook_pid start waited
+  outfile=$(mktemp "$WORK/hookout.XXXXXX")
+  rcfile=$(mktemp "$WORK/hookrc.XXXXXX")
+  ( CLAUDE_PROJECT_DIR="" CLAUDE_PLUGIN_ROOT="$proot" bash "$hook" < "$fifo" > "$outfile" 2>&1
+    echo $? > "$rcfile" ) &
+  hook_pid=$!
+  start=$(date +%s)
+  while kill -0 "$hook_pid" 2>/dev/null; do
+    sleep 0.2
+    waited=$(( $(date +%s) - start ))
+    if [ "$waited" -ge "$deadline" ]; then
+      kill "$hook_pid" 2>/dev/null
+      break
+    fi
+  done
+  wait "$hook_pid" 2>/dev/null
+  ELAPSED=$(( $(date +%s) - start ))
+  kill "$writer_pid" 2>/dev/null; wait "$writer_pid" 2>/dev/null
+  RC=$(cat "$rcfile" 2>/dev/null || echo 999)
+  OUT=$(cat "$outfile" 2>/dev/null || echo "")
+}
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 hd "T1 no .marvin — no output, exit 0"
 mk_plugin "$WORK/plugin-ok" "0.32.0"
@@ -158,6 +194,35 @@ if [ "$before" = "$after" ]; then ok "project tree unchanged"; else bad "project
 before: $before
 after:  $after"; fi
 
+hd "T13 kit_version only in the document body (not frontmatter) — treated as unknown"
+rm -rf "$WORK/proj-body-only"; mkdir -p "$WORK/proj-body-only/.marvin"
+printf -- '---\nsome_field: x\n---\nBody text mentions kit_version: 0.32.0 in prose.\n' \
+  > "$WORK/proj-body-only/.marvin/PROJECT-INFO.md"
+mk_plugin "$WORK/plugin-body-only" "0.32.0"
+run_hook "$HOOK" "$WORK/proj-body-only" "$WORK/plugin-body-only"
+assert_rc 0
+assert_out "couldn't read this project's kit_version" "a kit_version outside the frontmatter must not be read"
+assert_no_out "0.32.0 but the plugin"
+assert_out "$RULES_MARK"
+
+hd "T14 project newer than the plugin — install-is-newer message, not the upgrade-skill line"
+mk_project "$WORK/proj-newer" "0.33.0"
+mk_plugin "$WORK/plugin-newer" "0.32.0"
+run_hook "$HOOK" "$WORK/proj-newer" "$WORK/plugin-newer"
+assert_rc 0
+assert_out "this project's install is v0.33.0, newer than the plugin (v0.32.0)"
+assert_out "claude plugin update marvin"
+assert_no_out "run /marvin:upgrade-agent-os before other work"
+assert_out "$RULES_MARK"
+
+hd "T15 stdin left open with no EOF, CLAUDE_PROJECT_DIR unset — hook returns within 3s (bounded read)"
+mk_project "$WORK/proj-stdinopen" "0.32.0"
+mk_plugin "$WORK/plugin-stdinopen" "0.32.0"
+run_hook_with_open_stdin "$HOOK" "$WORK/plugin-stdinopen" "$WORK/stdin-fifo-t15" 10 12
+if [ "$ELAPSED" -le 3 ]; then ok "returned in ${ELAPSED}s with stdin never closed"
+else bad "took ${ELAPSED}s — an open stdin with no EOF is not bounded"; fi
+assert_rc 0 "hook still exits cleanly"
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 # ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -242,6 +307,56 @@ else
   # followed and read: kit_version becomes known and matches the plugin, so no line prints —
   # T6's "couldn't-read" expectation must fail
   mutation_check "M3-project-info-symlink-guard" "$M3" "$WORK/proj-info-symlink" "$WORK/plugin-current" "couldn't read this project's kit_version"
+fi
+
+hd "M4 mutation: numeric version-direction check is disabled (guards T14, DoD item 1)"
+M4="$WORK/mutant-m4.sh"
+mutate_replace_line "$HOOK" "$M4" '  if version_gt "$kit_version" "$plugin_version"; then' '  if false; then'
+if cmp -s "$M4" "$HOOK"; then
+  bad "M4 mutation did not change the script — sed target is stale, fix this harness"
+else
+  chmod +x "$M4"
+  # against the mutant, a project newer than the plugin (T14) never takes the "newer" branch, so
+  # it falls back to the old upgrade-skill wording — T14's "newer than the plugin" expectation
+  # must fail
+  mutation_check "M4-version-direction" "$M4" "$WORK/proj-newer" "$WORK/plugin-newer" "newer than the plugin"
+fi
+
+hd "M5 mutation: the bounded stdin read is dropped (guards T15, DoD item 3)"
+M5="$WORK/mutant-m5.sh"
+awk '
+  { buf[NR] = $0 }
+  END {
+    for (i = 1; i <= NR; i++) {
+      if (buf[i] == "if [ -z \"${CLAUDE_PROJECT_DIR:-}\" ] && [ ! -t 0 ]; then" &&
+          buf[i+1] == "  if command -v timeout >/dev/null 2>&1; then" &&
+          buf[i+2] == "    stdin_json=$(timeout 2 cat 2>/dev/null || true)" &&
+          buf[i+3] == "  else" &&
+          buf[i+4] == "    read -r -t 2 stdin_json || true" &&
+          buf[i+5] == "  fi" &&
+          buf[i+6] == "fi") {
+        print "stdin_json=$(cat 2>/dev/null || true)"
+        i += 6
+        continue
+      }
+      print buf[i]
+    }
+  }
+' "$HOOK" > "$M5"
+if cmp -s "$M5" "$HOOK"; then
+  bad "M5 mutation did not change the script — awk target is stale, fix this harness"
+else
+  chmod +x "$M5"
+  # against the mutant, stdin is read with a plain unbounded `cat`: with the fifo held open and
+  # never closed (T15's fixture), the hook can only return once the writer itself lets go at 10s —
+  # well past the 3s bound the real hook guarantees, so T15's "returns within 3s" expectation
+  # must fail
+  run_hook_with_open_stdin "$M5" "$WORK/plugin-stdinopen" "$WORK/stdin-fifo-m5" 10 12
+  if [ "$ELAPSED" -le 3 ]; then
+    bad "mutation M5-stdin-bound NOT caught — the mutant still returned within 3s"
+  else
+    ok "mutation M5-stdin-bound caught — the mutant stalled for ${ELAPSED}s waiting on stdin, as it must"
+  fi
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
