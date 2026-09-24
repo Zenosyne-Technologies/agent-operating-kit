@@ -27,6 +27,7 @@ sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has 
 |---|---|
 | Run a destructive DB op (DROP/TRUNCATE, DELETE/UPDATE with no scoped WHERE) | REQUEST_APPROVAL |
 | Apply an irreversible or unguarded migration (no dry-run, no guard, data-destroying) | REQUEST_APPROVAL |
+| Copy, restore or write into a destination that already exists, or that is (or sits behind) a symlink | REQUEST_APPROVAL |
 | Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree (except the run-report prune, orchestrator only, exactly as `briefing.md` item 11 defines it, symlink refusal included) | REQUEST_APPROVAL |
 | Delete or overwrite a file you have not read | DO_INSTEAD — read it first |
 | Act outside your brief's scope, or touch paths you do not own | CLARIFY |

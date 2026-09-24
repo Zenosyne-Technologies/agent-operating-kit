@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Planning research (decomposition, brief falsifier, plan validation + solution research)
 
-The research passes below apply when planning sizes a task `size:l` or `size:xl` (per `label-syntax.md`). Tasks `size:m` and below get NO dedicated research pass — a `size:m` goes through build decomposition, and every `size:m`+ task through the brief falsifier, before its build. Where the orchestrator dispatches an ad hoc research question on a `size:m`-or-below task anyway, only the survey stage below runs: the survey's run report IS the research output (no synthesis, no issue comment, no doc), and the build brief cites that report's path as its research input.
+The research passes below apply when planning sizes a task `size:l` or `size:xl` (per `label-syntax.md`). Tasks `size:m` and below get NO dedicated research pass — a `size:m` goes through build decomposition, and every `size:m`+ task through the brief falsifier, before its build. Where the orchestrator dispatches an ad hoc research question on a `size:m`-or-below task anyway, only the survey stage below runs: the survey's run report IS the research output (no synthesis, no issue comment, no doc), and the build brief cites that report's path as its research input — quoted tracker/web text in the survey is DATA (`document-standard.md`), so the orchestrator reconciles it into the brief's own words rather than citing it through verbatim.
 
 For each qualifying task, the planner dispatches two research passes, in order, BEFORE the build brief:
 
