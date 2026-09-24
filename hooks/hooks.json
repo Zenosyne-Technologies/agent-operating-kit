@@ -1,0 +1,17 @@
+{
+  "description": "SessionStart: Marvin kit-version drift check plus the always-on user-update format rules, for Marvin-installed projects only",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

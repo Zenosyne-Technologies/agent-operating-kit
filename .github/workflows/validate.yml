@@ -12,3 +12,5 @@ jobs:
         run: bash scripts/validate-kit.sh
       - name: Run migration tests
         run: bash scripts/test-migrations.sh
+      - name: Run SessionStart hook tests
+        run: bash scripts/test-session-hook.sh

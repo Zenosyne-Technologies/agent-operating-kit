@@ -172,6 +172,15 @@ flowchart LR
 
 **The cost loop.** With the companion plugin installed, the orchestrator writes a repo-root sidecar at tracker-task start and rewrites it on every switch; telemetry's Stop and SubagentStop hooks stamp that context onto each captured event, so cost joins to issues, milestones and tiers for free. Pricing is never stored per event — an effective-dated table turns tokens into dollars at query time, and every reported figure carries the date of the rate it used. `token-economics.md` is the whole contract, and every consumer of it omits its cost output silently when telemetry is absent.
 
+## SessionStart hook
+
+The plugin ships a `SessionStart` hook (`hooks/hooks.json`, matchers `startup`/`resume`/`clear`/`compact` — it fires again after every compaction) that runs `scripts/marvin-session-start.sh`. It only does anything in a project the kit is installed in (`.marvin/` present as a real directory, not a symlink); everywhere else it exits silently. When it does run, it injects two things into context:
+
+- **A version-drift check.** It compares the plugin's own version against the project's installed `kit_version` (`.marvin/PROJECT-INFO.md` frontmatter) and, on a mismatch, prints one line pointing at `/marvin:upgrade-agent-os`. An unreadable or symlinked `PROJECT-INFO.md`, or a `kit_version` that is not a plain `X.Y.Z`, counts as unknown and gets its own one-line nudge to run the upgrade skill — never a raw file dump.
+- **The user-update format rules**, always, in full path (`.marvin/agents/user-updates.md`) — stating that they take precedence over any active output style, since those are exactly the rules an output style might otherwise override.
+
+It never writes a file, never blocks the session, and always exits 0 — including when `.marvin`, `plugin.json` or `PROJECT-INFO.md` is missing or unreadable. To disable it, remove or rename `hooks/hooks.json` (or the plugin), or delete the `SessionStart` block from it; there is no separate opt-out flag.
+
 ## PM tools
 
 The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
@@ -256,6 +265,9 @@ The static gate's thirteen checks: known placeholders only · template line budg
 ```
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
+hooks/*.json                         SessionStart hook registration (startup/resume/clear/compact) — runs scripts/marvin-session-start.sh
+scripts/marvin-session-start.sh      SessionStart hook body: version-drift check + always-on user-update rules, silent no-op outside a Marvin project
+scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/validate-kit.sh              thirteen-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
