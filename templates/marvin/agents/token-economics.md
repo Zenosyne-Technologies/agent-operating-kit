@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Token & cost telemetry contract
 
-The single description of the seam between the kit and the token-telemetry plugin. Every consumer (stats collection, reporting, documentation agent) reads this file instead of re-deriving these rules.
+The single description of the seam between the kit and the token-telemetry plugin. Every consumer (stats collection, reporting, documentation agent, `escalation.md`'s Cost blowout signal) reads this file instead of re-deriving these rules.
 
 ## Source
 

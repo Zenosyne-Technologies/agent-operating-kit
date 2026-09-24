@@ -80,7 +80,7 @@ A scenario runs as a sequence of gated rounds:
    `marvin:researcher`, `marvin:developer`, `marvin:developer-small`,
    `marvin:validator-completion`, `marvin:validator-security`, `marvin:validator-visual`,
    `marvin:ponytail` — not `marvin:documenter` (the task lifecycle's) nor `marvin:escalation-*`
-   (the orchestrator's ladder only, `.marvin/agents/escalation.md`). Pick the tier
+   (the orchestrator's ladder only, `.marvin/agents/escalation-ladder.md`). Pick the tier
    the task warrants; a scenario file names which persona(s) it uses.
 3. Each dispatched sub-agent returns the section-2 periodic-report block.
 4. **Gate before the next round:** the orchestrator evaluates every report against the POSITIVE

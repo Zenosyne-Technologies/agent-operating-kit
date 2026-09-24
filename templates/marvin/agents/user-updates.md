@@ -32,7 +32,7 @@ This is a blockquote with a bold ⚠️ (needs attention) or ❌ (failed) lead. 
 > - **What**: the CSV export drops rows with unicode names.
 > - **Impact**: AOS-13 cannot close; the release waits on it.
 > - **Cause**: the encoder defaults to latin-1.
-> - **Fix**: rebuild with UTF-8 (attempt 2 of 2 before escalation).
+> - **Fix**: rebuild with UTF-8 (round 2, converging — same tier).
 > - **Needs you?**: no.
 
 A two-column table (`point | detail`) with the same five rows is an equal alternative when blockquotes render poorly.

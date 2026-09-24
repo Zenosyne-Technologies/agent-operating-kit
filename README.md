@@ -41,7 +41,7 @@
 | | |
 |---|---|
 | **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: two failed build attempts at any tier climb an effort ladder on that model, and only at `max` does the orchestrator ask whether to swap to the frontier model instead. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: after each failed round it reads the failure pattern — a converging task stays put, a stuck one climbs an effort ladder on that model, one churning, bloating or looping gets its approach rethought instead — and only at `max` does the orchestrator ask whether to swap to the frontier model. |
 | **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
 | **A cascading ruleset** | One always-loaded core file holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
 | **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
@@ -141,12 +141,15 @@ flowchart TD
     R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
     R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs,<br/>size-m peripheral pieces, specified fixes, the brief falsifier"]
     R -->|m / l / xl| HV["Heavy worker<br/>design-bearing builds, planning research, the validators"]
-    MI --> X{"Two failed attempts?"}
+    MI --> X{"Round failed?<br/>read the failure pattern"}
     SM --> X
     HV --> X
-    X -->|yes, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
-    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
-    X -->|no| DN["Task complete"]
+    X -->|converging| SR["Stay at the current tier<br/>up to four rounds a rung"]
+    X -->|stuck, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort"]
+    X -->|whack-a-mole, bloat or loop| RT["Rethink<br/>a fresh researcher proposes a different approach;<br/>descope only on the user's yes"]
+    X -->|cost blowout| PA["Pause and ask the user"]
+    X -->|research, docs or validation fails twice| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
+    X -->|passed| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]
     MG -->|no, no answer, or unattended — recorded| EM["Orchestrator's model at max effort"]
@@ -155,7 +158,7 @@ flowchart TD
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A correction whose fix list the orchestrator fully specified goes to the small tier (`planning-research.md`, `escalation.md`). A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A correction whose fix list the orchestrator fully specified goes to the small tier (`planning-research.md`, `escalation.md`). After every failed round of a build task the orchestrator reads its failure pattern from the validators' tagged findings and a per-task ledger: a stuck task escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate — while churn, bloat or a loop sends it to a read-only rethink that changes the approach instead (`escalation.md`, `escalation-ladder.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -272,7 +275,8 @@ templates/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
-    escalation.md                  the effort escalation ladder — high → xhigh → the ask-at-max frontier gate → stop at the user
+    escalation.md                  round signals — converging, stuck, whack-a-mole, bloat, loop, cost blowout — their precedence, the round cap, and the Rethink step
+    escalation-ladder.md           the effort escalation ladder — high → xhigh → the ask-at-max frontier gate → stop at the user
     guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
