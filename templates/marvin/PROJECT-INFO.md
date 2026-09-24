@@ -16,6 +16,7 @@ app_type: {{APP_TYPE}}
 screens_guide: {{SCREENS_GUIDE}}
 visual_validation: {{VISUAL_VALIDATION}}
 docs_location: {{DOCS_LOCATION}}
+issue_log_path: {{DOCS_ISSUE_LOG_PATH}}
 telemetry: {{TELEMETRY}}
 kit_version: {{KIT_VERSION}}
 label_syntax_version: {{LABEL_SYNTAX_VERSION}}
@@ -23,10 +24,10 @@ label_syntax_version: {{LABEL_SYNTAX_VERSION}}
 
 # {{PROJECT_NAME}} — project information
 
-Meta overview for foreign agents, agentic OS frameworks, and reporting tools. The YAML frontmatter above is the machine contract and the source of truth for facts; this body is the human overview. Any agent that changes a fact below updates the frontmatter in the same change. Facts only — operating rules live in `CLAUDE.md` and `.marvin/agents/`.
+Meta overview for foreign agents, agentic OS frameworks, and reporting tools. The YAML frontmatter above is the machine contract and the source of truth for facts; this body is the human overview. Any agent that changes a fact below updates the frontmatter in the same change. Facts only — operating rules live in `.marvin/CLAUDE.marvin.md` (imported by `CLAUDE.md`), `CLAUDE.md`'s project rules and `.marvin/agents/`.
 
 - Repository layout: {{MONOREPO_OR_SINGLE + one-line top-level map}}
 - Hierarchy details, virtual milestones, severity/size native mappings: `.marvin/agents/tracker-config.md`
 - `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`)
 - Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
-- Operating rules: `CLAUDE.md` + the `.marvin/agents/` rules cascade
+- Operating rules: `.marvin/CLAUDE.marvin.md` (imported by `CLAUDE.md`) + the `.marvin/agents/` rules cascade
