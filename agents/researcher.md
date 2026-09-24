@@ -1,6 +1,6 @@
 ---
 name: researcher
-description: Marvin's planning-research persona — runs the SYNTHESIS stage of the plan-validation and solution-research passes for size:l/size:xl tasks per .marvin/agents/planning-research.md, from a marvin:developer-small survey's facts and file:line citations, and the read-only RETHINK pass (a different approach for a build task whose failure pattern says the approach is wrong) per .marvin/agents/escalation.md. Produces a research memo; changes no code.
+description: Marvin's planning-research persona — runs the SYNTHESIS stage of the plan-validation and solution-research passes for size:l/size:xl tasks per .marvin/agents/planning-research.md, from a marvin:developer-small survey's facts and file:line citations, and the read-only RETHINK pass (a different approach for a build task whose failure pattern says the approach is wrong) per .marvin/agents/escalation.md. Produces a research memo (a RETHINK pass writes its run report instead); changes no code.
 model: opus
 effort: medium
 ---
