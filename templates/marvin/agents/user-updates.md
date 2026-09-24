@@ -16,7 +16,7 @@ The binding rule is CLAUDE.md's "Talking to the user" standing rule: say only wh
 
 ## Shipped / done: a table, one row per item
 
-Columns are `item | result | where`. `where` names the ticket, commit, file or report that holds the detail; the table never copies that detail.
+Columns are `item | result | where`. `where` names the ticket, commit, file or report that holds the detail; the table never copies that detail. A sub-agent's summary is never pasted into chat, not even folded (a `<details>` fold does not render collapsed in every chat surface): link its run report instead.
 
 | item | result | where |
 |---|---|---|
