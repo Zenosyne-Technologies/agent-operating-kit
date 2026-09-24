@@ -462,12 +462,15 @@ else
   # timing table once it reaches version_gt's O(n^2) substring peeling.
   digits_100k=$(head -c 100000 /dev/zero | tr '\0' '7')
   v="${digits_100k}.0.0"
-  t0=$(date +%s); run_semver_case "$FUNCS_REAL" "$v"; real_elapsed=$(( $(date +%s) - t0 ))
-  t0=$(date +%s); run_semver_case "$FUNCS_M6" "$v"; m6_elapsed=$(( $(date +%s) - t0 ))
-  if [ "$real_elapsed" -le 2 ] && [ "$m6_elapsed" -gt 2 ]; then
-    ok "mutation M6-is_semver-bound caught — real is_semver()+version_gt() took ${real_elapsed}s (rejected before version_gt), the mutant took ${m6_elapsed}s"
+  # Deterministic, not timed: the bound's observable effect is that an oversized value is REJECTED
+  # by is_semver() itself (so it never reaches version_gt), while the unbounded mutant ACCEPTS it.
+  # A wall-clock comparison flaked in CI (mutant at exactly the threshold second).
+  ( . "$FUNCS_REAL"; is_semver "$v" ) >/dev/null 2>&1; real_rc=$?
+  ( . "$FUNCS_M6"; is_semver "$v" ) >/dev/null 2>&1; m6_rc=$?
+  if [ "$real_rc" -ne 0 ] && [ "$m6_rc" -eq 0 ]; then
+    ok "mutation M6-is_semver-bound caught — real is_semver() rejects the 100k-digit value, the unbounded mutant accepts it"
   else
-    bad "mutation M6-is_semver-bound NOT caught — real=${real_elapsed}s mutant=${m6_elapsed}s (want real<=2s, mutant>2s)"
+    bad "mutation M6-is_semver-bound NOT caught — real rc=${real_rc} mutant rc=${m6_rc} (want real!=0, mutant==0)"
   fi
 fi
 
