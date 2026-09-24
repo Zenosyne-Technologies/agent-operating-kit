@@ -20,7 +20,7 @@ Every other file names tiers (orchestrator, heavy worker, small worker, micro, f
 | micro | Haiku 4.5 | host default (unpinned) | `MICRO_MODEL` | `marvin:ponytail` |
 | frontier | Fable 5.1 | inherits the session's (opt-in only) | `FRONTIER_MODEL` | `marvin:escalation-frontier`, reached only through the max gate |
 
-The install skill writes each row's model wherever an installed file (`CLAUDE.md`, this cascade) uses the placeholder its Resolves column names (written here without braces, so no render rewrites this table). Telemetry attributes an event from an agent it does not recognise by model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` ladder (`token-economics.md`).
+The install skill writes each row's model wherever an installed file (`.marvin/CLAUDE.marvin.md`, this cascade) uses the placeholder its Resolves column names (written here without braces, so no render rewrites this table). Telemetry attributes an event from an agent it does not recognise by model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` ladder (`token-economics.md`).
 
 ## Model-specific rules
 

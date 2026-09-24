@@ -20,7 +20,7 @@ Three memories overlap here, and this is where the system rots first. Each holds
 |---|---|---|
 | `.marvin/MEMORY.md` | Marvin's working memory — session continuity, prunable at will | the orchestrator, privately |
 | `.docs/information/` | the durable rule itself, in full, exactly once — indexed and severity-tagged | every dispatched agent |
-| `CLAUDE.md` conventions | the always-loaded one-liner that POINTS at a file here, never a copy of it | everyone, on every turn |
+| `CLAUDE.md` conventions or the kit core | the always-loaded one-liner that POINTS at a file here, never a copy of it | everyone, on every turn |
 
 ## Header additions
 
@@ -33,7 +33,7 @@ On top of the full header of `document-standard.md`, every `type: information` f
 
 `orchestrator` · `developer` · `developer-small` · `ponytail` · `researcher` · `validator-completion` · `validator-security` · `documenter` · `all`
 
-These are EXACTLY the dispatch personas of the model-tier rules in `CLAUDE.md` — one source of truth for the Marvin workflow. They are never redefined, extended or renamed here: a new persona appears in the dispatch rules first, and only then becomes a legal `relevance:` value. `all` means every persona including the orchestrator.
+These are EXACTLY the dispatch personas of `.marvin/CLAUDE.marvin.md`'s *Model-tier dispatch* rule — one source of truth for the Marvin workflow. They are never redefined, extended or renamed here: a new persona appears in the dispatch rules first, and only then becomes a legal `relevance:` value. `all` means every persona including the orchestrator.
 
 ## Index maintenance
 

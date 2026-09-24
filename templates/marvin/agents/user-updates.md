@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # User updates — formats
 
-The binding rule is CLAUDE.md's "Talking to the user" standing rule: say only what changed, say it once, say it plain, and leave detail in tickets and files. This file owns the formats. They are plain Markdown and render in any Markdown chat surface; no tool-specific visuals are needed.
+The binding rule is `.marvin/CLAUDE.marvin.md`'s *Talking to the user* rule: say only what changed, say it once, say it plain, and leave detail in tickets and files. This file owns the formats. They are plain Markdown and render in any Markdown chat surface; no tool-specific visuals are needed.
 
 **Legend** (fixed; use no other status emoji): ✅ done / passed · ❌ failed · ⚠️ needs attention · ⏳ in progress · ⏭️ skipped / deferred
 
