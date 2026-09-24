@@ -13,11 +13,11 @@ Done work is validated by FRESH agents that did not build it — briefed explici
 ## Stage 1 — Completion validator (business-analyst persona), FIRST after build
 
 Persona: a skeptical BA representing the end user and the acceptance criteria.
-- Verify the issue's DoD and every AC against actual behavior, not code intent — each DoD item gets an explicit pass/fail in the verdict.
+- Verify the issue's DoD and every AC against actual behavior, not code intent — each DoD item gets an explicit pass/fail in the report (the FINAL MESSAGE carries what `briefing.md` item 11's cap admits).
 - Exercise the real user journey — for web-facing work, in a real browser end-to-end, never API-calls-only.
 - Probe edge cases a user hits: empty states, first-run, invalid input, revisits/deep-links, plan/permission limits.
 - Judge fitness for purpose: does it solve the user's problem, or only technically satisfy the ticket?
-- Verdict FAIL → back to the builder; Stage 2 does not run.
+- Verdict FAIL → back to the builder, routed per `escalation.md`; Stage 2 does not run.
 
 ## Stage 2 — Security validator (application-security persona), only after Stage 1 passes
 
@@ -33,7 +33,7 @@ When the project has a scripted E2E suite (Playwright or equivalent): validators
 
 ## Reporting
 
-Verdict PASS/FAIL + severity-ranked findings. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
+Verdict PASS/FAIL + severity-ranked findings, shaped by `briefing.md` item 11's cap — evidence and reproduction steps in the run report the brief names; only the verdict summary reaches the tracker. **Round tags** — the one owner of the format: every completion and security brief carries the task ledger's finding list (each ID + one line, open and closed — `briefing.md` item 11), and every finding line in the FINAL MESSAGE and the report ends with its tags `[FAIL|note] <round tag> mech: <file>#<anchor>` (when a finding cites several files, `<file>` is the one its fix must change) — grade `FAIL` for a finding that fails the round (a DoD statement unmet, a security defect the verdict rests on), `note` for everything else; an unmet DoD item is ALWAYS `FAIL`, never `note`, unless it is no longer in the tracker issue's DoD — a descope removes it there, after the user's explicit yes (`escalation.md`); the ledger is never the record of a descope — or a governing kit rule schedules it for a later step (e.g. the release branch's release note, `git-strategy.md`) — a brief saying "deferred" is not enough (`escalation.md`); round tag `recurring (F<id>)` when it matches a listed OPEN finding, `regression (of F<id>)` when it matches a listed CLOSED one, else `new`; `mech:` the file the finding cites and its nearest enclosing Markdown heading, or for code its function or symbol (`skills/x/SKILL.md#Rules`, `src/auth.ts#verifyToken`), copied verbatim so the orchestrator matches strings, never meanings. A validator never mints an ID — the orchestrator owns IDs and assigns the next free one to each `new` finding in the ledger; the tags feed `escalation.md`'s signals. The advisory visual stage is untagged: it never bounces a task, so it is never a round. Real defects: file per `ticket-filing.md` AND the project's issue log. Validators never fix — they report.
 
 ## Milestone validation
 
@@ -45,7 +45,7 @@ A milestone is a scope and a release is a frozen version — independent axes, s
 
 ## After a verdict
 
-PASS at completion → dispatch the security stage. PASS at security → for UI-touching work an **advisory visual stage** runs before the documenter (`marvin:validator-visual` per `.marvin/agents/visual-validation.md`): a visual FAIL does NOT bounce the task — the orchestrator files any sev1/sev2 findings as bugs per `.marvin/agents/ticket-filing.md` and proceeds. Whether it runs per-task is governed by the `visual_validation: per-task | milestone | off` setting in `.marvin/PROJECT-INFO.md` (added in AOS-125). Then the task is validated but NOT finished: dispatch `marvin:documenter` per `.marvin/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL at completion or security → back to the task's build tier (on the escalation ladder: its current rung, never back down — `.marvin/agents/escalation.md`) with the findings; the re-run starts again at completion validation, never at documentation or close.
+PASS at completion → dispatch the security stage. PASS at security → for UI-touching work an **advisory visual stage** runs before the documenter (`marvin:validator-visual` per `.marvin/agents/visual-validation.md`): a visual FAIL does NOT bounce the task — the orchestrator has any sev1/sev2 findings filed as bugs (dispatched, never inline — `ponytail.md`) per `.marvin/agents/ticket-filing.md` and proceeds. Whether it runs per-task is governed by the `visual_validation: per-task | milestone | off` setting in `.marvin/PROJECT-INFO.md` (added in AOS-125). Then the task is validated but NOT finished: dispatch `marvin:documenter` per `.marvin/agents/documentation-agent.md`, and close the tracker issue only after that documentation lands. Any FAIL at completion or security → back to the task's build tier (on the escalation ladder: its current rung, never back down — `.marvin/agents/escalation.md`) with the findings; the re-run starts again at completion validation, never at documentation or close.
 
 ## Why fresh agents
 

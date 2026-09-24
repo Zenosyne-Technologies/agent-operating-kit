@@ -41,7 +41,7 @@
 | | |
 |---|---|
 | **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: two failed build attempts at any tier climb an effort ladder on that model, and only at `max` does the orchestrator ask whether to swap to the frontier model instead. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label decides which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: after each failed round it reads the failure pattern — a converging task stays put, a stuck one climbs an effort ladder on that model, one churning, bloating or looping gets its approach rethought instead — and only at `max` does the orchestrator ask whether to swap to the frontier model. |
 | **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
 | **A cascading ruleset** | One always-loaded core file holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
 | **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
@@ -80,7 +80,7 @@ That is it. Ask `/marvin:info` at any time for a read-only report of the plugin 
 No plugin, four steps — and the first one runs FIRST:
 
 1. **Already have an older install? Migrate before you copy anything.** If the cascade sits in `docs/agents/` or `.docs/agents/`, do NOT move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan). It moves and stages the kit's files and prints a rename map; you then update the references it lists — judging each hit in context — and commit your edits together with the staged renames. **The order is load-bearing**: the script refuses a dirty tree (exit 2) and reports a collision for every destination a copy already occupies, so copying first makes it impossible to run — 13 collisions and 0 renames on a v0.20.0 layout. On exit 2 or 9, stop, clear what it names, and start again here. Nothing below is a fresh-install-only step; a clean repo simply has nothing to migrate.
-2. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; Jira only, `templates/pm/jira/convert-milestones-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; the estate seeds file by file, NOT as a directory copy — `templates/docs/index.md` (the crawl's entry point), `templates/docs/{plans,researches,refactor,future,information,release-notes}/index.md` and `templates/docs/handbooks/index.md` each → the same path under `<repo>/.docs/`, then `templates/docs/handbooks/audience-index.md` → `<repo>/.docs/handbooks/developer/index.md`, `…/user/index.md` and `…/admin/index.md` (three copies under that one name; `audience-index.md` itself is never placed in `.docs/` — an unindexed file there is unreachable by the crawl, which means it does not exist). An index the repo already has is merged — keep its rows and prose, add only the rows it lacks: the missing sub-folder rows, and the `## Root-level documents` section with its issue-log row where that section does not exist yet; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Finally, list every `.md` under `.docs/` (outside `project-management/` and `reports/`) that no index row reaches — give each an index row where its folder is obvious, and name the rest: under these rules an unindexed document cannot be found.
+2. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; Jira only, `templates/pm/jira/convert-milestones-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; the estate seeds file by file, NOT as a directory copy — `templates/docs/index.md` (the crawl's entry point), `templates/docs/{plans,researches,refactor,future,information,release-notes}/index.md` and `templates/docs/handbooks/index.md` each → the same path under `<repo>/.docs/`, then `templates/docs/handbooks/audience-index.md` → `<repo>/.docs/handbooks/developer/index.md`, `…/user/index.md` and `…/admin/index.md` (three copies under that one name; `audience-index.md` itself is never placed in `.docs/` — an unindexed file there is unreachable by the crawl, which means it does not exist). An index the repo already has is merged — keep its rows and prose, add only the rows it lacks: the missing sub-folder rows, and the `## Root-level documents` section with its issue-log row where that section does not exist yet; `templates/CLAUDE.core.md` → `<repo>/CLAUDE.md`; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Finally, list every `.md` under `.docs/` (outside `project-management/` and `reports/`) that no index row reaches — give each an index row where its folder is obvious, and name the rest: under these rules an unindexed document cannot be found. Add `.marvin/runs/` to `<repo>/.gitignore` — sub-agent run reports live there and are never committed.
 3. **Fill every `{{PLACEHOLDER}}`** in the copied files — project facts, env preamble, tracker coordinates, `{{INSTALL_DATE}}` (today, in every header), and `{{DOCS_ISSUE_LOG_PATH}}` (ONE form, a bare repo-relative path, `.docs/issue-log.md` by default — the root index's record row already carries its default link target and holds no placeholder, so retarget that cell only for a non-default log, and delete the row unless the path resolves inside `.docs/` and outside `project-management/` and `reports/`). `{{SCOPE}}` and `{{PERIOD_DAYS}}` in `stats-collection-brief.md` stay unresolved on purpose — they are filled at dispatch. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
 4. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
 
@@ -114,7 +114,7 @@ Updating the *plugin* does not touch projects you already installed into — run
 
 Named for the Hitchhiker's android — the brain the size of a planet is canon, the depression is not. Smart, thorough, a keen eye for detail and management; young and snappy; questions everything that does not add up: a brief that contradicts the code, a "done" without evidence, a number that appears from nowhere.
 
-His memory is his own to manage. Noteworthy findings — decisions, surprises, hard-won gotchas — go into `MEMORY.md` as they happen and *before* context compaction can lose them; he consults it when a session starts and tidies it at milestone close so it never rots. Nothing goes in that the repo, the tracker or the handbooks already record.
+His memory is his own to manage. Noteworthy findings — decisions, surprises, hard-won gotchas — go into `MEMORY.md` as they happen and *before* context compaction can lose them; he consults it when a session starts and tidies it at milestone close so it never rots. It is also what lets him work one milestone per session: at milestone close and after each release he writes the handoff there and asks for a fresh session, since re-reading a long context is his largest cost. Nothing goes in that the repo, the tracker or the handbooks already record.
 
 ## How it works
 
@@ -139,14 +139,17 @@ flowchart LR
 flowchart TD
     O["Orchestrator, the ceiling model at medium effort<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
     R -->|xs| MI["Micro tier<br/>mechanical, zero-discretion tasks"]
-    R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs"]
-    R -->|m / l / xl| HV["Heavy worker<br/>builds, planning research, the validators"]
-    MI --> X{"Two failed attempts?"}
+    R -->|s| SM["Small worker<br/>tests, QA sweeps, imports, docs,<br/>size-m peripheral pieces, specified fixes, the brief falsifier"]
+    R -->|m / l / xl| HV["Heavy worker<br/>design-bearing builds, planning research, the validators"]
+    MI --> X{"Round failed?<br/>read the failure pattern"}
     SM --> X
     HV --> X
-    X -->|yes, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort, two attempts each"]
-    X -->|yes, research, docs or validation| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
-    X -->|no| DN["Task complete"]
+    X -->|converging| SR["Stay at the current tier<br/>up to four rounds a rung"]
+    X -->|stuck, build work| EH["Escalation ladder<br/>orchestrator's model at high, then xhigh effort"]
+    X -->|whack-a-mole, bloat or loop| RT["Rethink<br/>a fresh researcher proposes a different approach;<br/>descope only on the user's yes"]
+    X -->|cost blowout| PA["Pause and ask the user"]
+    X -->|research, docs or validation fails twice| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
+    X -->|passed| DN["Task complete"]
     EH --> MG{"Max gate: ask the user<br/>swap to the frontier model?"}
     MG -->|yes| EF["Frontier tier, this task only"]
     MG -->|no, no answer, or unattended — recorded| EM["Orchestrator's model at max effort"]
@@ -155,7 +158,7 @@ flowchart TD
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, both passes on the heavy-worker model (`marvin:researcher`), while `size:m` and below get no research pass — findings land as issue comments or docs and get folded into the plan before a line is built. A build task that fails twice escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate (`escalation.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, each a small-tier survey (`marvin:developer-small`) followed by heavy-worker synthesis (`marvin:researcher`), while `size:m` and below get only an ad hoc survey when the orchestrator asks — findings land as issue comments, docs, or (survey-only) the run report, and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A correction whose fix list the orchestrator fully specified goes to the small tier (`planning-research.md`, `escalation.md`). After every failed round of a build task the orchestrator reads its failure pattern from the validators' tagged findings and a per-task ledger: a stuck task escalates EFFORT on the orchestrator's model, not the model itself — the frontier tier is opt-in, offered to the user only at the `max` gate — while churn, bloat or a loop sends it to a read-only rethink that changes the approach instead (`escalation.md`, `escalation-ladder.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -211,7 +214,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Context proportionality.** `CLAUDE.md` is the only always-loaded file, and it holds only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, guardrails, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
 
-**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
+**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message capped at a digest (verdict, one line per finding with `file:line`, gate lines — 25 lines at most), the full report going to a gitignored run report under `.marvin/runs/` (never committed, pruned at milestone close) that the orchestrator opens only to act on a finding. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
 
 **Guardrails — the DO NOT framework.** `guardrails.md` is the single owner of what an agent must not do. Every prohibition resolves to exactly one of four dispositions — do the safe thing instead, stop and clarify, request approval from above, or skip and report — and a generic baseline (destructive DB ops, unguarded migrations, force-pushes and mass-moves, editing an unread file, straying outside the brief's scope) binds every persona, with per-persona rows layered on top of it. A blocked sub-agent has no channel to the user, so it follows a fixed escalation chain — sub-agent → orchestrator → user — committing whatever safe work it finished and naming the exact block in its final message; no agent ever treats silence as approval. Prohibitions that already have an owner — git and tagging, secrets and dependency vetting, treating a document's body as data and not orders, a brief that reverses under you — are cited there, never restated.
 
@@ -272,12 +275,13 @@ templates/
     briefing.md                    how to write any sub-agent brief
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
-    escalation.md                  the effort escalation ladder — high → xhigh → the ask-at-max frontier gate → stop at the user
+    escalation.md                  round signals — converging, stuck, whack-a-mole, bloat, loop, cost blowout — their precedence, the round cap, and the Rethink step
+    escalation-ladder.md           the effort escalation ladder — high → xhigh → the ask-at-max frontier gate → stop at the user
     guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
     information-severity.md        the four severity levels, their reading obligations, and the severity × relevance matrix
     label-syntax.md                versioned label registry (dimensions incl. sizing, backfill rule, changelog)
-    planning-research.md           size-gated plan-validation + solution research, tier routing
+    planning-research.md           size-gated planning: size:m build decomposition, size:m+ brief falsifier, size:l/xl plan-validation + solution research
     validation-agent.md            BA + security validator personas, E2E hook
     visual-validation.md           visual/design validator persona — surface resolution, capture + degradation ladder, generic design checklist, severity, reporting
     documentation-agent.md         post-task documentation scope
@@ -286,6 +290,7 @@ templates/
     reporting.md                   collect-once render-many report definitions (digest, close-out, stakeholder)
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
+    user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
   docs/                            the .docs/ taxonomy seeds — every folder gets one lowercase index.md
     index.md                       root index: crawl entry point, sub-folder table, where-a-new-document-goes rule
