@@ -30,7 +30,7 @@ After each FAILed round the orchestrator appends that round's rows to the task l
 |---|---|---|
 | **Cost blowout** | the task's spend exceeds K = 3 × its `size:` budget (below) | pause and ask the user |
 | **Whack-a-mole** | regressed ≥ 1 AND regressed ≥ fixed, in each of 2 consecutive rounds | RETHINK — do not climb |
-| **Bloat** | the task's ADDED BYTES exceed 2 × their value after the approach's first round, with no DoD line added since | RETHINK |
+| **Bloat** | the task's NET ADDED WORDS exceed 2 × the baseline — the larger of their value after the approach's first round and 200 words — with no DoD line added since | RETHINK |
 | **Loop** | 3 or more DISTINCT FAIL-grade finding IDs, across rounds, carry the same `mech:` tag, or a round resubmits an approach the ledger lists as ruled out | RETHINK; the next brief names what NOT to repeat |
 | **Stuck** | one finding ID is tagged `recurring` in 2 consecutive rounds (it survived 2 fix rounds), or the rung has run its cap of N = 4 rounds | climb one effort rung (`escalation-ladder.md`) |
 | **Converging** | fewer OPEN findings than after the previous round, and none regressed | stay at the current rung |
