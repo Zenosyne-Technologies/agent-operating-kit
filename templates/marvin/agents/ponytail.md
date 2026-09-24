@@ -20,7 +20,7 @@ Eligible — any step whose every input and outcome is already decided, so execu
 - **Label backfills** — applying the exact label set `label-syntax.md`'s registry maps, to a list of items the orchestrator or an intake brief already enumerated.
 - **DB/fixture copies** — copying a named DB or fixture file to a named destination path, byte-for-byte; no schema or content edits.
 - **Restatement grep sweeps** (the split-responsibility check) — grep ONLY the exact patterns the brief lists across the paths given, and report every hit as `file:line`; it never decides what counts as a restatement, and it never edits the prose.
-- **Pre-flight gate runs** — run the repo's named gate scripts and report PASS/FAIL per gate, before a validator is dispatched, so a mechanical failure bounces to the builder without spending a heavy validator; that bounce counts as a round per `escalation.md` (defined there, not here); pre-flight never replaces a validator — a validator still runs after PASS.
+- **Pre-flight gate runs** — run the repo's named gate scripts and report PASS/FAIL per gate, before a validator is dispatched, so a mechanical failure bounces to the builder without spending a heavy validator; that bounce counts as a failed round per `escalation.md` (defined there, not here); pre-flight never replaces a validator — a validator still runs after PASS.
 - Label/metadata/data entry; lint/format-only fixes; single-file edits with the exact diff described; doc typo passes.
 
 Not eligible: anything needing judgment, multi-file edits, security-adjacent code, user-visible copywriting from scratch.
