@@ -17,13 +17,15 @@ for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
 done
 [ -z "$unknown" ] && pass placeholders || fail placeholders "unknown placeholder(s):$unknown"
 
-# ── 2. line-budget: every templates/**/*.md ≤ 60 lines, CLAUDE.core.md ≤ 55
+# ── 2. line-budget: every templates/**/*.md ≤ 60 lines; the always-loaded kit core ≤ 55, the
+# consumer CLAUDE.md stub ≤ 15
 over=""
 while IFS= read -r f; do
-  lim=60; [ "$f" = "templates/CLAUDE.core.md" ] && lim=55
+  lim=60
+  case "$f" in templates/marvin/CLAUDE.marvin.md) lim=55;; templates/CLAUDE.project.md) lim=15;; esac
   n=$(wc -l < "$f"); [ "$n" -gt "$lim" ] && over="$over $f($n)"
 done < <(find templates -name '*.md' -type f)
-[ -z "$over" ] && pass line-budget || fail line-budget "over budget (60, CLAUDE.core.md 55):$over (split into the cascade)"
+[ -z "$over" ] && pass line-budget || fail line-budget "over budget (60, CLAUDE.marvin.md 55, CLAUDE.project.md 15):$over (split into the cascade)"
 
 # ── 3. json: manifests parse; plugin version is semver
 ok=1
@@ -85,7 +87,7 @@ RED_KEYS="doc type status summary updated"
 # and briefs that are dispatched from the plugin rather than installed. EVERY other templates/**/*.md
 # is treated as consumer-bound and MUST carry a header — a new file is classified here deliberately
 # or it fails (extension rule 2 adds per-tracker files; extend this list in the same PR).
-NOHDR=" templates/CLAUDE.core.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
+NOHDR=" templates/marvin/CLAUDE.marvin.md templates/CLAUDE.project.md templates/marvin/PROJECT-INFO.md templates/marvin/MEMORY.md templates/pm/INSTALL.md templates/pm/github/intake-structure-brief.md templates/pm/jira/intake-structure-brief.md templates/pm/linear/intake-structure-brief.md templates/pm/local/intake-structure-brief.md "
 missing=""
 while IFS= read -r f; do
   case "$NOHDR" in *" $f "*) continue;; esac
@@ -162,6 +164,31 @@ else
   fail model-names "model name(s) outside $MP (name the tier and cite the profile):"
   printf '%s\n' "$mn" | sed 's/^/       /'
 fi
+
+# ── 14. kit-core-split: the kit core (.marvin/CLAUDE.marvin.md, kit-owned, refreshed by upgrade 4b)
+# and the consumer stub (seeds CLAUDE.md, never refreshed) keep one owner per line (AOS-165).
+# (a) the kit core holds only placeholders upgrade 4b can render from its authorities;
+# (b) the kit core imports nothing — an `@token` outside code would be a nested import;
+# (c) the stub carries no kit rule: no cascade path, no persona token, no line of the kit core;
+# (d) the stub's last non-blank line is the bare import, so project rules read before the kit's.
+KC=templates/marvin/CLAUDE.marvin.md; ST=templates/CLAUDE.project.md; ks=""
+if [ ! -f "$KC" ] || [ ! -f "$ST" ]; then
+  ks=" missing $KC or $ST"
+else
+  for p in $(grep -oE '\{\{[A-Z_0-9]+' "$KC" | sed 's/{{//' | sort -u); do
+    case " ESCALATION_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL DOCS_ISSUE_LOG_PATH " in
+      *" $p "*) ;; *) ks="$ks (a) $KC: placeholder {{$p}} is not 4b-renderable;";; esac
+  done
+  nested=$(awk '/^[ ]{0,3}(```|~~~)/ { f = !f; next } !f { gsub(/`[^`]*`/, ""); if ($0 ~ /(^|[[:space:]])@[^[:space:]]/) print FNR }' "$KC")
+  [ -z "$nested" ] || ks="$ks (b) $KC: @-import outside code at line(s) $(echo $nested);"
+  grep -qF '.marvin/agents/' "$ST" && ks="$ks (c) $ST names a .marvin/agents/ path;"
+  grep -qE 'marvin:[a-z]' "$ST" && ks="$ks (c) $ST names a marvin: persona;"
+  dup=$(awk 'NR == FNR { if ($0 != "") k[$0] = 1; next } ($0 != "" && ($0 in k)) { print FNR }' "$KC" "$ST")
+  [ -z "$dup" ] || ks="$ks (c) $ST repeats kit-core line(s) at $(echo $dup);"
+  last=$(awk 'NF { l = $0 } END { print l }' "$ST")
+  [ "$last" = "@.marvin/CLAUDE.marvin.md" ] || ks="$ks (d) $ST: last non-blank line is not the bare import @.marvin/CLAUDE.marvin.md;"
+fi
+[ -z "$ks" ] && pass kit-core-split || fail kit-core-split "$ks"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
