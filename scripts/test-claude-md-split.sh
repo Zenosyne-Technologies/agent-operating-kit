@@ -70,7 +70,7 @@ mkrepo() { rm -rf "$1"; mkdir -p "$1"; }
 P1() {  # a fresh stub (what install step 4 writes) needs nothing
   local p="$1" d="$WORK/p1"; mkrepo "$d"; render "$STUB" b > "$d/CLAUDE.md"
   run "$p" "$d"; chk $([ "$RC" = 0 ]; echo $?) "exit 0"
-  has "result=nothing-to-do"; has "import: present"; has "counts: kit=0 near-kit=0 attribution=1 title=1 project=3"
+  has "result=nothing-to-do"; has "import: present"; has "counts: kit=0 near-kit=0 review=0 attribution=1 title=1 project=3"
 }
 
 P2() {  # every history version rendered: kit lines are kit; facts, conventions, attribution never
@@ -83,6 +83,7 @@ P2() {  # every history version rendered: kit lines are kit; facts, conventions,
     [ "$(cls 3)" = project ]; chk $? "$v: facts line is project"
     [ "$(cls "$(wc -l < "$d/CLAUDE.md" | tr -d ' ')")" = project ]; chk $? "$v: conventions line is project"
     [ "$(lines_of attribution)" = "$(grep -n '^- \*\*Attribution' "$d/CLAUDE.md" | cut -d: -f1) " ]; chk $? "$v: attribution line is attribution"
+    [ -z "$(lines_of near-kit)$(lines_of review)" ]; chk $? "$v: no near-kit or review line in an unmodified render"
     has "issue-log-path: .docs/issue-log.md"; has "result=split-needed"
   done
   has 'model-values: ESCALATION_MODEL="Model Heavy 9" WORKER_MODEL="Model Small 9" MICRO_MODEL="Model Micro 9" FRONTIER_MODEL="Model Frontier 9"'
@@ -100,6 +101,29 @@ P3() {  # one customised kit line is near-kit — neither kit nor project
   n=$(grep -n '^- \*\*Autocommit\*\*' "$d/CLAUDE.md" | cut -d: -f1)
   sed -e "${n}s/\$/ Sign every commit with GPG./" "$d/CLAUDE.md" > "$d/x" && mv "$d/x" "$d/CLAUDE.md"
   run "$p" "$d"; [ "$(cls "$n")" = near-kit ]; chk $? "customised Autocommit line (line $n) is near-kit"
+}
+
+P9() {  # a customised UNLABELLED kit line (truncated or extended) is review; project lines never are
+  local p="$1" d="$WORK/p9" n; mkrepo "$d"; render "$HIST/v0.31.0.md" b > "$d/CLAUDE.md"
+  n=$(grep -n '^- Integration-verify at the real boundary' "$d/CLAUDE.md" | cut -d: -f1)
+  sed -e "${n}s/.*/- Integration-verify at the real boundary (staging only!)/" "$d/CLAUDE.md" > "$d/x" && mv "$d/x" "$d/CLAUDE.md"
+  printf '%s\n' '- **Deploys**: only from main (INC-7).' 'Use pnpm, never npm, in every package.' \
+    '- Always run the E2E suite before merging to develop (INC-9).' >> "$d/CLAUDE.md"
+  run "$p" "$d"; [ "$(cls "$n")" = review ]; chk $? "truncated Integration-verify line (line $n) is review"
+  [ "$(lines_of review)" = "$n " ]; chk $? "no other line is review — facts, conventions and project rules stay project"
+  [ "$(lines_of near-kit)" = "" ]; chk $? "no near-kit line"
+  render "$HIST/v0.31.0.md" b > "$d/CLAUDE.md"
+  sed -e "${n}s/\$/ Also smoke-test the admin panel on staging./" "$d/CLAUDE.md" > "$d/x" && mv "$d/x" "$d/CLAUDE.md"
+  run "$p" "$d"; [ "$(cls "$n")" = review ]; chk $? "extended Integration-verify line is review"
+}
+
+P10() {  # only customised kit lines left (no kit line), no import yet: still split-needed
+  local p="$1" d="$WORK/p10"; mkrepo "$d"; render "$HIST/v0.31.0.md" b > "$d/x"
+  { sed -n 1p "$d/x"; grep '^- \*\*Autocommit\*\*' "$d/x" | sed 's/$/ Sign every commit./'
+    echo '- Integration-verify at the real boundary (staging only!)'; } > "$d/CLAUDE.md"; rm "$d/x"
+  run "$p" "$d"; has "counts: kit=0 near-kit=1 review=1 attribution=0 title=1 project=0"; has "result=split-needed"
+  printf '\n%s\n' "$IMPORT_LINE" >> "$d/CLAUDE.md"
+  run "$p" "$d"; has "result=nothing-to-do"
 }
 
 P4() {  # CLAUDE.md -> AGENTS.md is refused: exit 6 and no report record at all
@@ -162,7 +186,7 @@ P0() {  # usage errors exit 4
   bash "$p" "$WORK/does-not-exist" > /dev/null 2>&1; [ $? = 4 ]; chk $? "missing directory exits 4"
 }
 
-for f in P0 P1 P2 P3 P4 P5 P6 P7 P8; do hd "$f"; "$f" "$PLANNER"; done
+for f in P0 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10; do hd "$f"; "$f" "$PLANNER"; done
 
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 MROOT="$WORK/mut"; mkdir -p "$MROOT/scripts" "$MROOT/templates/marvin"
@@ -191,6 +215,16 @@ mutate fence-blind-import P6 \
 mutate symlink-guard-removed P4 \
   "if [ -L \"\$CM\" ]; then printf '%s: refused: CLAUDE.md is a symlink — replace it with a CLAUDE.md that imports @AGENTS.md, then re-run\\n' \"\$SELF\" >&2; exit 6; fi" \
   ':'
+
+mutate review-class-disabled P9 \
+  '      if (!defined $cls) { $cls = close_to_kit($t) ? "review" : "project"; }' \
+  '      if (!defined $cls) { $cls = "project"; }'
+mutate review-threshold-loosened P9 \
+  '    return 1 if $shared >= 4 && $shared / $min >= 0.6; }' \
+  '    return 1 if $shared >= 1; }'
+mutate near-kit-only-skips-gate P10 \
+  'my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);' \
+  'my $split = $cnt{kit} > 0;'
 
 printf '\n----\ntest-claude-md-split: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

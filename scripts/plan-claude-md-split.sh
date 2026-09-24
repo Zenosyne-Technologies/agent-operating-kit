@@ -24,9 +24,26 @@
 #   kit          exact match of a reference line
 #   near-kit     same heading, same leading bold rule label, or same `- <label> →` bullet label
 #                as a reference line, but no exact match — the agent judges it; unsure → keep
+#   review       no label match, but its content words overlap a reference line closely (below):
+#                a customised UNLABELLED kit rule — shown to the user at the split gate to keep or
+#                drop, never silently kept or dropped
 #   attribution  a `**Attribution…**` rule line (any variant) — always kept
 #   title        the first H1 — always kept
 #   project      everything else, including every line inside a fenced block — always kept
+#
+# `review` threshold: content words = lowercase alphanumeric runs of 3+ characters minus a short
+# stopword list; for each reference line, shared = |line ∩ ref| and the overlap coefficient
+# shared / min(|line|, |ref|). A line is `review` when some reference line gives shared >= 4 AND
+# coefficient >= 0.6. The overlap coefficient (not Jaccard) because a customised kit rule is
+# usually the kit line TRUNCATED or EXTENDED, and both keep most of the shorter side's words; 0.6
+# means the majority of the shorter side is kit wording; the floor of 4 shared words stops a short
+# project line from matching a kit line by one or two common words. Tuned against every fixture's
+# project lines (facts, conventions, project rules): none reaches it.
+#
+# result=split-needed when any `kit` line remains, OR — before the import exists, i.e. before the
+# split — any `near-kit` or `review` line does: a file whose kit lines were ALL customised still
+# reaches the gate. After the split (import present) kept near-kit/review lines are the user's
+# decision, so the re-run is `nothing-to-do`.
 #
 # THE REPORT IS A MACHINE CONTRACT another agent acts on, and the values it prints (the issue
 # log path, model names) come from a consumer-controlled file. Values are ENCODED exactly as
@@ -95,7 +112,9 @@ sub label_of { my $l = shift;
   return (); }
 my $ATTR = qr/\A\s*(?:[-*+]\s+)?\*\*Attribution\b/;
 
-my (@pats, %labels);
+my %STOP = map { $_ => 1 } qw(the and for with you are its any from this that per into was has have may can when then than they them their our out also not but all one);
+sub words { my %w; $w{$_} = 1 for grep { length($_) >= 3 && !$STOP{$_} } split /[^a-z0-9]+/, lc shift; return \%w; }
+my (@pats, %labels, @refwords);
 for my $ref (@refs) {
   open(my $fh, "<", $ref) or die "cannot read reference $ref\n";
   while (my $t = <$fh>) {
@@ -111,13 +130,19 @@ for my $ref (@refs) {
     }
     $re .= quotemeta(substr($t, $pos));
     push @pats, [ qr/^$re$/, [ @names ] ];
+    push @refwords, words($lit);
     my @lab = label_of($t); $labels{"$lab[0]:$lab[1]"} = 1 if @lab;
   }
   close $fh;
 }
 
 my (@rec, %mv, $logpath);
-my %cnt = map { $_ => 0 } qw(kit near-kit attribution title project);
+my %cnt = map { $_ => 0 } qw(kit near-kit review attribution title project);
+sub close_to_kit { my $a = words(shift); my $na = keys %$a; return 0 unless $na;
+  for my $b (@refwords) { my $nb = keys %$b; next unless $nb;
+    my $shared = grep { $b->{$_} } keys %$a; my $min = $na < $nb ? $na : $nb;
+    return 1 if $shared >= 4 && $shared / $min >= 0.6; }
+  return 0; }
 my ($imp, $code_imp, $fence, $title_seen, $n) = ("absent", 0, 0, 0, 0);
 my $IMP = qr/\@(?:\.\/)?\.marvin\/CLAUDE\.marvin\.md/;
 my @lines;
@@ -144,7 +169,8 @@ for my $l (@lines) {
         last;
       }
       if (!defined $cls && !$title_seen && $t =~ /\A#\s+\S/) { $cls = "title"; }
-      if (!defined $cls) { my @lab = label_of($t); $cls = (@lab && $labels{"$lab[0]:$lab[1]"}) ? "near-kit" : "project"; }
+      if (!defined $cls) { my @lab = label_of($t); $cls = "near-kit" if @lab && $labels{"$lab[0]:$lab[1]"}; }
+      if (!defined $cls) { $cls = close_to_kit($t) ? "review" : "project"; }
     }
     if (!defined $logpath && $cls ne "kit" && $t =~ /(?:A real bug|Real bugs)\s*\xe2\x86\x92\s*`([^`]+)`/) { $logpath = $1; }
   }
@@ -158,10 +184,11 @@ print "encoding=values are printed raw when they match [A-Za-z0-9._/\@+-]+, othe
 print "reference=", join(",", map { (my $b = $_) =~ s{.*/}{}; $b } @refs), "\n";
 print "claude-md: $cm_state\n";
 print "$_\n" for @rec;
-print "counts: ", join(" ", map { "$_=$cnt{$_}" } qw(kit near-kit attribution title project)), "\n";
+print "counts: ", join(" ", map { "$_=$cnt{$_}" } qw(kit near-kit review attribution title project)), "\n";
 print "import: $imp\n";
 print "agents-md: $ag_state\n";
 print "issue-log-path: ", (defined $logpath ? enc($logpath) : "not-found"), "\n";
 print "model-values: ", join(" ", map { "$_=" . (defined $mv{$_} ? enc($mv{$_}) : "not-found") } qw(ESCALATION_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL)), "\n";
-print "result=", ($cnt{kit} > 0 ? "split-needed" : "nothing-to-do"), "\n";
+my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);
+print "result=", ($split ? "split-needed" : "nothing-to-do"), "\n";
 ' "$cm_state" "$CM" "$ag_state" "$HIST_DIR" "$kit_core"
