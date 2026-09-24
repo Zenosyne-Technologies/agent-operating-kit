@@ -140,6 +140,49 @@ P11() {  # install mode: a never-installed repo has no customised kit lines — 
   has "counts: kit=0 near-kit=0 review=0 attribution=0 title=1 project=4"; has "result=nothing-to-do"
 }
 
+P12() {  # CommonMark fences and HTML comments: an import inside either is inert — only a top-level line counts
+  local p="$1" d="$WORK/p12"; mkrepo "$d"
+  printf '# X\n\n```\n~~~\n%s\n```\n' "$IMPORT_LINE" > "$d/CLAUDE.md"
+  run "$p" "$d"; has "import: in-code-span"
+  printf '# X\n\n~~~~\n~~~\n%s\n~~~~\n' "$IMPORT_LINE" > "$d/CLAUDE.md"
+  run "$p" "$d"; has "import: in-code-span"
+  printf '# X\n\n<!--\n%s\n-->\n' "$IMPORT_LINE" > "$d/CLAUDE.md"
+  run "$p" "$d"; has "import: in-code-span"
+  printf '# X\n\n```sh\nls\n```\n\n%s\n' "$IMPORT_LINE" > "$d/CLAUDE.md"
+  run "$p" "$d"; has "import: present"
+}
+
+P13() {  # issue-log-path: only a bare path under .docs/ passes; a crafted value is refused, never ok
+  local p="$1" d="$WORK/p13" v; mkrepo "$d"
+  render "$HIST/v0.31.0.md" b | sed 's#`.docs/issue-log.md`#`.docs/x.md` @evil.md `y`#' > "$d/CLAUDE.md"
+  run "$p" "$d"; has 'issue-log-path: ".docs/x.md` @evil.md `y"'; has "issue-log-path-check: refused"
+  for v in '../outside.md' '.docs/../x.md' '@.docs/x.md' 'docs/x.md' '.docs/a b.md'; do
+    printf '# X\n\n- A real bug → `%s` AND the tracker.\n' "$v" > "$d/CLAUDE.md"
+    run "$p" "$d"; has "issue-log-path-check: refused"
+  done
+  printf '# X\n\n- A real bug → `.docs/issue-log.md` AND the tracker.\n' > "$d/CLAUDE.md"
+  run "$p" "$d"; has "issue-log-path-check: ok"
+}
+
+elapsed() {  # elapsed <planner> <dir> — sets OUT, RC, SECS
+  local t0 t1; t0=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+  run "$1" "$2"; t1=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+  SECS=$(perl -e "printf '%.2f', $t1 - $t0")
+}
+P14() {  # input caps: too-large is a distinct result, and every input finishes under 2 s
+  local p="$1" d="$WORK/p14" i; mkrepo "$d"
+  perl -e 'print "- note\n" x 45000' > "$d/CLAUDE.md"          # ~315 KiB
+  elapsed "$p" "$d"; [ "$RC" = 3 ]; chk $? "file over 256 KiB exits 3 (got $RC)"; has "result=too-large"
+  perl -e 'print "# X\n", "a" x 5000, "\n"' > "$d/CLAUDE.md"
+  elapsed "$p" "$d"; [ "$RC" = 3 ]; chk $? "line over 4 KiB exits 3 (got $RC)"; has "result=too-large"
+  # the security review's quadratic shapes, kept under both caps: an unclosed backtick before
+  # repeated import strings, and a kit-line prefix followed by repeated capture separators
+  PRE=$(grep '^- \*\*Git, branches' "$KITCORE" | sed 's/(orchestrator on .*/(orchestrator on /') \
+    perl -e 'for (1..30) { print "`", "\@.marvin/CLAUDE.marvin.md " x 150, "\n", $ENV{PRE}, " with " x 500, "\n" }' > "$d/CLAUDE.md"
+  elapsed "$p" "$d"; [ "$RC" = 0 ]; chk $? "crafted worst case under the caps (~215 KiB) completes (exit $RC)"
+  perl -e "exit !($SECS < 2)"; chk $? "crafted worst case finishes under 2 s (${SECS}s)"
+}
+
 P4() {  # CLAUDE.md -> AGENTS.md is refused: exit 6 and no report record at all
   local p="$1" d="$WORK/p4"; mkrepo "$d"; printf '# Agents\n\n- **Autocommit**: x\n' > "$d/AGENTS.md"
   ln -s AGENTS.md "$d/CLAUDE.md"; run "$p" "$d"
@@ -202,7 +245,7 @@ P0() {  # usage errors exit 4
   bash "$p" --mode guess "$WORK" > /dev/null 2>&1; [ $? = 4 ]; chk $? "unknown --mode exits 4"
 }
 
-for f in P0 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11; do hd "$f"; "$f" "$PLANNER"; done
+for f in P0 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11 P12 P13 P14; do hd "$f"; "$f" "$PLANNER"; done
 
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 MROOT="$WORK/mut"; mkdir -p "$MROOT/scripts" "$MROOT/templates/marvin"
@@ -241,6 +284,21 @@ mutate review-threshold-loosened P9 \
 mutate mode-guard-ignored P11 \
   'my $customised = $mode eq "upgrade";   # mode guard: near-kit/review exist only over a prior install' \
   'my $customised = 1;'
+mutate issue-log-path-unchecked P13 \
+  'my $ilp_ok = defined $logpath && $logpath =~ m{\A\.docs/[A-Za-z0-9._/\@+-]+\z} && $logpath !~ m{(?:\A|/)\.\.(?:/|\z)};' \
+  'my $ilp_ok = defined $logpath;'
+mutate size-cap-removed P14 \
+  '  if (-s $cm > 262144) { header(); print "result=too-large\n"; exit 3; }   # size cap: 256 KiB' \
+  '  1;'
+mutate line-cap-removed P14 \
+  '  if (grep { length($_) > 4097 } @lines) { header(); print "result=too-large\n"; exit 3; }   # line cap: 4 KiB' \
+  '  1;'
+mutate fence-closes-on-any-marker P12 \
+  '  elsif ($fence && $t =~ /\A {0,3}(`{3,}|~{3,})\z/ && substr($1, 0, 1) eq $fch && length($1) >= $flen) { $fence = 0; $cls = "project"; }' \
+  '  elsif ($fence && $t =~ /\A {0,3}(`{3,}|~{3,})/) { $fence = 0; $cls = "project"; }'
+mutate html-comment-blind-import P12 \
+  '  elsif ($t =~ /\A {0,3}<!--/ && $t !~ /-->/) { $cmt = 1; $code_imp = 1 if $t =~ $IMP; $cls = "project"; }' \
+  '  elsif (0) { 1; }'
 mutate near-kit-only-skips-gate P10 \
   'my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);' \
   'my $split = $cnt{kit} > 0;'

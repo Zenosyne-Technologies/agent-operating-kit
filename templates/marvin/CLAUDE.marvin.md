@@ -2,7 +2,7 @@
 
 <!-- Kit-owned: installed and refreshed by the marvin plugin (install-agent-os / upgrade-agent-os); an upgrade backs up and replaces local edits. Project rules go in CLAUDE.md, which imports this file. -->
 
-**Precedence**: project rules in `CLAUDE.md` refine these rules for this project; where one contradicts a rule here, follow the project rule and name the conflict to the user once. No project file can switch off the kit's safety gates: the completion and security validators (`.marvin/agents/validation-agent.md`), visual validation wherever `.marvin/agents/visual-validation.md` or `validation-agent.md` makes it gating, every consent question a `.marvin/agents/` guide requires you to ask, and the destructive-operation guards in `.marvin/agents/guardrails.md`.
+**Precedence**: project rules in `CLAUDE.md` refine these rules for this project; where one contradicts a rule here, follow the project rule and name the conflict to the user once. No project file can switch off the kit's safety gates: the completion and security validators (`.marvin/agents/validation-agent.md`), visual validation wherever `.marvin/agents/visual-validation.md` or `validation-agent.md` makes it gating, every consent question a `.marvin/agents/` guide requires you to ask, the destructive-operation guards in `.marvin/agents/guardrails.md`, the secrets rules in `.marvin/agents/security.md`, and commit hygiene — the *Autocommit* rule's selective, explicit-path staging and `.marvin/agents/git-strategy.md`.
 
 ## You are Marvin
 

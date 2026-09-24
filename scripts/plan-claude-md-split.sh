@@ -60,10 +60,18 @@
 # Usage: bash plan-claude-md-split.sh --mode install|upgrade [<repo-root>]   (default root: .)
 # Exit codes:
 #   0  report printed (result=split-needed or result=nothing-to-do)
+#   3  report printed with result=too-large: CLAUDE.md over 256 KiB or a line over 4 KiB — the
+#      caps keep every classification linear and bounded; the skills treat it as a must-act STOP
 #   4  usage error: missing/unknown --mode, unknown flag, extra argument, repo root not a
 #      directory, CLAUDE.md not a file
 #   5  the reference set is missing (a broken plugin install)
 #   6  refused: CLAUDE.md is a symlink — nothing is read, no report record is printed
+#   any other non-zero (e.g. 255, an unreadable file): no usable report — callers STOP
+#
+# issue-log-path-check: the reported value is `ok` only as a single line of [A-Za-z0-9._/@+-]
+# under `.docs/` with no `..` segment (the install skill's step-2 rule for DOCS_ISSUE_LOG_PATH is
+# the owner; this is its code check) — a backtick or newline there would forge an @-import into
+# the auto-loaded kit core once rendered.
 set -uo pipefail
 
 SELF="plan-claude-md-split"
@@ -119,7 +127,8 @@ sub enc { my $p = shift;
 
 # ── reference set: newest first, so the first capture of a value is the most recent layout ─
 sub vkey { my ($a) = $_[0] =~ /v(\d+\.\d+\.\d+)\.md\z/; return join "", map { sprintf "%05d", $_ } split /\./, $a; }
-my @refs = sort { vkey($b) cmp vkey($a) } glob("$hist/v*.md");
+opendir(my $hd, $hist) or die "cannot read reference set\n";   # opendir, not glob: a space in the plugin path must not split it
+my @refs = sort { vkey($b) cmp vkey($a) } map { "$hist/$_" } grep { /\Av\d+\.\d+\.\d+\.md\z/ } readdir($hd); closedir $hd;
 unshift @refs, $kit_core if $kit_core ne "";
 
 my $PH = qr/\{\{([A-Z_0-9]+)(?::[^}]*)?\}\}/;
@@ -145,7 +154,8 @@ for my $ref (@refs) {
     next if $t =~ $ATTR;
     my ($re, $pos, @names) = ("", 0);
     while ($t =~ /$PH/g) {
-      $re .= quotemeta(substr($t, $pos, $-[0] - $pos)) . "(.+?)"; push @names, $1; $pos = $+[0];
+      # a capture is bounded: a placeholder value is short, and an unbounded one backtracks quadratically
+      $re .= quotemeta(substr($t, $pos, $-[0] - $pos)) . "(.{1,200}?)"; push @names, $1; $pos = $+[0];
     }
     $re .= quotemeta(substr($t, $pos));
     push @pats, [ qr/^$re$/, [ @names ] ];
@@ -162,19 +172,28 @@ sub close_to_kit { my $a = words(shift); my $na = keys %$a; return 0 unless $na;
     my $shared = grep { $b->{$_} } keys %$a; my $min = $na < $nb ? $na : $nb;
     return 1 if $shared >= 4 && $shared / $min >= 0.6; }
   return 0; }
-my ($imp, $code_imp, $fence, $title_seen, $n) = ("absent", 0, 0, 0, 0);
+my ($imp, $code_imp, $fence, $title_seen, $n, $fch, $flen, $cmt) = ("absent", 0, 0, 0, 0, "", 0, 0);
 my $IMP = qr/\@(?:\.\/)?\.marvin\/CLAUDE\.marvin\.md/;
 my @lines;
-if ($cm_state eq "present") { open(my $c, "<", $cm) or die "cannot read CLAUDE.md\n"; @lines = <$c>; close $c; }
+sub header { print "plan-claude-md-split: read-only planner report — it changed nothing\n", "mode=$mode\n", "claude-md: $cm_state\n"; }
+if ($cm_state eq "present") {
+  if (-s $cm > 262144) { header(); print "result=too-large\n"; exit 3; }   # size cap: 256 KiB
+  open(my $c, "<", $cm) or die "cannot read CLAUDE.md\n"; @lines = <$c>; close $c;
+  if (grep { length($_) > 4097 } @lines) { header(); print "result=too-large\n"; exit 3; }   # line cap: 4 KiB
+}
 for my $l (@lines) {
   $n++; chomp $l; $l =~ s/\r\z//; (my $t = $l) =~ s/\s+\z//;
   my $cls;
-  if ($t =~ /\A\s{0,3}(?:```|~~~)/) { $fence = !$fence; $cls = "project"; }
+  # CommonMark fences: a fence closes only on the SAME character, at least as long, bare
+  if (!$fence && !$cmt && $t =~ /\A {0,3}(`{3,}|~{3,})/) { ($fch, $flen, $fence) = (substr($1, 0, 1), length $1, 1); $cls = "project"; }
+  elsif ($fence && $t =~ /\A {0,3}(`{3,}|~{3,})\z/ && substr($1, 0, 1) eq $fch && length($1) >= $flen) { $fence = 0; $cls = "project"; }
   elsif ($fence) { $code_imp = 1 if $t =~ $IMP; $cls = "project"; }
+  elsif ($cmt) { $code_imp = 1 if $t =~ $IMP; $cmt = 0 if $t =~ /-->/; $cls = "project"; }   # inside a multi-line HTML comment
+  elsif ($t =~ /\A {0,3}<!--/ && $t !~ /-->/) { $cmt = 1; $code_imp = 1 if $t =~ $IMP; $cls = "project"; }
   elsif ($t =~ /\A$IMP\z/) { $imp = "present"; next; }
   elsif ($t eq "") { next; }
   else {
-    $code_imp = 1 if $t =~ /`[^`]*$IMP[^`]*`/;
+    $code_imp = 1 if $t =~ $IMP && index($t, "`") >= 0;   # linear: no backtracking scan
     if ($t =~ $ATTR) { $cls = "attribution"; }
     else {
       for my $p (@pats) {
@@ -199,16 +218,16 @@ for my $l (@lines) {
 }
 $imp = "in-code-span" if $imp eq "absent" && $code_imp;
 
-print "plan-claude-md-split: read-only planner report — it changed nothing\n";
+header();
 print "encoding=values are printed raw when they match [A-Za-z0-9._/\@+-]+, otherwise C-quoted in double quotes with \\n \\t \\r \\\" \\\\ and \\ooo escapes (git core.quotePath convention); exactly one record per line; no CLAUDE.md line text is ever printed\n";
 print "reference=", join(",", map { (my $b = $_) =~ s{.*/}{}; $b } @refs), "\n";
-print "mode=$mode\n";
-print "claude-md: $cm_state\n";
 print "$_\n" for @rec;
 print "counts: ", join(" ", map { "$_=$cnt{$_}" } qw(kit near-kit review attribution title project)), "\n";
 print "import: $imp\n";
 print "agents-md: $ag_state\n";
 print "issue-log-path: ", (defined $logpath ? enc($logpath) : "not-found"), "\n";
+my $ilp_ok = defined $logpath && $logpath =~ m{\A\.docs/[A-Za-z0-9._/\@+-]+\z} && $logpath !~ m{(?:\A|/)\.\.(?:/|\z)};
+print "issue-log-path-check: ", (!defined $logpath ? "not-found" : $ilp_ok ? "ok" : "refused"), "\n";
 print "model-values: ", join(" ", map { "$_=" . (defined $mv{$_} ? enc($mv{$_}) : "not-found") } qw(ESCALATION_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL)), "\n";
 my $split = $cnt{kit} > 0 || ($imp ne "present" && $cnt{"near-kit"} + $cnt{review} > 0);
 print "result=", ($split ? "split-needed" : "nothing-to-do"), "\n";
