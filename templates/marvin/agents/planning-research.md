@@ -8,22 +8,27 @@ updated: {{INSTALL_DATE}}
 
 # Planning research (decomposition, brief falsifier, plan validation + solution research)
 
-The research passes below apply when planning sizes a task `size:l` or `size:xl` (per `label-syntax.md`). Tasks `size:m` and below get NO dedicated research pass — a `size:m` goes through build decomposition, and every `size:m`+ task through the brief falsifier, before its build.
+The research passes below apply when planning sizes a task `size:l` or `size:xl` (per `label-syntax.md`). Tasks `size:m` and below get NO dedicated research pass — a `size:m` goes through build decomposition, and every `size:m`+ task through the brief falsifier, before its build. Where the orchestrator dispatches an ad hoc research question on a `size:m`-or-below task anyway, only the survey stage below runs: the survey IS the research output, and no synthesis follows.
 
 For each qualifying task, the planner dispatches two research passes, in order, BEFORE the build brief:
 
 1. **Plan-validation research** — a fresh agent adversarially checks the plan against the actual codebase: hidden dependencies, breaking-change surface, wrong assumptions, missing acceptance criteria, sequencing risks.
 2. **Solution research** — after validation findings are reconciled into the plan: research implementation approaches — viable options with trade-offs, a recommended approach with reasons, and references (code, docs, prior art).
 
+Each pass runs in two stages:
+
+- **Survey** ({{WORKER_MODEL}}, `marvin:developer-small`, dispatched in the same read-only survey mode as the brief falsifier — no code, no commit): gathers the facts, excerpts and `file:line` citations that answer the pass's question; no recommendation, no judgement call.
+- **Synthesis** ({{ESCALATION_MODEL}}, `marvin:researcher`): reads the survey's findings and turns them into the pass's risks/recommendation — dispatched ONLY for `size:l`/`xl`, since that judgement is what the heavy tier is for; it works from the survey's citations, reading a path directly only to verify a contested or missing point.
+
 Both passes search the CODE and the PM TOOL: `git log`/`git blame` the touched files and methods for issue keys in earlier commits (commit messages start with their key), fetch those issues, and read their comments — prior findings and solutions often answer current questions. Cite the relevant issues in Refs.
 
 Tier routing (mandatory — by the task's `size:` label):
 
-| Size | Researcher tier |
-|---|---|
-| `size:xl` (very complex) | {{ESCALATION_MODEL}} |
-| `size:l` (mid complexity) | {{ESCALATION_MODEL}} |
-| `size:m` and below | no research pass |
+| Size | Survey tier | Synthesis tier |
+|---|---|---|
+| `size:xl` (very complex) | {{WORKER_MODEL}} (`marvin:developer-small`) | {{ESCALATION_MODEL}} (`marvin:researcher`) |
+| `size:l` (mid complexity) | {{WORKER_MODEL}} (`marvin:developer-small`) | {{ESCALATION_MODEL}} (`marvin:researcher`) |
+| `size:m` and below | no dedicated pass — an ad hoc dispatch gets survey only | — |
 
 Reporting — findings live where the plan lives, both passes alike:
 - Issue-tracked plan → a comment on the issue: `## Findings / ## Risks / ## Recommendation / ## Refs`.
