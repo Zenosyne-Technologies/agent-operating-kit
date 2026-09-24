@@ -106,14 +106,17 @@ if [ ! -L "$project_info" ] && [ -f "$project_info" ]; then
   # open the path read-write with `<>` — per POSIX this never blocks on a FIFO (unlike a plain
   # read-only open, which blocks until a writer connects), and is equivalent to a normal open for
   # the expected case, a regular file — then bound every line read with `read -t`, the same
-  # builtin the stdin fallback uses. A regular file we cannot write to fails this open immediately
-  # (not a hang) and falls through to "couldn't read", the same safe outcome as any other
-  # unreadable PROJECT-INFO.md.
+  # builtin the stdin fallback uses. A regular file we cannot write to fails the <> open immediately
+  # and is then re-opened read-only after a fresh regular-file check (below).
   frontmatter=""
   if command -v timeout >/dev/null 2>&1; then
     frontmatter=$(timeout 2 head -n 40 -- "$project_info" 2>/dev/null \
       | awk '{ sub(/\r$/, "") } NR==1 && $0=="---" { f=1; next } f && $0=="---" { exit } f')
-  elif exec 3<>"$project_info" 2>/dev/null; then
+  elif { exec 3<>"$project_info"; } 2>/dev/null \
+    || { [ -f "$project_info" ] && [ ! -L "$project_info" ] && { exec 3<"$project_info"; } 2>/dev/null; }; then
+    # Read-only PROJECT-INFO (e.g. chmod 444): `<>` cannot open it, so re-check it is still a
+    # regular non-symlink file and open read-only. The residual FIFO-swap race is only between
+    # this re-check and the open (sev4, needs a live local process).
     # `-n 200` caps a single read at 200 bytes even short of a newline: bash's `read -t` reads a
     # byte at a time (to support the timeout/select), so one real line of ~1,000,000 bytes with no
     # newline costs ~1,000,000 syscalls (seconds) even though the line count is bounded to 40. A

@@ -517,6 +517,19 @@ else
 fi
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+hd "T-RO read-only stale PROJECT-INFO (chmod 444) — still the drift line, nothing on stderr"
+mk_project "$WORK/proj-ro" "0.30.0"
+mk_plugin "$WORK/plugin-ro" "0.32.0"
+chmod 444 "$WORK/proj-ro/.marvin/PROJECT-INFO.md"
+PATH_SAVE=$PATH; PATH=$(printf '%s' "$PATH" | tr ':' '\n' | while IFS= read -r d; do [ -x "$d/timeout" ] || printf '%s:' "$d"; done); PATH=${PATH%:}
+ERR=$(CLAUDE_PROJECT_DIR="$WORK/proj-ro" CLAUDE_PLUGIN_ROOT="$WORK/plugin-ro" bash "$HOOK" </dev/null 2>&1 >/dev/null)
+run_hook "$HOOK" "$WORK/proj-ro" "$WORK/plugin-ro"
+PATH=$PATH_SAVE
+chmod 644 "$WORK/proj-ro/.marvin/PROJECT-INFO.md"
+assert_rc 0
+assert_out "this project's install is v0.30.0 but the plugin is v0.32.0"
+if [ -z "$ERR" ]; then ok "stderr empty"; else bad "stderr not empty: $ERR"; fi
+
 printf '\n----\ntest-session-hook: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ] || exit 1
 exit 0
