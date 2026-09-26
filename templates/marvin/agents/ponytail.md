@@ -31,7 +31,7 @@ Task: <one sentence>.
 Tools: <exact tool names; ONE tool-search call if deferred>.
 Input: <the prepared payload, verbatim>.
 Do: <numbered mechanical steps, incl. list-before-create idempotency>.
-FINAL MESSAGE: <exact format>. Nothing else.
+FINAL MESSAGE: <exact format, always including item 11's reserved TRACKER: line>. Nothing else.
 Report: <run-report path, per `briefing.md` item 11>.
 ```
 
