@@ -14,7 +14,7 @@ Applies to EVERY task that touches auth, input boundaries, data exposure, secret
 
 - Never commit secrets: no keys, tokens, passwords, `.env` files, or live connection strings in code, fixtures, or docs — env wiring plus `.env.example` placeholders only.
 - Never paste secrets into the PM tool: issue comments, report snapshots, tracker docs, and PR bodies are shared surfaces — scrub command output and logs before posting (the comment-discipline and reporting rules write agent output there).
-- A leaked secret is a sev1 incident: rotate FIRST, then file per `ticket-filing.md`.
+- A leaked secret is a sev1 incident: rotate FIRST, then report it; the orchestrator files it per `ticket-filing.md` (*Who writes*).
 
 ## Dependencies
 
