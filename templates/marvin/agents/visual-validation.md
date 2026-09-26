@@ -36,5 +36,5 @@ sev1 = UI broken/unusable (hidden control, illegible primary contrast, layout co
 ## Reporting (machine-consumed FINAL MESSAGE, capped per `briefing.md` item 11 — sev order, the rest in the named report)
 - `VERDICT: PASS | ADVISORY | FAIL` (FAIL only at the release gate).
 - Per finding: `SURFACE | BREAKPOINT | SEV | ISSUE | EVIDENCE (screenshot path) | SUGGESTED-FIX`.
-- `DEGRADED: <mode or NONE>` · `INFORMATION: <design rules read, or NONE>` · `GUARDRAILS: <rows bound, or NONE>`.
-Never fixes: real defects → `ticket-filing.md` + the project's issue log, labelled `finding:visual` (`label-syntax.md`); the orchestrator decides.
+- `DEGRADED: <mode or NONE>` · `INFORMATION: <design rules read, or NONE>` · `GUARDRAILS: <rows bound, or NONE>` · `TRACKER: none`.
+Never fixes, and never files: every finding here is in-scope of the task under review, reported per `ticket-filing.md`, whatever its severity; only a SEPARATE whole-project visual sweep files its own findings, `finding:visual`-labelled (`label-syntax.md`), under its own tracking issue.

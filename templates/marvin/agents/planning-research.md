@@ -35,7 +35,7 @@ Reporting — synthesis findings live where the plan lives (`size:l`/`xl` only; 
 - Otherwise → an md doc at `.docs/researches/<issue-key-or-slug>-{validation|solution}.md` with a full header, registered as a row in `.docs/researches/index.md` (`document-standard.md`) — an unindexed memo cannot be found again — and linked from the tracker issue if one exists.
 
 Briefs follow `briefing.md` for both stages. Survey FINAL MESSAGE (its own format — no verdict, no recommendation): `SURVEY: <n> facts`; one line per fact, `<file:line or source> — <fact>`; then `REPORT: <path>` plus item 11's reserved lines.
-Synthesis FINAL MESSAGE (machine-consumed, `size:l`/`xl` only): verdict (`plan-ok` | `plan-gaps: <n>` for validation; `recommendation: <one line>` for solution) + the comment URL or doc path. The planner reconciles findings into the plan before dispatching the build — research that isn't folded back in is waste.
+Synthesis FINAL MESSAGE (machine-consumed, `size:l`/`xl` only): verdict (`plan-ok` | `plan-gaps: <n>` for validation; `recommendation: <one line>` for solution) + the comment URL or doc path, then item 11's reserved lines — the issue-tracked case posts its own comment, an assigned tracker write (`ticket-filing.md`'s *Who writes* rule), so its `TRACKER:` line reports it; the doc-based case makes none, so it reports `TRACKER: none`. The planner reconciles findings into the plan before dispatching the build — research that isn't folded back in is waste.
 
 ## Build decomposition (`size:m`)
 
