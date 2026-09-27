@@ -7,8 +7,10 @@
 # milestone close-outs, digests, stakeholder pages and the install/upgrade run reports. EVERY
 # file under `.docs/reports/` moves to the same relative path under `.marvin/reports/` —
 # including ones the consumer wrote by hand. There is no allowlist (unlike v0.21.0's cascade
-# move): the whole folder changes owner. A destination that already exists is a COLLISION,
-# reported and never overwritten.
+# move): the whole folder changes owner. ALL OR NOTHING: a destination that already exists is
+# a COLLISION, found in the pre-flight phase, and ANY collision refuses the whole run before the
+# first move — nothing moved, nothing staged, every collision listed. A partial move would leave
+# the reports split across both folders.
 #
 # WHAT THIS SCRIPT DOES NOT DO: it never reads, writes or stages file CONTENT. It moves files
 # and prints a rename map. Updating references to the moved paths is the agent's job, from that
@@ -48,7 +50,8 @@
 #   2  dirty working tree, or untracked/ignored files under `.docs/reports/`: a real run
 #      refuses to start (the `untracked:` lines name what to commit or remove); `--check` still
 #      printed its plan
-#   3  completed, but destination collisions need reconciling by hand
+#   3  refused before changing anything: destination collisions — every one is listed on a
+#      `collision:` line; reconcile them by hand, then re-run (nothing was moved or staged)
 #   4  usage error (unknown flag) / not a git work tree
 #   6  refused before changing anything: a symlinked source, destination or ancestor
 #   7  a failure occurred after the first change; the repository was rolled back to HEAD
@@ -218,8 +221,9 @@ predict_emptied() {
   return 0
 }
 
-# Best effort ONLY, deepest first, never recursive: a directory that still holds something (a
-# collided report) makes `rmdir` exit 1, which under `set -e` would abort a finished run.
+# Best effort ONLY, deepest first, never recursive: a directory that still holds something — a
+# file that appeared mid-run, e.g. Finder's `.DS_Store` — makes `rmdir` exit 1, which under
+# `set -e` would roll back a run whose every move succeeded.
 prune_dirs() {
   local d
   [ -d "$SRC_ROOT" ] || return 0
@@ -441,7 +445,6 @@ report() {
 
 finish() {
   COMPLETED=1
-  if [ "${#COLL_SRC[@]}" -gt 0 ]; then report "$1"; exit 3; fi
   report "$1"
   exit 0
 }
@@ -506,6 +509,10 @@ if [ "$MODE" = "check" ]; then
     clear_collisions
     COMPLETED=1; report plan-only-symlink; exit 6
   fi
+  if [ "${#COLL_SRC[@]}" -gt 0 ]; then
+    say "a real run will REFUSE: destinations already exist — nothing would move"
+    COMPLETED=1; report plan-only-collisions; exit 3
+  fi
   finish plan
 fi
 
@@ -535,6 +542,16 @@ if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
   clear_collisions
   report refused-symlink
   exit 6
+fi
+# All or nothing: every collision was found at plan time, so a run that would leave any report
+# behind refuses before the first move. The report lists every collision and no move records.
+if [ "${#COLL_SRC[@]}" -gt 0 ]; then
+  say "REFUSED — destinations already exist; nothing moved. Reconcile these by hand, then re-run:"
+  i=0; while [ "$i" -lt "${#COLL_SRC[@]}" ]; do
+    printf '  %s\n' "$(q "${COLL_DST[$i]}")"; i=$((i+1)); done
+  clear_move_map
+  report refused-collisions
+  exit 3
 fi
 
 trap rollback EXIT INT TERM HUP
@@ -573,11 +590,6 @@ if [ "${#STAGE[@]}" -gt 0 ]; then
   done
   git add -f -- "${ADDARGS[@]}"
   STAGED_COUNT=${#STAGE[@]}
-fi
-
-if [ "${#MOVE_SRC[@]}" -eq 0 ]; then
-  say "nothing moved — every report collides with an existing destination"
-  finish nothing-to-do
 fi
 
 say "moved and staged ${STAGED_COUNT} path(s) — NOTHING COMMITTED."
