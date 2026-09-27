@@ -13,7 +13,7 @@ procedure each agent follows — capture, degradation ladder, checklist, severit
 - **GOAL** — assess the WHOLE project's UI: enumerate every declared surface, dispatch
   `marvin:validator-visual` agents across slices to capture + review them, then reconcile the
   per-surface findings into ONE whole-project design report (a design-consistency view, not just a
-  pile of per-page notes) written to `.docs/reports/` per `.marvin/agents/document-standard.md`.
+  pile of per-page notes) written to `.marvin/reports/` per `.marvin/agents/document-standard.md`.
 - **LIMITS** — max sub-agents dispatched per round: **4** (hard cap, one slice each). Max rounds:
   **3** (fan-out, at most one reconciliation round for surfaces that came back UNREACHABLE or
   under-covered, and the aggregation pass). A surface count beyond one round's capacity is sliced

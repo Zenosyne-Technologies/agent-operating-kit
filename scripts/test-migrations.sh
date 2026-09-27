@@ -3,7 +3,12 @@
 #
 # Every fixture below is a defect that was reproduced destroying consumer data or
 # half-finishing a migration. Each test names the mechanic it pins: revert that mechanic in
-# scripts/migrate-v0.21.0.sh and the named assertion must fail.
+# the migration script under test and the named assertion must fail.
+#
+# One suite per migration script, each selected by `use_migration <version>`, which points
+# every helper — the script path AND the report's fence text and record grammar — at that
+# script: `T*` fixtures pin scripts/migrate-v0.21.0.sh, `R*` fixtures pin
+# scripts/migrate-v0.35.0.sh. `--only <version>` runs one suite (mutate-migrations.sh uses it).
 #
 # The migration MOVES files and REPORTS; it never reads or writes file content. A whole class
 # of defects (substring rewriting eating URLs, `.bak` siblings, code fences, prose) is gone by
@@ -11,12 +16,14 @@
 # invariant, pinned in TC1: after any run, every byte of every file is either where it was or
 # at its new path — nothing is edited, and CLAUDE.md is never touched at all.
 #
-# Run from anywhere: bash scripts/test-migrations.sh
+# Run from anywhere: bash scripts/test-migrations.sh [--only 0.21.0|0.35.0] [--repeat-timing N]
 # Exit 0 = all assertions pass.
 set -uo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-MIGRATE="$SCRIPT_DIR/migrate-v0.21.0.sh"
+# Set per suite by use_migration(): the script under test, its report's fence name, and its
+# record grammar. Nothing below names a migration version literally.
+MIGRATE=""; SELF=""; RECORD_GRAMMAR=""; COUNT_KEYS=""
 
 # An unchecked `mktemp -d` leaves WORK empty when it fails, and every fixture path below then
 # resolves at the filesystem ROOT. Abort instead — and keep the check in a function so it can
@@ -35,12 +42,16 @@ trap 'if [ -n "${WORK:-}" ] && [ -d "$WORK" ]; then chmod -R u+w "$WORK" 2>/dev/
 # Timing-sensitive fixtures (the kill/rollback race) run REPEAT_TIMING times: a flake of a few
 # percent hides behind a single green run and then fails CI at random.
 REPEAT_TIMING=${REPEAT_TIMING:-1}
+ONLY=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --repeat-timing) REPEAT_TIMING="$2"; shift 2;;
-    *) printf 'usage: test-migrations.sh [--repeat-timing N]\n' >&2; exit 2;;
+    --only) ONLY="$2"; shift 2;;
+    *) printf 'usage: test-migrations.sh [--only <version>] [--repeat-timing N]\n' >&2; exit 2;;
   esac
 done
+case "$ONLY" in ""|0.21.0|0.35.0) ;; *) printf 'test-migrations: no suite for version %s\n' "$ONLY" >&2; exit 2;; esac
+want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 PASSED=0; FAILED=0; CURRENT=""
 OUT=""; RC=0
@@ -64,29 +75,51 @@ assert_file_lacks()  { if grep -Fq -- "$2" "$1"; then bad "$1 must not contain \
 assert_clean()       { if [ -z "$(git status --porcelain)" ]; then ok "working tree clean${1:+ — $1}"; else bad "working tree dirty${1:+ — $1}: $(git status --porcelain | tr '\n' ' ')"; fi; }
 assert_eq()          { if [ "$1" = "$2" ]; then ok "$3"; else bad "$3 (got '$1', want '$2')"; fi; }
 
+# use_migration <version> — point the suite at scripts/migrate-v<version>.sh. The record
+# grammar is PER SCRIPT: widening v0.21.0's to admit v0.35.0's `untracked` records would let a
+# forged `untracked:` line through its reports unnoticed.
+use_migration() {
+  local v="$1" vre
+  vre=$(printf '%s' "$v" | sed 's/\./\\./g')
+  MIGRATE="$SCRIPT_DIR/migrate-v$v.sh"
+  SELF="migrate-v$v"
+  case "$v" in
+    0.21.0)
+      RECORD_GRAMMAR="^(---- (migrate-v$vre|end migrate-v$vre) report ----|(version|encoding|mode|renamed|declined|collisions|failures|staged|committed|result)=.*|(renamed|declined|collision|failure|symlink|repo-state|references-to-update|directory-emptied): .*)\$"
+      COUNT_KEYS="renamed:renamed declined:declined collisions:collision failures:failure";;
+    0.35.0)
+      RECORD_GRAMMAR="^(---- (migrate-v$vre|end migrate-v$vre) report ----|(version|encoding|mode|renamed|declined|collisions|failures|untracked|staged|committed|result)=.*|(renamed|collision|failure|untracked|symlink|repo-state|references-to-update|directory-emptied): .*)\$"
+      COUNT_KEYS="renamed:renamed declined:declined collisions:collision failures:failure untracked:untracked";;
+    *) printf 'test-migrations: no grammar for %s\n' "$v" >&2; exit 2;;
+  esac
+  [ -f "$MIGRATE" ] || { printf 'test-migrations: FATAL — %s missing\n' "$MIGRATE" >&2; exit 2; }
+  printf '\n######## suite: %s.sh\n' "$SELF"
+}
+
 run_migrate() { OUT=$(bash "$MIGRATE" "$@" 2>&1); RC=$?; return 0; }
+# The fence text as a literal-match sed/grep pattern (dots escaped).
+fence_re() { printf '%s' "$1" | sed 's/[.]/\\./g'; }
 # From the FIRST start fence to end of output — not to the first end fence. A range that stops
 # at the first END makes anything after a forged fence invisible to the grammar check meant to
 # catch exactly that. assert_report_wellformed then requires exactly one fence of each kind.
-report_lines() { printf '%s\n' "$OUT" | sed -n '/^---- migrate-v0.21.0 report ----$/,$p'; }
+report_lines() { printf '%s\n' "$OUT" | sed -n "/^---- $(fence_re "$SELF") report ----\$/,\$p"; }
 
 # The report is a machine contract parsed by an agent holding edit and commit authority, and
 # every path in it is consumer-controlled. Two general assertions police it, so a fixture does
 # not have to anticipate each forgery: (1) every line inside the fences matches the record
 # grammar — a forged `note:`/`renamed:` line injected through a filename fails it; (2) the
 # record counts match the declared totals.
-RECORD_GRAMMAR='^(---- (migrate-v0\.21\.0|end migrate-v0\.21\.0) report ----|(version|encoding|mode|renamed|declined|collisions|failures|staged|committed|result)=.*|(renamed|declined|collision|failure|symlink|repo-state|references-to-update|directory-emptied): .*)$'
 assert_report_wellformed() {
   local bad_lines n declared counted key rec
   bad_lines=$(report_lines | grep -vE "$RECORD_GRAMMAR" || true)
   if [ -z "$bad_lines" ]; then ok "every report line is a valid record${1:+ — $1}"
   else bad "report contains non-record line(s)${1:+ — $1}: $(printf '%s' "$bad_lines" | head -3 | tr '\n' '|')"; fi
-  n=$(printf '%s\n' "$OUT" | grep -c '^---- migrate-v0.21.0 report ----$' || true)
+  n=$(printf '%s\n' "$OUT" | grep -c "^---- $(fence_re "$SELF") report ----\$" || true)
   assert_eq "$n" "1" "exactly one opening fence in the whole output"
-  n=$(printf '%s\n' "$OUT" | grep -c '^---- end migrate-v0.21.0 report ----$' || true)
+  n=$(printf '%s\n' "$OUT" | grep -c "^---- end $(fence_re "$SELF") report ----\$" || true)
   assert_eq "$n" "1" "exactly one closing fence in the whole output"
   # every declared total is cross-checked against its records, not just two of them
-  for key in renamed:renamed declined:declined collisions:collision failures:failure; do
+  for key in $COUNT_KEYS; do
     declared=$(report_lines | sed -n "s/^${key%%:*}=//p")
     rec=${key##*:}
     counted=$(report_lines | grep -c "^${rec}: " || true)
@@ -208,6 +241,11 @@ agent_updates_and_commits() {
 }
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# SUITE v0.21.0 — scripts/migrate-v0.21.0.sh (fixtures T*)
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+if want 0.21.0; then
+use_migration 0.21.0
+
 hd "T00 --check is a pure dry run"
 mk_repo t00
 before=$(snapshot)
@@ -385,9 +423,9 @@ assert_no_out "directory-emptied: .docs/agents/" "the directory still holds a co
 # ── defect 9: `git rm -r "the stale one"`, and a blanket staging sweep
 hd "T09 defect 9 — no recursive delete, and exactly one pinned staging call"
 if grep -nE 'git[[:space:]]+rm|rm[[:space:]]+-[a-zA-Z]*r|rm[[:space:]]+-rf' "$MIGRATE" | grep -v 'no recursive delete'; then
-  bad 'recursive delete or `git rm` present in migrate-v0.21.0.sh'
+  bad "recursive delete or \`git rm\` present in ${SELF}.sh"
 else
-  ok "no \`git rm\` and no recursive rm in migrate-v0.21.0.sh"
+  ok "no \`git rm\` and no recursive rm in ${SELF}.sh"
 fi
 # A pattern hunt for sweep spellings kept missing `git add -f -A`, the exact form its own
 # comment named. Pin the staging call itself instead: there must be exactly one, and it must be
@@ -898,6 +936,578 @@ while [ "$rep" -le "$REPEAT_TIMING" ]; do
   rep=$((rep+1))
 done
 
+fi  # end SUITE v0.21.0
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+# SUITE v0.35.0 — scripts/migrate-v0.35.0.sh (fixtures R*)
+# Reports leave the documentation estate: EVERY file under `.docs/reports/` moves to the same
+# relative path under `.marvin/reports/` — no allowlist, consumer-written reports included.
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+if want 0.35.0; then
+use_migration 0.35.0
+
+mk_repo35() {  # mk_repo35 <name> — a committed v0.34.0 install with reports in .docs/reports/
+  require_workdir
+  local d="$WORK/$1"
+  rm -rf "$d"; mkdir -p "$d"; cd "$d" || exit 1
+  git init -q .
+  git config user.email test@example.com
+  git config user.name "kit test"
+  git config commit.gpgsign false
+  mkdir -p .marvin/agents .docs/reports/archive .docs/project-management .docs/plans src
+  printf -- '---\nkit_version: 0.34.0\n---\nProject facts.\n' > .marvin/PROJECT-INFO.md
+  printf 'kit guide\nsnapshots land in `.docs/reports/`\n' > .marvin/agents/reporting.md
+  printf '{"stats_schema":4}\n' > .docs/reports/2026-09-01-stats.json
+  printf '# digest\n' > .docs/reports/2026-09-01-digest.md
+  printf 'install report\n' > .docs/reports/2026-08-01-install.md
+  printf 'hand-written notes\n' > .docs/reports/archive/q2-notes.md
+  printf '# Issue index\nnext_issue: 7\n' > .docs/project-management/INDEX.md
+  printf '# plans\n' > .docs/plans/index.md
+  printf 'console.log(1)\n' > src/app.js
+  printf '%s\n' '.marvin/runs/' > .gitignore
+  cat > CLAUDE.md <<'EOF'
+# Project rules
+- Latest digest: `.docs/reports/2026-09-01-digest.md`
+- Plans: `.docs/plans/index.md`
+@.marvin/CLAUDE.marvin.md
+EOF
+  git add -- . >/dev/null
+  git commit -qm "v0.34.0 install"
+}
+REPORTS35=".docs/reports/2026-09-01-stats.json .docs/reports/2026-09-01-digest.md .docs/reports/2026-08-01-install.md .docs/reports/archive/q2-notes.md"
+agent_updates_and_commits35() {
+  LC_ALL=C sed -i.bak -e 's#`\.docs/reports/#`.marvin/reports/#g' CLAUDE.md
+  rm -f CLAUDE.md.bak
+  git add -- CLAUDE.md
+  git commit -qm "chore: move reports to .marvin/reports/ and update references"
+}
+assert_no_move_map() {  # $1 = which refusal
+  assert_out "renamed=0"
+  assert_eq "$(report_lines | grep -c '^renamed: ')" "0" "no renamed records on the $1"
+  assert_eq "$(report_lines | grep -c '^references-to-update: ')" "0" "no reference records on the $1"
+  assert_eq "$(report_lines | grep -c '^directory-emptied: ')" "0" "no directory-emptied records on the $1"
+  assert_report_wellformed "$1"
+}
+
+hd "R00 --check is a pure dry run"
+mk_repo35 r00
+before=$(snapshot)
+run_migrate --check
+assert_rc 0
+assert_eq "$(snapshot)" "$before" "repository byte-identical before/after --check"
+assert_out "renamed: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md"
+assert_out "renamed: .docs/reports/archive/q2-notes.md -> .marvin/reports/archive/q2-notes.md"
+assert_out "references-to-update: .docs/reports/2026-09-01-digest.md"
+assert_out "directory-emptied: .docs/reports/ -> .marvin/reports/"
+assert_out "mode=check"
+assert_out "result=plan"
+assert_out "committed=no"
+assert_report_wellformed "clean plan"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "check mode moved nothing"
+
+hd "R01 every report moves — nested and hand-written ones too — and is staged, not committed"
+mk_repo35 r01
+run_migrate
+assert_rc 0
+assert_out "result=staged"
+assert_out "renamed=4"
+assert_out "staged=4"
+assert_out "failures=0"
+for f in $REPORTS35; do
+  assert_tracked ".marvin/reports/${f#.docs/reports/}" "moved (dies without the mkdir chain)"
+  assert_not_tracked "$f"
+done
+assert_eq "$(git rev-list --count HEAD)" "1" "the script did not commit"
+if [ -e .docs/reports ]; then bad ".docs/reports/ left behind although it emptied"; else ok "the emptied .docs/reports/ was pruned"; fi
+assert_tracked ".docs/project-management/INDEX.md" "the rest of .docs/ is untouched"
+assert_tracked ".docs/plans/index.md"
+if git check-ignore -q .marvin/reports/2026-09-01-digest.md; then
+  bad ".marvin/reports/ is gitignored — reports are committed records"
+else ok ".marvin/reports/ is not covered by the .marvin/runs/ ignore rule"; fi
+assert_report_wellformed "staged run"
+
+hd "RR1 the --check report is the real run's report, over the WHOLE report"
+mk_repo35 rr1
+assert_check_equivalence "clean v0.34.0 install"
+assert_out "mode=stage"
+
+hd "RR2 --check predicts directory-emptied exactly as the real run reports it"
+# A collided report stays behind, so `.docs/reports/` survives. A check-mode shortcut that
+# claims it empties would license the agent to rewrite bare directory references to a live path.
+mk_repo35 rr2
+mkdir -p .marvin/reports
+printf 'already here\n' > .marvin/reports/2026-09-01-digest.md
+commit_all "a hand-copied digest at the destination"
+run_migrate --check
+assert_rc 3
+assert_no_out "directory-emptied:" "the directory will NOT be emptied"
+assert_check_equivalence "a collision keeps the source directory alive"
+
+hd "R02 pruning is best effort — a directory a collided report keeps alive does not abort the run"
+mk_repo35 r02
+mkdir -p .marvin/reports/archive
+printf 'kept copy\n' > .marvin/reports/archive/q2-notes.md
+commit_all "one destination already taken"
+run_migrate
+assert_rc 3 "completed with a collision — not a rollback"
+assert_out "result=staged"
+assert_tracked ".docs/reports/archive/q2-notes.md" "the collided source stays put"
+assert_tracked ".marvin/reports/2026-09-01-digest.md" "the rest still moved"
+assert_file_has ".marvin/reports/archive/q2-notes.md" "kept copy" "the destination was not overwritten"
+
+hd "R05 a tracked destination is a collision, never an overwrite"
+mk_repo35 r05
+mkdir -p .marvin/reports
+printf 'hand-migrated digest\n' > .marvin/reports/2026-09-01-digest.md
+commit_all "consumer hand-migrated one report"
+run_migrate
+assert_rc 3 "collisions present"
+assert_out "collision: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md (destination already exists — reconcile by hand)"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "source untouched on collision"
+assert_file_has ".marvin/reports/2026-09-01-digest.md" "hand-migrated digest" "consumer content not overwritten"
+assert_tracked ".marvin/reports/2026-09-01-stats.json" "non-colliding reports still migrated"
+assert_no_out "references-to-update: .docs/reports/2026-09-01-digest.md" "a report that did not move is not on the reference list"
+assert_report_wellformed "collision"
+
+hd "R06 the destination guard tests the disk as well as the index"
+mk_repo35 r06
+printf '%s\n' '.marvin/reports/' >> .gitignore
+commit_all "gitignore .marvin/reports"
+mkdir -p .marvin/reports
+printf 'hand-copied, untracked\n' > .marvin/reports/2026-09-01-digest.md
+assert_clean "ignored stray copy leaves the tree clean"
+run_migrate
+assert_rc 3 "collision, not a failed git mv and a rollback"
+assert_out "collision: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "source untouched"
+assert_file_has ".marvin/reports/2026-09-01-digest.md" "hand-copied, untracked" "untracked file not clobbered"
+assert_tracked ".marvin/reports/2026-08-01-install.md" "the others moved, staged past the ignore rule"
+
+hd "R07 a destination ancestor that is a file is a plan-time collision"
+mk_repo35 r07
+printf 'not a directory\n' > .marvin/reports
+commit_all ".marvin/reports is a tracked file"
+run_migrate
+assert_rc 3 "collisions, not a mid-run mkdir failure and a rollback"
+assert_out "collision: .docs/reports/2026-09-01-stats.json -> .marvin/reports/2026-09-01-stats.json (a destination ancestor is a file: .marvin/reports — reconcile by hand)"
+assert_out "collisions=4"
+assert_out "renamed=0"
+for f in $REPORTS35; do assert_tracked "$f" "stays put"; done
+assert_file_has ".marvin/reports" "not a directory" "the blocking file is untouched"
+
+hd "R08 a dirty tree is refused, and nothing is staged or stashed"
+mk_repo35 r08
+head_before=$(git rev-parse HEAD)
+printf 'work in progress\n' >> src/app.js
+printf 'SECRET=hunter2\n' > .env.local
+run_migrate
+assert_rc 2 "refused"
+assert_out "result=dirty-refused"
+assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
+assert_eq "$(git diff --cached --name-only | wc -l | tr -d ' ')" "0" "nothing staged"
+assert_not_tracked ".env.local"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "no move happened"
+assert_eq "$(git stash list | wc -l | tr -d ' ')" "0" "no stash created on the user's behalf"
+assert_no_move_map "dirty refusal"
+run_migrate --check
+assert_rc 2 "--check predicts the refusal"
+assert_out "result=plan-only-tree-dirty"
+assert_out "renamed: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md" "the dry run still shows its plan"
+
+hd "R09 an untracked or gitignored file under .docs/reports/ makes the tree dirty"
+# `git mv` cannot move an untracked file and the rollback (reset to HEAD) cannot restore one,
+# so it is refused with its path named. A gitignored one is invisible to `git status`: only
+# the script's own listing (ignored files included) sees it.
+mk_repo35 r09
+printf '%s\n' '*.tmp' >> .gitignore
+commit_all "ignore *.tmp"
+printf 'draft, ignored\n' > .docs/reports/draft.tmp
+assert_clean "fixture: porcelain is empty although .docs/reports/ holds an ignored file"
+run_migrate
+assert_rc 2 "refused"
+assert_out "result=dirty-refused"
+assert_out "untracked=1"
+assert_out "untracked: .docs/reports/draft.tmp"
+assert_file_has ".docs/reports/draft.tmp" "draft, ignored" "the ignored file is still on disk"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "nothing moved"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md"
+assert_no_move_map "untracked refusal"
+run_migrate --check
+assert_rc 2 "--check predicts it"
+assert_out "untracked: .docs/reports/draft.tmp"
+rm -f .docs/reports/draft.tmp
+printf 'new, untracked\n' > '.docs/reports/new report.md'
+run_migrate
+assert_rc 2 "a plain untracked report is refused too"
+assert_out 'untracked: ".docs/reports/new report.md"'
+assert_file_has ".docs/reports/new report.md" "new, untracked" "and left exactly where it is"
+
+hd "RN1 nothing to do — checked first, on any tree"
+mk_repo35 rn1
+git rm -q -r .docs/reports >/dev/null
+commit_all "no reports at all"
+printf 'work in progress\n' >> src/app.js
+git checkout -q --detach
+before=$(snapshot)
+run_migrate
+assert_rc 0 "a run that can change nothing does not refuse over a dirty tree or a detached HEAD"
+assert_out "result=nothing-to-do"
+assert_out "renamed=0"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+assert_report_wellformed "nothing to do"
+run_migrate --check
+assert_rc 0
+assert_out "result=nothing-to-do"
+git checkout -q -
+git checkout -q -- src/app.js
+git rm -q -r .marvin >/dev/null
+printf '%s\n' '.marvin' >> .gitignore
+commit_all "gitignore .marvin"
+mkdir -p "$WORK/rn1-outside"; ln -s "$WORK/rn1-outside" .marvin
+run_migrate
+assert_rc 0 "a symlinked .marvin is no refusal when there is nothing to move through it"
+assert_out "result=nothing-to-do"
+
+hd "R11 ATOMICITY — the script stages, the agent edits and commits once; revert restores"
+mk_repo35 r11
+run_migrate
+assert_rc 0
+assert_eq "$(git rev-list --count HEAD)" "1" "the script committed nothing"
+agent_updates_and_commits35
+assert_clean "nothing left unstaged after the agent's commit"
+assert_eq "$(git rev-list --count HEAD)" "2" "exactly one migration commit"
+git show --name-only --format= HEAD | grep -Fxq .marvin/reports/2026-09-01-digest.md
+chk $? "the renames are in the SAME commit as the reference edit"
+assert_file_has "CLAUDE.md" '`.marvin/reports/2026-09-01-digest.md`'
+git revert --no-edit HEAD >/dev/null 2>&1
+chk $? "git revert HEAD applies cleanly"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "locations restored"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md"
+assert_file_has "CLAUDE.md" '`.docs/reports/2026-09-01-digest.md`' "references consistent with locations again"
+
+hd "R13 second run — nothing to do, clean tree, unchanged HEAD"
+mk_repo35 r13
+run_migrate
+agent_updates_and_commits35
+head_after=$(git rev-parse HEAD)
+run_migrate
+assert_rc 0
+assert_out "result=nothing-to-do"
+assert_eq "$(git rev-parse HEAD)" "$head_after" "HEAD unchanged on re-run"
+assert_clean "clean after re-run"
+
+hd "RC1 no file content is modified by any run"
+mk_repo35 rc1
+claude_before=$(cksum < CLAUDE.md)
+guide_before=$(cksum < .marvin/agents/reporting.md)
+map_before=$(content_map)
+run_migrate
+assert_rc 0
+assert_eq "$(content_map)" "$map_before" "every file's content census is unchanged — only paths moved"
+assert_eq "$(cksum < CLAUDE.md)" "$claude_before" "CLAUDE.md is byte-identical — the script never opens it"
+assert_eq "$(cksum < .marvin/agents/reporting.md)" "$guide_before" "a guide naming .docs/reports/ is untouched"
+assert_file_has "CLAUDE.md" '`.docs/reports/2026-09-01-digest.md`' "the old reference survives for the agent to judge"
+
+hd "RG1 a report named x*.md cannot drag in a gitignored sibling at the destination"
+mk_repo35 rg1
+printf 'star report\n' > '.docs/reports/x*.md'
+printf '%s\n' '.marvin/reports/xsecret.md' >> .gitignore
+commit_all "a report whose name is a glob"
+mkdir -p .marvin/reports
+printf 'API_TOKEN=s3cr3t-not-for-git\n' > .marvin/reports/xsecret.md
+assert_clean "the ignored sibling leaves the tree clean"
+run_migrate
+assert_rc 0
+assert_tracked '.marvin/reports/x*.md' "the real report moved"
+assert_not_tracked ".marvin/reports/xsecret.md" "the gitignored sibling was NOT force-staged"
+if git diff --cached --name-only | grep -Fq xsecret; then
+  bad "the gitignored sibling entered the staged set"; else ok "staged set free of the ignored sibling"; fi
+assert_out 'renamed: ".docs/reports/x*.md" -> ".marvin/reports/x*.md"'
+
+hd "RT9 no recursive delete, and exactly one pinned staging call"
+if grep -nE 'git[[:space:]]+rm|rm[[:space:]]+-[a-zA-Z]*r|rm[[:space:]]+-rf' "$MIGRATE"; then
+  bad "recursive delete or \`git rm\` present in ${SELF}.sh"
+else
+  ok "no \`git rm\` and no recursive rm in ${SELF}.sh"
+fi
+add_lines=$(grep -nE '^[[:space:]]*git[[:space:]]+add' "$MIGRATE")
+assert_eq "$(printf '%s\n' "$add_lines" | grep -c .)" "1" "exactly one git add invocation"
+assert_eq "$(printf '%s' "$add_lines" | sed 's/^[0-9]*:[[:space:]]*//')" \
+  'git add -f -- "${ADDARGS[@]}"' "the staging call matches its pinned form (ADDARGS are :(literal) pathspecs)"
+if grep -nE '^[^#]*git[[:space:]]+commit' "$MIGRATE"; then bad "the script contains a git commit"
+else ok "the script never commits"; fi
+
+hd "RS1 symlinks are refused before anything moves — every path of the set"
+# (a) .marvin/reports → outside
+mk_repo35 rs1a
+mkdir -p "$WORK/rs1a-outside"
+printf '%s\n' '.marvin/reports' >> .gitignore
+commit_all "gitignore the link"
+ln -s "$WORK/rs1a-outside" .marvin/reports
+head_before=$(git rev-parse HEAD)
+run_migrate
+assert_rc 6 ".marvin/reports symlink refused"
+assert_out "result=refused-symlink"
+assert_out "symlink: .marvin/reports"
+assert_eq "$(git rev-parse HEAD)" "$head_before" "HEAD unchanged"
+assert_tracked ".docs/reports/2026-09-01-digest.md" "nothing moved"
+assert_eq "$(find "$WORK/rs1a-outside" -type f | wc -l | tr -d ' ')" "0" "no report left the repository"
+assert_eq "$(report_lines | grep -c '^symlink: ')" "1" "one record per symlinked path"
+assert_no_move_map "symlink refusal"
+run_migrate --check
+assert_rc 6 "--check predicts the refusal"
+assert_out "result=plan-only-symlink"
+# (b) .docs/reports itself → outside: git lists nothing through it, so only the fixed set sees it
+mk_repo35 rs1b
+git rm -q -r .docs/reports >/dev/null
+printf '%s\n' '.docs/reports' >> .gitignore
+commit_all "reports kept outside, behind an ignored link"
+mkdir -p "$WORK/rs1b-outside"; printf 'outside report\n' > "$WORK/rs1b-outside/2026-01.md"
+ln -s "$WORK/rs1b-outside" .docs/reports
+assert_clean "fixture: the ignored link leaves the tree clean"
+run_migrate
+assert_rc 6 "a symlinked .docs/reports is refused, never reported as nothing-to-do"
+assert_out "symlink: .docs/reports"
+assert_file_has "$WORK/rs1b-outside/2026-01.md" "outside report" "the outside file is untouched"
+# (c) .docs → outside
+mk_repo35 rs1c
+mkdir -p "$WORK/rs1c-outside/reports"; printf 'x\n' > "$WORK/rs1c-outside/reports/r.md"
+git rm -q -r .docs >/dev/null
+printf '%s\n' '.docs' >> .gitignore
+commit_all "the docs estate lives elsewhere"
+ln -s "$WORK/rs1c-outside" .docs
+run_migrate
+assert_rc 6 "a symlinked .docs is refused"
+assert_out "symlink: .docs"
+# (d) a tracked report that is itself a symlink
+mk_repo35 rs1d
+ln -s 2026-09-01-digest.md .docs/reports/latest.md
+commit_all "a committed link to the latest digest"
+run_migrate
+assert_rc 6 "a symlinked report is refused, never moved"
+assert_out "symlink: .docs/reports/latest.md"
+assert_tracked ".docs/reports/latest.md" "nothing moved"
+# (e) .marvin → outside
+mk_repo35 rs1e
+mkdir -p "$WORK/rs1e-outside"
+git rm -q -r .marvin >/dev/null
+printf '%s\n' '.marvin' >> .gitignore
+commit_all "gitignore .marvin"
+ln -s "$WORK/rs1e-outside" .marvin
+run_migrate
+assert_rc 6 "a symlinked .marvin is refused"
+assert_out "symlink: .marvin"
+assert_eq "$(find "$WORK/rs1e-outside" -type f | wc -l | tr -d ' ')" "0" "no report left the repository"
+
+hd "RS2 a symlink refusal reports the symlink and nothing else — no collision lines"
+# A `.marvin` that links to a FILE makes every destination look "blocked by a file"; those
+# collisions are artefacts of the link, and a refusal that prints them sends the user
+# reconciling the wrong thing.
+mk_repo35 rs2
+printf 'outside\n' > "$WORK/rs2-outside-file"
+git rm -q -r .marvin >/dev/null
+printf '%s\n' '.marvin' >> .gitignore
+commit_all "gitignore .marvin"
+ln -s "$WORK/rs2-outside-file" .marvin
+run_migrate
+assert_rc 6 "refused"
+assert_out "result=refused-symlink"
+assert_out "symlink: .marvin"
+assert_out "collisions=0"
+assert_eq "$(report_lines | grep -c '^collision: ')" "0" "no collision records on the symlink refusal"
+assert_report_wellformed "symlink refusal over a linked file"
+run_migrate --check
+assert_rc 6 "--check predicts the refusal"
+assert_out "collisions=0"
+assert_eq "$(report_lines | grep -c '^collision: ')" "0" "no collision records on the dry-run symlink refusal either"
+assert_file_has "$WORK/rs2-outside-file" "outside" "the linked file is untouched"
+
+hd "RP1 an assume-unchanged file is refused (its changes are invisible to git status)"
+mk_repo35 rp1
+git update-index --assume-unchanged src/app.js
+printf 'uncommitted work nobody can see\n' >> src/app.js
+assert_clean "fixture: porcelain is empty although src/app.js is modified"
+run_migrate
+assert_rc 9 "refused"
+assert_out "result=refused-repo-state"
+assert_out "assume-unchanged bit set on src/app.js"
+assert_file_has "src/app.js" "uncommitted work nobody can see" "the invisible work was NOT destroyed"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "nothing moved"
+assert_no_move_map "repo-state refusal"
+
+hd "RP2 a merge in progress is refused, even with an empty porcelain"
+mk_repo35 rp2
+git checkout -q -b other
+printf 'X\n' >> src/app.js
+git commit -qam "change on other"
+git checkout -q -
+printf 'X\n' >> src/app.js
+git commit -qam "same change applied directly"
+git merge --no-commit --no-ff other >/dev/null 2>&1
+assert_clean "fixture: porcelain is empty while MERGE_HEAD exists"
+run_migrate
+assert_rc 9 "refused — the agent's commit would silently conclude the consumer's merge"
+assert_out "MERGE_HEAD exists"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "nothing moved"
+
+hd "RP3 a detached or unborn HEAD is refused"
+mk_repo35 rp3
+git checkout -q --detach
+run_migrate
+assert_rc 9 "detached refused"
+assert_out "HEAD is detached"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "nothing moved"
+require_workdir
+rm -rf "$WORK/rp3u"; mkdir -p "$WORK/rp3u/.docs/reports"; cd "$WORK/rp3u" || exit 1
+git init -q .; git config user.email t@t; git config user.name "kit test"
+printf 'x\n' > .docs/reports/r.md
+git add -- .docs/reports/r.md
+run_migrate
+assert_rc 9 "unborn HEAD refused — there is nothing to roll back to"
+assert_out "HEAD is unborn"
+
+hd "RP4 skip-worktree / sparse checkout is refused"
+mk_repo35 rp4
+git update-index --skip-worktree src/app.js
+run_migrate
+assert_rc 9 "refused"
+assert_out "skip-worktree bit set on src/app.js"
+git update-index --no-skip-worktree src/app.js
+git config core.sparseCheckout true
+run_migrate
+assert_rc 9 "sparse checkout refused too"
+assert_out "core.sparseCheckout is enabled"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "nothing moved"
+
+hd "RP5 a dirty or recursed submodule is refused"
+require_workdir
+rm -rf "$WORK/rp5-origin"; mkdir -p "$WORK/rp5-origin"; cd "$WORK/rp5-origin"
+git init -q .; git config user.email t@t; git config user.name "kit test"; git config commit.gpgsign false
+printf 'v1|\n' > lib.txt; git add -- . >/dev/null; git commit -qm v1
+mk_repo35 rp5
+git -c protocol.file.allow=always submodule add -q "$WORK/rp5-origin" vendor >/dev/null 2>&1
+git config -f .gitmodules submodule.vendor.ignore all
+commit_all "submodule with ignore=all"
+printf 'v1|WORK-A|\n' > vendor/lib.txt
+assert_clean "fixture: porcelain is empty although the submodule is dirty"
+run_migrate
+assert_rc 9 "refused"
+assert_out "a submodule change is hidden from git status: vendor"
+assert_file_has "vendor/lib.txt" "WORK-A" "the submodule working tree was NOT reset"
+git -C vendor checkout -q -- lib.txt
+git config submodule.recurse true
+run_migrate
+assert_rc 9 "submodule.recurse refused too"
+assert_out "submodule.recurse is enabled"
+
+hd "RP6 a submodule under .docs/reports/ is refused — moving it would edit .gitmodules"
+mk_repo35 rp6
+git -c protocol.file.allow=always submodule add -q "$WORK/rp5-origin" .docs/reports/vendored >/dev/null 2>&1
+commit_all "a submodule inside the reports folder"
+gm_before=$(cksum < .gitmodules)
+run_migrate
+assert_rc 9 "refused"
+assert_out "a submodule lives under .docs/reports/: .docs/reports/vendored"
+assert_eq "$(cksum < .gitmodules)" "$gm_before" ".gitmodules untouched"
+assert_not_tracked ".marvin/reports/2026-09-01-digest.md" "nothing moved"
+
+hd "RM3 the report is byte-identical under a C and a UTF-8 locale"
+mk_repo35 rm3
+printf 'x\n' > '.docs/reports/café.md'
+commit_all "non-ASCII report name"
+c_out=$(LC_ALL=C LANG=C bash "$MIGRATE" --check 2>&1)
+u_out=$(LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 bash "$MIGRATE" --check 2>&1)
+assert_eq "$u_out" "$c_out" "identical report bytes under C and en_US.UTF-8"
+OUT="$c_out"
+assert_out "result=plan" "no locale-induced repo-state refusal"
+assert_out 'renamed: ".docs/reports/caf\303\251.md" -> ".marvin/reports/caf\303\251.md"' "high bytes are octal-escaped"
+assert_report_wellformed "non-ASCII names"
+
+hd "RX1 hostile paths cannot inject report records"
+mk_repo35 rx1
+INJ=$(printf '.docs/reports/oops\nrenamed: FAKESRC.md -> ATTACKER-PATH.md\nzz.md')
+printf 'x\n' > "$INJ"
+HOSTILE_TAB=$(printf '.docs/reports/tab\there.md')
+printf 'x\n' > "$HOSTILE_TAB"
+printf 'x\n' > '.docs/reports/arrow -> target.md'
+printf 'x\n' > '.docs/reports/quote".md'
+commit_all "hostile report names"
+run_migrate
+assert_rc 0
+assert_report_wellformed "hostile paths"
+assert_no_record "renamed: FAKESRC.md -> ATTACKER-PATH.md"
+assert_out 'renamed: ".docs/reports/oops\nrenamed: FAKESRC.md -> ATTACKER-PATH.md\nzz.md" -> ".marvin/reports/oops\nrenamed: FAKESRC.md -> ATTACKER-PATH.md\nzz.md"'
+assert_out 'renamed: ".docs/reports/tab\there.md" -> ".marvin/reports/tab\there.md"'
+assert_out 'renamed: ".docs/reports/arrow -> target.md" -> ".marvin/reports/arrow -> target.md"'
+assert_out 'renamed: ".docs/reports/quote\".md" -> ".marvin/reports/quote\".md"'
+tracked_z "$(printf '.marvin/reports/oops\nrenamed: FAKESRC.md -> ATTACKER-PATH.md\nzz.md')"
+chk $? "the hostile report moved like any other"
+assert_check_equivalence "hostile paths"
+
+hd "RU1 flags and a non-repository are refused without touching anything"
+mk_repo35 ru1
+before=$(snapshot)
+run_migrate --commit
+assert_rc 4 "--commit is refused — committing is the agent's step"
+assert_out "unknown option: --commit"
+assert_eq "$(snapshot)" "$before" "repository untouched"
+mkdir -p "$WORK/ru1-nogit"
+OUT=$(cd "$WORK/ru1-nogit" && env GIT_CEILING_DIRECTORIES="$WORK" bash "$MIGRATE" 2>&1); RC=$?
+assert_rc 4
+assert_out "not a git work tree"
+
+r27_killed_run_rolls_back() {
+  mk_repo35 "r27-$1"
+  i=0
+  while [ "$i" -lt 150 ]; do                     # widen the window so the kill lands mid-run
+    printf 'report %s\n' "$i" > ".docs/reports/archive/r$i.md"
+    i=$((i+1))
+  done
+  commit_all "many reports"
+  before=$(snapshot)
+  head_before=$(git rev-parse HEAD)
+  bash "$MIGRATE" > "$WORK/r27.log" 2>&1 &
+  mig_pid=$!
+  # Wait for the first actual mutation (`.marvin/reports` appears) — a kill during planning has
+  # nothing to roll back, and every assertion would pass for free.
+  waited=0
+  while [ ! -d .marvin/reports ] && [ "$waited" -lt 1500 ]; do
+    kill -0 "$mig_pid" 2>/dev/null || break
+    sleep 0.02
+    waited=$((waited+1))
+  done
+  if [ -d .marvin/reports ]; then ok "the migration reached its first change before the kill"
+  else bad "the migration never created .marvin/reports — the kill would prove nothing"; fi
+  kill -TERM "$mig_pid" 2>/dev/null
+  wait "$mig_pid" 2>/dev/null
+  mig_rc=$?
+  if grep -q "result=staged" "$WORK/r27.log"; then
+    bad "the kill missed its window — the migration completed (rc=$mig_rc); fixture needs a wider window"
+  else
+    ok "the run was killed after it started moving files (rc=$mig_rc)"
+    assert_eq "$(snapshot)" "$before" "repository byte-identical to its pre-run state"
+    assert_clean "no staged half-migration left behind"
+    assert_tracked ".docs/reports/2026-09-01-digest.md" "sources restored"
+    assert_not_tracked ".marvin/reports/2026-09-01-digest.md"
+    if [ -e .marvin/reports ]; then bad ".marvin/reports was left behind"; else ok "created directories removed"; fi
+    grep -q "restoring the repository to" "$WORK/r27.log"
+    chk $? "the run reported its rollback"
+    OUT=$(cat "$WORK/r27.log")
+    assert_out "result=rolled-back"
+    assert_out "staged=0"
+    assert_no_move_map "rollback"
+  fi
+}
+rep=1
+while [ "$rep" -le "$REPEAT_TIMING" ]; do
+  hd "R27 a killed run rolls back to the pre-run state (run $rep/$REPEAT_TIMING)"
+  r27_killed_run_rolls_back "$rep"
+  rep=$((rep+1))
+done
+
+fi  # end SUITE v0.35.0
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 hd "T28 the suite refuses to run without a scratch directory"
 selftest=$( (WORK=""; require_workdir; echo "GUARD DID NOT FIRE") 2>&1 )
 selftest_rc=$?
