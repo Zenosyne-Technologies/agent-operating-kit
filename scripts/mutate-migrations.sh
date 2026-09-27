@@ -69,6 +69,9 @@ no-mkdir|R01|s/^  mkdir_chain "\$DST_ROOT"\n//m; s/^    mkdir_chain "\$\(dirname
 mkdir-recorded-late|R27|s/^  MUTATED=1\n  CREATED_DIRS\[\$\{#CREATED_DIRS\[\@\]\}\]="\$d"\n  mkdir "\$d"/  MUTATED=1\n  mkdir "\$d"\n  sleep 0.6\n  CREATED_DIRS[\${#CREATED_DIRS[\@]}]="\$d"/m
 no-prune|R01|s/^  prune_dirs\nfi\n/fi\n/m
 rmdir-not-besteffort|R02|s/rmdir "\$d" 2>\/dev\/null \|\| true/rmdir "\$d"/
+no-collision-preflight|RK1|s/^if \[ "\$\{#COLL_SRC\[\@\]\}" -gt 0 \]; then\n  say "REFUSED — destinations already exist/if false; then\n  say "REFUSED — destinations already exist/m
+collision-refusal-keeps-map|RK1|s/^  clear_move_map\n  report refused-collisions/  report refused-collisions/m
+check-collisions-pass|RR2|s/^  if \[ "\$\{#COLL_SRC\[\@\]\}" -gt 0 \]; then\n    say "a real run will REFUSE: destinations/  if false; then\n    say "a real run will REFUSE: destinations/m
 no-collision-guard|R05|s/^dst_occupied\(\) \{ tracked_exact "\$1" \|\| \[ -e "\$1" \]; \}/dst_occupied() { false; }/m
 index-only-dst-guard|R06|s/^dst_occupied\(\) \{ tracked_exact "\$1" \|\| \[ -e "\$1" \]; \}/dst_occupied() { tracked_exact "\$1"; }/m
 no-ancestor-guard|R07|s/^  if anc=\$\(dst_ancestor_file "\$dst"\); then/  if false; then/m

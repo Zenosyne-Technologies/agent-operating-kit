@@ -1031,29 +1031,62 @@ mk_repo35 rr1
 assert_check_equivalence "clean v0.34.0 install"
 assert_out "mode=stage"
 
-hd "RR2 --check predicts directory-emptied exactly as the real run reports it"
-# A collided report stays behind, so `.docs/reports/` survives. A check-mode shortcut that
-# claims it empties would license the agent to rewrite bare directory references to a live path.
+hd "RR2 --check predicts directory-emptied exactly — a report left behind keeps the directory alive"
+# A collided report stays behind in the dry run's plan, so `.docs/reports/` survives. A
+# check-mode shortcut that claims it empties would license the agent to rewrite bare directory
+# references to a live path.
 mk_repo35 rr2
 mkdir -p .marvin/reports
 printf 'already here\n' > .marvin/reports/2026-09-01-digest.md
 commit_all "a hand-copied digest at the destination"
 run_migrate --check
 assert_rc 3
+assert_out "result=plan-only-collisions"
 assert_no_out "directory-emptied:" "the directory will NOT be emptied"
-assert_check_equivalence "a collision keeps the source directory alive"
 
-hd "R02 pruning is best effort — a directory a collided report keeps alive does not abort the run"
-mk_repo35 r02
+hd "RK1 a collision refuses the WHOLE run before the first move — tree and index untouched"
+# All or nothing: moving the non-colliding reports and stopping at the collision splits the
+# reports across both folders.
+mk_repo35 rk1
 mkdir -p .marvin/reports/archive
-printf 'kept copy\n' > .marvin/reports/archive/q2-notes.md
-commit_all "one destination already taken"
+printf 'kept digest\n' > .marvin/reports/2026-09-01-digest.md
+printf 'kept notes\n' > .marvin/reports/archive/q2-notes.md
+commit_all "two destinations already taken"
+before=$(snapshot)
+index_before=$(git ls-files -s)
 run_migrate
-assert_rc 3 "completed with a collision — not a rollback"
+assert_rc 3 "refused"
+assert_out "result=refused-collisions"
+assert_out "collisions=2"
+assert_out "collision: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md (destination already exists — reconcile by hand)"
+assert_out "collision: .docs/reports/archive/q2-notes.md -> .marvin/reports/archive/q2-notes.md (destination already exists — reconcile by hand)"
+assert_eq "$(snapshot)" "$before" "tree byte-identical — nothing moved"
+assert_eq "$(git ls-files -s)" "$index_before" "index unchanged — nothing staged"
+assert_eq "$(git diff --cached --name-only | wc -l | tr -d ' ')" "0" "no staged change at all"
+for f in $REPORTS35; do assert_tracked "$f" "every report stays put, the non-colliding ones too"; done
+assert_no_move_map "collision refusal"
+run_migrate --check
+assert_rc 3 "--check predicts the refusal"
+assert_out "result=plan-only-collisions"
+assert_out "renamed: .docs/reports/2026-09-01-stats.json -> .marvin/reports/2026-09-01-stats.json" "the dry run still shows its plan"
+
+hd "R02 pruning is best effort — a file appearing mid-run does not roll back a finished run"
+# Finder drops `.DS_Store` whenever it likes. A shim `git` plays Finder: right after the last
+# move it creates one in the emptied archive/ folder, so the prune's `rmdir` fails there.
+mk_repo35 r02
+real_git=$(command -v git)
+mkdir -p "$WORK/r02-shim"
+{ printf '#!/usr/bin/env bash\n'
+  printf '"%s" "$@"; rc=$?\n' "$real_git"
+  printf 'if [ "$1" = mv ]; then case "$3" in *q2-notes.md) : > .docs/reports/archive/.DS_Store;; esac; fi\n'
+  printf 'exit $rc\n'; } > "$WORK/r02-shim/git"
+chmod +x "$WORK/r02-shim/git"
+OUT=$(PATH="$WORK/r02-shim:$PATH" bash "$MIGRATE" 2>&1); RC=$?
+assert_rc 0 "completed — the leftover is not a failure"
 assert_out "result=staged"
-assert_tracked ".docs/reports/archive/q2-notes.md" "the collided source stays put"
-assert_tracked ".marvin/reports/2026-09-01-digest.md" "the rest still moved"
-assert_file_has ".marvin/reports/archive/q2-notes.md" "kept copy" "the destination was not overwritten"
+assert_tracked ".marvin/reports/archive/q2-notes.md" "every report moved"
+assert_not_tracked ".docs/reports/archive/q2-notes.md"
+if [ -e .docs/reports/archive/.DS_Store ]; then ok "the mid-run file is left alone"; else bad "the mid-run file vanished"; fi
 
 hd "R05 a tracked destination is a collision, never an overwrite"
 mk_repo35 r05
@@ -1065,8 +1098,8 @@ assert_rc 3 "collisions present"
 assert_out "collision: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md (destination already exists — reconcile by hand)"
 assert_tracked ".docs/reports/2026-09-01-digest.md" "source untouched on collision"
 assert_file_has ".marvin/reports/2026-09-01-digest.md" "hand-migrated digest" "consumer content not overwritten"
-assert_tracked ".marvin/reports/2026-09-01-stats.json" "non-colliding reports still migrated"
-assert_no_out "references-to-update: .docs/reports/2026-09-01-digest.md" "a report that did not move is not on the reference list"
+assert_not_tracked ".marvin/reports/2026-09-01-stats.json" "all or nothing: the non-colliding reports did not move either"
+assert_no_out "references-to-update:" "nothing moved, so nothing is on the reference list"
 assert_report_wellformed "collision"
 
 hd "R06 the destination guard tests the disk as well as the index"
@@ -1081,7 +1114,10 @@ assert_rc 3 "collision, not a failed git mv and a rollback"
 assert_out "collision: .docs/reports/2026-09-01-digest.md -> .marvin/reports/2026-09-01-digest.md"
 assert_tracked ".docs/reports/2026-09-01-digest.md" "source untouched"
 assert_file_has ".marvin/reports/2026-09-01-digest.md" "hand-copied, untracked" "untracked file not clobbered"
-assert_tracked ".marvin/reports/2026-08-01-install.md" "the others moved, staged past the ignore rule"
+rm -f .marvin/reports/2026-09-01-digest.md
+run_migrate
+assert_rc 0 "once the stray copy is gone the run completes"
+assert_tracked ".marvin/reports/2026-08-01-install.md" "moved and staged past the ignore rule"
 
 hd "R07 a destination ancestor that is a file is a plan-time collision"
 mk_repo35 r07
