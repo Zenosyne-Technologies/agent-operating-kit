@@ -1299,6 +1299,29 @@ assert_rc 6 "a symlinked .marvin is refused"
 assert_out "symlink: .marvin"
 assert_eq "$(find "$WORK/rs1e-outside" -type f | wc -l | tr -d ' ')" "0" "no report left the repository"
 
+hd "RS2 a symlink refusal reports the symlink and nothing else — no collision lines"
+# A `.marvin` that links to a FILE makes every destination look "blocked by a file"; those
+# collisions are artefacts of the link, and a refusal that prints them sends the user
+# reconciling the wrong thing.
+mk_repo35 rs2
+printf 'outside\n' > "$WORK/rs2-outside-file"
+git rm -q -r .marvin >/dev/null
+printf '%s\n' '.marvin' >> .gitignore
+commit_all "gitignore .marvin"
+ln -s "$WORK/rs2-outside-file" .marvin
+run_migrate
+assert_rc 6 "refused"
+assert_out "result=refused-symlink"
+assert_out "symlink: .marvin"
+assert_out "collisions=0"
+assert_eq "$(report_lines | grep -c '^collision: ')" "0" "no collision records on the symlink refusal"
+assert_report_wellformed "symlink refusal over a linked file"
+run_migrate --check
+assert_rc 6 "--check predicts the refusal"
+assert_out "collisions=0"
+assert_eq "$(report_lines | grep -c '^collision: ')" "0" "no collision records on the dry-run symlink refusal either"
+assert_file_has "$WORK/rs2-outside-file" "outside" "the linked file is untouched"
+
 hd "RP1 an assume-unchanged file is refused (its changes are invisible to git status)"
 mk_repo35 rp1
 git update-index --assume-unchanged src/app.js

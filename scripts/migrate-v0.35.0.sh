@@ -366,6 +366,14 @@ clear_move_map() {
   return 0
 }
 
+# A symlink refusal reports the symlink, nothing else. Collisions computed through a link are
+# artefacts of the link (a `.marvin` pointing at a file makes every destination "blocked by a
+# file"), so printing them would send the user reconciling paths that are not the problem.
+clear_collisions() {
+  COLL_SRC=(); COLL_DST=(); COLL_WHY=()
+  return 0
+}
+
 mkdir_tracked() {
   local d="$1"
   [ -d "$d" ] && return 0
@@ -495,6 +503,7 @@ if [ "$MODE" = "check" ]; then
   fi
   if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
     say "a real run will REFUSE: symlinked paths are never followed"
+    clear_collisions
     COMPLETED=1; report plan-only-symlink; exit 6
   fi
   finish plan
@@ -523,6 +532,7 @@ if [ "${#SYMLINK_HITS[@]}" -gt 0 ]; then
   i=0; while [ "$i" -lt "${#SYMLINK_HITS[@]}" ]; do
     printf '  %s\n' "$(q "${SYMLINK_HITS[$i]}")"; i=$((i+1)); done
   clear_move_map
+  clear_collisions
   report refused-symlink
   exit 6
 fi

@@ -87,7 +87,9 @@ staging-sweep|RT9|s/^  git add -f -- "\$\{ADDARGS\[\@\]\}"/  git add -f -A/m
 no-symlink-refusal|RS1|s/^safety_checks\(\) \{/safety_checks() { return 0;/m
 no-fixed-set-check|RS1|s/^  for d in \.docs "\$SRC_ROOT" \.marvin "\$DST_ROOT"; do check_components "\$d"; done\n//m
 no-per-file-src-check|RS1|s/^    check_components "\$\{ALL_SRC\[\$i\]\}"; i=\$\(\(i\+1\)\)/    i=\$((i+1))/m
-symlink-refusal-keeps-map|RS1|s/^  clear_move_map\n  report refused-symlink/  report refused-symlink/m
+symlink-refusal-keeps-collisions|RS2|s/^  clear_move_map\n  clear_collisions\n  report refused-symlink/  clear_move_map\n  report refused-symlink/m
+check-symlink-keeps-collisions|RS2|s/^    clear_collisions\n    COMPLETED=1; report plan-only-symlink/    COMPLETED=1; report plan-only-symlink/m
+symlink-refusal-keeps-map|RS1|s/^  clear_move_map\n  clear_collisions\n  report refused-symlink/  clear_collisions\n  report refused-symlink/m
 no-repo-state-check|RP1|s/^repo_state_checks\(\) \{/repo_state_checks() { return 0;/m
 state-misses-assume-unchanged|RP1|s#\[abcdefghijklmnopqrstuvwxyz\]\) state_problem "assume-unchanged#[Z]) state_problem "assume-unchanged#
 state-misses-merge|RP2|s/for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do/for f in NOTHING_AT_ALL; do/
