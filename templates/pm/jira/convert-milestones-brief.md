@@ -18,7 +18,7 @@ TOOLS: one tool-search call for: searchJiraIssuesUsingJql, editJiraIssue, getVis
 
 TARGET: Jira site {{JIRA_SITE_URL}}, project key {{PROJECT_KEY}}.
 
-1. ENUMERATE, two passes: JQL `project = {{PROJECT_KEY}} AND labels ~ "milestone:"` → the distinct `milestone:<slug>` labels and the issues carrying each; JQL `project = {{PROJECT_KEY}} AND labels ~ "release:"` → the distinct `release:v<version>` labels and their issues.
+1. ENUMERATE: JQL `project = {{PROJECT_KEY}} AND labels is not EMPTY`, reading EVERY page — the `labels` field supports only `=`, `!=`, `in`, `not in`, `is`, `is not`, never a `~` prefix match, so filter by prefix HERE, not in JQL: from the returned labels collect the distinct `milestone:<slug>` labels and the issues carrying each, and the distinct `release:v<version>` labels and their issues.
 2. For each label, idempotently: create the fixVersion if absent, named with the label's value VERBATIM — the `<slug>` from `milestone:<slug>`, the `v1.2.0` from `release:v1.2.0` (never re-prefix a value that already carries its `v`); mark a release fixVersion released, with the tag's date, where the tool exposes it; set it on every issue carrying that label (KEEP existing fixVersions — an issue in both a milestone and a release must end with both); then remove that label from those issues.
 3. GUIDE: update the in-tracker "Issue Intake & Triage Guide" hierarchy section — milestones are now native fixVersions (4/4 kit levels) and released versions are native fixVersions too; both virtual rules are retired.
 

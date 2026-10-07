@@ -31,9 +31,9 @@ On top of the full header of `document-standard.md`, every `type: information` f
 
 ## Relevance values (owned by the core dispatch rules)
 
-`orchestrator` · `developer` · `developer-small` · `ponytail` · `researcher` · `validator-completion` · `validator-security` · `documenter` · `all`
+`orchestrator` · `developer` · `developer-small` · `ponytail` · `researcher` · `validator-completion` · `validator-security` · `validator-visual` · `escalation-high` · `escalation-xhigh` · `escalation-max` · `escalation-frontier` · `documenter` · `all`
 
-These are EXACTLY the dispatch personas of `.marvin/CLAUDE.marvin.md`'s *Model-tier dispatch* rule — one source of truth for the Marvin workflow. They are never redefined, extended or renamed here: a new persona appears in the dispatch rules first, and only then becomes a legal `relevance:` value. `all` means every persona including the orchestrator.
+These are EXACTLY the dispatch personas of `.marvin/CLAUDE.marvin.md`'s *Model-tier dispatch* rule — one source of truth for the Marvin workflow. They are never redefined, extended or renamed here: a new persona appears in the dispatch rules first, and only then becomes a legal `relevance:` value. `all` means every persona including the orchestrator. An escalation rung ALSO matches the build persona it replaced (`developer` or `developer-small`) — a build rule never drops off when a task climbs; its own value targets rung-only rules.
 
 ## Index maintenance
 
