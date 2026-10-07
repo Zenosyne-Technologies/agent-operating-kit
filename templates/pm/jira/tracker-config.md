@@ -12,7 +12,7 @@ updated: {{INSTALL_DATE}}
 
 Kit target hierarchy: milestone container → feature grouping → work item → sub-item.
 
-**Epic** → **Story** → **Task/Sub-task** are native under project {{PROJECT_KEY}}. The current Jira MCP connector cannot create releases, so the milestone-container level is VIRTUAL:
+**Epic** (feature grouping) → **Story / Task / Bug** (peers, each parented to the Epic — never a Task under a Story) → **Sub-task** (the only child level) are native under project {{PROJECT_KEY}}. The current Jira MCP connector cannot create releases, so the milestone-container level is VIRTUAL:
 
 - At milestone kickoff the planner creates the label `milestone:<slug>` and applies it to every epic in that milestone's scope. Planning and filing agents treat the label exactly like a milestone container (JQL: `labels = "milestone:<slug>"`).
 - Milestone membership is encoded ONLY in that label — never in epic names or descriptions — so it stays losslessly convertible.
