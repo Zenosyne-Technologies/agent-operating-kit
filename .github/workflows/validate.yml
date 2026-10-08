@@ -14,5 +14,7 @@ jobs:
         run: bash scripts/test-migrations.sh
       - name: Run SessionStart hook tests
         run: bash scripts/test-session-hook.sh
+      - name: Run context-budget hook tests
+        run: bash scripts/test-context-budget.sh
       - name: Run CLAUDE.md split planner tests
         run: bash scripts/test-claude-md-split.sh
