@@ -2,21 +2,24 @@
 doc: Escalation ladder
 type: reference
 status: active
-summary: The effort ladder a Stuck build task climbs on the orchestrator's own model — high → xhigh → the ask-at-max gate (max recommended, frontier opt-in) → stop at the user — plus its entry rule, the escalation brief and de-escalation.
+summary: The climb a Stuck build task takes — a tier-up from the micro tier, the small tier's xhigh rung, then effort on the orchestrator's model (high → xhigh → the ask-at-max gate, max recommended, frontier opt-in) → stop at the user — plus its entry rule, the escalation brief and de-escalation.
 updated: {{INSTALL_DATE}}
 ---
 
-# Escalation ladder — effort before model
+# Escalation ladder — effort within a tier, then up
 
 WHEN a build task climbs is decided ONLY by the round signals in `escalation.md` (Stuck, which includes a rung's N-round cap) — never by a bare failure count, and never for a task whose pattern calls for a RETHINK. This file is HOW it climbs. Why effort and not model, and which jobs are off the ladder: `escalation.md`.
 
 ## Entering the ladder
 
-A task entering the ladder KEEPS its `size:` label — a small-sized issue that needed the ladder IS the mis-sizing evidence (`reporting.md`'s call-out), so relabelling would erase it. Escalation personas run under the heavy `marvin:developer`'s guardrail rows plus the failed task's scope — NEVER `developer-small`'s or `ponytail`'s discretion-STOP rows, whatever the task's size.
+A task entering the ladder KEEPS its `size:` label — a small-sized issue that needed the ladder IS the mis-sizing evidence (`reporting.md`'s call-out), so relabelling would erase it. Escalation personas run under the heavy `marvin:developer`'s guardrail rows plus the failed task's scope — NEVER `developer-small`'s, `developer-micro`'s or `ponytail`'s discretion-STOP rows, whatever the task's size.
 
 ## The ladder
 
-A BUILD task climbs one rung each time `escalation.md`'s signals say climb, starting from its assigned build persona (any tier, `marvin:developer` included). Each rung runs rounds under the same signals, up to its N-round cap:
+A BUILD task climbs one step each time `escalation.md`'s signals say climb, starting from its assigned build persona. Each step runs rounds under the same signals, up to its N-round cap:
+
+- **Tier-up (micro → small)** — a stuck `marvin:developer-micro` build goes to `marvin:developer-small`. Not a rung: the micro tier already runs at its pinned effort (`model-profile.md`), so nothing is left to climb there. Record it like a rung change — ledger `rung` column `tier-up`, and the tracker comment.
+- **Small-tier rung** — `marvin:escalation-small-xhigh`, the small tier at `xhigh` effort: the first rung for a build at `marvin:developer-small`, including one that tiered up. A `marvin:developer` build skips it and enters at rung 1.
 
 1. `marvin:escalation-high` — the ceiling model at `high` effort.
 2. `marvin:escalation-xhigh` — the ceiling model at `xhigh` effort.
@@ -45,4 +48,4 @@ The persona name is stamped onto every telemetry event (`token-economics.md`), s
 
 ## De-escalate
 
-Once the blocker is resolved and the remaining work is mechanical, route it back down by its `size:` label per the core dispatch rules — the ladder is for the blocker, not for the rest of the task. If a signal climbs that work again, it RESUMES at the rung it left — never restarts at the base.
+Once the blocker is resolved and the remaining work is mechanical, route it back down by its `size:` label — and, for a `size:s` or a piece, by `briefing.md`'s fully-specified test — per the core dispatch rules — the ladder is for the blocker, not for the rest of the task. If a signal climbs that work again, it RESUMES at the rung it left — never restarts at the base.
