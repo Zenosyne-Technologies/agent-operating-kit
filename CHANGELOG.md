@@ -2,6 +2,11 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.36.1] — 2026-10-08
+
+### Fixed
+- The kit's own CI test suites run fully on Linux again; nothing changes in installed projects.
+
 ## [0.36.0] — 2026-10-08
 
 ### Added
