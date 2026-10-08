@@ -203,6 +203,22 @@ for f in agents/*.md; do
 done
 [ -z "$pm" ] && pass personas || fail personas "$pm"
 
+# ── 16. changelog: CHANGELOG.md carries the current version's brief, in the fixed category set, and
+# every line inside a version section is a heading, a one-line "- " bullet or blank (whats-new.sh
+# refuses anything else in range; this refuses it file-wide, before a release can ship it).
+CL=CHANGELOG.md; cl=""
+if [ ! -f "$CL" ]; then
+  cl=" missing"
+else
+  vre=$(printf '%s' "$ver" | sed 's/\./\\./g')
+  grep -Eq "^## \[$vre\] — [0-9]{4}-[0-9]{2}-[0-9]{2}\$" "$CL" || cl="$cl no '## [$ver] — YYYY-MM-DD' section;"
+  badcat=$(grep -nE '^### ' "$CL" | grep -vE '^[0-9]+:### (Action needed|Added|Changed|Fixed|Removed|Security)$' | cut -d: -f1)
+  [ -z "$badcat" ] || cl="$cl unknown category heading at line(s) $(echo $badcat);"
+  badline=$(awk '/^## / { s = 1; next } s && NF && !/^### / && !/^- / { print FNR }' "$CL")
+  [ -z "$badline" ] || cl="$cl line(s) $(echo $badline) are neither a heading, a '- ' bullet nor blank;"
+fi
+[ -z "$cl" ] && pass changelog || fail changelog "$CL:$cl"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
