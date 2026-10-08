@@ -256,13 +256,15 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the three test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+Every PR must pass the static release gate and the five test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
 bash scripts/test-migrations.sh
 bash scripts/test-session-hook.sh
+bash scripts/test-context-budget.sh
 bash scripts/test-claude-md-split.sh
+bash scripts/test-whats-new.sh
 ```
 
 The static gate's sixteen checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`).
@@ -272,9 +274,12 @@ The static gate's sixteen checks: known placeholders only · template line budge
 ```
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
-hooks/*.json                         SessionStart hook registration (startup/resume/clear/compact) — runs scripts/marvin-session-start.sh
+CHANGELOG.md                       categorised per-release briefs (Action needed · Added · Changed · Fixed · Removed · Security), newest first — read by /marvin:whats-new
+hooks/*.json                         hook registration — SessionStart (startup/resume/clear/compact) runs scripts/marvin-session-start.sh; PostToolUse + UserPromptSubmit run scripts/marvin-context-budget.sh
 scripts/marvin-session-start.sh      SessionStart hook body: version-drift check + always-on user-update rules, silent no-op outside a Marvin project
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
+scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: advises a clean session break when context size crosses the soft budget; never blocks, silent outside a Marvin project
+scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
 scripts/validate-kit.sh              sixteen-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
@@ -282,6 +287,8 @@ scripts/mutate-migrations.sh         mutation harness — reverts one guard at a
 scripts/plan-claude-md-split.sh      read-only planner for the one-time v0.33.0 split — classifies each project-file line kit / near-kit / review / attribution / title / project
 scripts/claude-core-history/        every always-loaded core the kit shipped at a tag (v0.22.0–v0.32.0) — the planner's reference set
 scripts/test-claude-md-split.sh      planner fixtures P1–P8 plus inline mutation checks (CI runs it too)
+scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md briefs over a version range by category, Action needed first (backs /marvin:whats-new)
+scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's fourteen sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual, the micro-tier developer-micro and the five escalation rungs (escalation-small-xhigh, -high, -xhigh, -max, -frontier)
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)

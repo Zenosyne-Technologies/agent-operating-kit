@@ -55,7 +55,7 @@ for f in $(git ls-files templates/); do
   b=$(basename "$f"); echo "$inv" | grep -qx "$b" || miss_inv="$miss_inv $b"
 done
 for b in $inv; do
-  case "$b" in README.md|BOOTSTRAP.md) continue;; esac
+  case "$b" in README.md|BOOTSTRAP.md|CHANGELOG.md) continue;; esac
   git ls-files templates/ | grep -qE "/$b\$|^templates/$b\$" || miss_repo="$miss_repo $b"
 done
 [ -z "$miss_inv" ] && [ -z "$miss_repo" ] && pass inventory || fail inventory "not in README:$miss_inv | in README but not tracked:$miss_repo"
@@ -204,8 +204,9 @@ done
 [ -z "$pm" ] && pass personas || fail personas "$pm"
 
 # ── 16. changelog: CHANGELOG.md carries the current version's brief, in the fixed category set, and
-# every line inside a version section is a heading, a one-line "- " bullet or blank (whats-new.sh
-# refuses anything else in range; this refuses it file-wide, before a release can ship it).
+# every line inside a version section is a heading, a one-line "- " bullet under a "###" category
+# or blank (whats-new.sh refuses anything else in range; this refuses it file-wide, before a release
+# can ship it). The legacy "## [≤0.21.x]" section is not numeric, so it may keep a bare bullet.
 CL=CHANGELOG.md; cl=""
 if [ ! -f "$CL" ]; then
   cl=" missing"
@@ -214,8 +215,8 @@ else
   grep -Eq "^## \[$vre\] — [0-9]{4}-[0-9]{2}-[0-9]{2}\$" "$CL" || cl="$cl no '## [$ver] — YYYY-MM-DD' section;"
   badcat=$(grep -nE '^### ' "$CL" | grep -vE '^[0-9]+:### (Action needed|Added|Changed|Fixed|Removed|Security)$' | cut -d: -f1)
   [ -z "$badcat" ] || cl="$cl unknown category heading at line(s) $(echo $badcat);"
-  badline=$(awk '/^## / { s = 1; next } s && NF && !/^### / && !/^- / { print FNR }' "$CL")
-  [ -z "$badline" ] || cl="$cl line(s) $(echo $badline) are neither a heading, a '- ' bullet nor blank;"
+  badline=$(awk '/^## / { s = 1; c = 0; num = ($0 ~ /^## \[[0-9]/); next } s && /^### / { c = 1; next } s && NF && !/^- / { print FNR; next } s && /^- / && num && !c { print FNR }' "$CL")
+  [ -z "$badline" ] || cl="$cl line(s) $(echo $badline) are not a heading, a '- ' bullet under a category, or blank;"
 fi
 [ -z "$cl" ] && pass changelog || fail changelog "$CL:$cl"
 

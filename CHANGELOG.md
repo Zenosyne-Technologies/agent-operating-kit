@@ -103,6 +103,9 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 
 ## [0.28.0] — 2026-09-22
 
+### Action needed
+- Merge the conditional visual-validation lifecycle step into CLAUDE.md, keeping your own rules (not needed when upgrading to v0.33.0 or later).
+
 ### Added
 - An advisory visual and design validation stage for UI tasks, with its own validator persona and rules guide; it gates only at the UI release gate (sev1, sev2).
 - A screen catalog that surfaces are resolved against, plus two new PROJECT-INFO keys, screens_guide and visual_validation (per-task, milestone or off).
@@ -120,8 +123,7 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 ## [0.26.1] — 2026-09-03
 
 ### Changed
-- The plugin manifest now declares its licence, PolyForm Noncommercial 1.0.0, matching the LICENSE file.
-- No behaviour or installed-file changes; there is nothing to do beyond updating the plugin.
+- The plugin manifest now declares its licence, PolyForm Noncommercial 1.0.0, matching the LICENSE file; no behaviour or installed-file changes.
 
 ## [0.26.0] — 2026-09-02
 
@@ -167,7 +169,7 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 ### Action needed
 - Cut new work from develop on gitflow branches; finish and merge any in-flight `milestone/*` branch as it is.
 - Merge the git cascade row, the Git, branches, releases standing rule and a lifecycle sentence into CLAUDE.md (not needed when upgrading to v0.33.0 or later).
-- Add the release-notes row and two small prose edits to your `.docs/index.md`, so writers are routed to release notes.
+- Make two small prose edits by hand in your `.docs/index.md` (the release-notes folder row is merged for you), so writers are routed to release notes.
 
 ### Added
 - A release-notes folder in the docs estate: one document per released version, with a mandatory scope header listing that version's issue keys.
