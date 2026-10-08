@@ -115,7 +115,13 @@ mk_plugin "$WORK/plugin-stale" "0.32.0"
 run_hook "$HOOK" "$WORK/proj-stale" "$WORK/plugin-stale"
 assert_rc 0
 assert_out "this project's install is v0.30.0 but the plugin is v0.32.0"
-assert_out "run /marvin:upgrade-agent-os before other work"
+assert_out "finish the tasks running on this project"
+assert_out "start a new session once no agents are working on it"
+assert_out "run /marvin:upgrade-agent-os"
+assert_out "start a new session again so every change loads"
+assert_out "(1) finish the tasks running on this project; (2) start a new session once no agents are working on it; (3) run /marvin:upgrade-agent-os; (4) start a new session again"
+assert_out "/marvin:whats-new"
+assert_no_out "before other work"
 assert_out "$RULES_MARK"
 
 hd "T4 unknown/garbage kit_version — couldn't-read line plus rules"
@@ -181,8 +187,8 @@ mk_project "$WORK/proj-size" "0.30.0"
 mk_plugin "$WORK/plugin-size" "0.32.0"
 run_hook "$HOOK" "$WORK/proj-size" "$WORK/plugin-size"
 words=$(printf '%s' "$OUT" | wc -w | tr -d ' ')
-if [ "$words" -le 130 ]; then ok "word count $words (~150 token budget, worst case: drift line + rules)"
-else bad "word count $words exceeds the ~150 token budget"; fi
+if [ "$words" -le 170 ]; then ok "word count $words (~200 token budget, worst case: drift line + rules)"
+else bad "word count $words exceeds the ~200 token budget"; fi
 
 hd "T12 never writes a file"
 mk_project "$WORK/proj-nowrite" "0.30.0"
@@ -212,7 +218,7 @@ run_hook "$HOOK" "$WORK/proj-newer" "$WORK/plugin-newer"
 assert_rc 0
 assert_out "this project's install is v0.33.0, newer than the plugin (v0.32.0)"
 assert_out "claude plugin update marvin"
-assert_no_out "run /marvin:upgrade-agent-os before other work"
+assert_no_out "To update safely"
 assert_out "$RULES_MARK"
 
 hd "T15 stdin left open with no EOF, CLAUDE_PROJECT_DIR unset — hook returns within 3s (bounded read)"

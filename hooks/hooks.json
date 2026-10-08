@@ -1,5 +1,5 @@
 {
-  "description": "SessionStart: Marvin kit-version drift check plus the always-on user-update format rules, for Marvin-installed projects only",
+  "description": "SessionStart: Marvin kit-version drift check plus the always-on user-update format rules; PostToolUse + UserPromptSubmit: the context-budget advisory — Marvin-installed projects only",
   "hooks": {
     "SessionStart": [
       {
@@ -12,6 +12,12 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-context-budget.sh", "timeout": 5 } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-context-budget.sh", "timeout": 5 } ] }
     ]
   }
 }

@@ -55,7 +55,7 @@ for f in $(git ls-files templates/); do
   b=$(basename "$f"); echo "$inv" | grep -qx "$b" || miss_inv="$miss_inv $b"
 done
 for b in $inv; do
-  case "$b" in README.md|BOOTSTRAP.md) continue;; esac
+  case "$b" in README.md|BOOTSTRAP.md|CHANGELOG.md) continue;; esac
   git ls-files templates/ | grep -qE "/$b\$|^templates/$b\$" || miss_repo="$miss_repo $b"
 done
 [ -z "$miss_inv" ] && [ -z "$miss_repo" ] && pass inventory || fail inventory "not in README:$miss_inv | in README but not tracked:$miss_repo"
@@ -189,6 +189,36 @@ else
   [ "$last" = "@.marvin/CLAUDE.marvin.md" ] || ks="$ks (d) $ST: last non-blank line is not the bare import @.marvin/CLAUDE.marvin.md;"
 fi
 [ -z "$ks" ] && pass kit-core-split || fail kit-core-split "$ks"
+
+# ── 15. personas: every shipped persona (agents/*.md) is in the install skill's persona list AND is a
+# legal relevance: value — a persona missing from either is invisible to installs or to briefs.
+IG=templates/marvin/agents/information-guide.md; IS=skills/install-agent-os/SKILL.md; pm=""
+rel=$(awk '/^## Relevance values/ { f = 1; next } f && NF { print; exit }' "$IG")
+lst=$(grep -o 'sub-agent personas the dispatch rules reference ([^)]*)' "$IS")
+[ -n "$lst" ] || pm=" $IS: persona list sentence not found;"
+for f in agents/*.md; do
+  n=$(basename "$f" .md)
+  printf '%s' "$rel" | grep -qF "\`$n\`" || pm="$pm $n: not a relevance: value in $IG;"
+  printf '%s' "$lst" | grep -Eq "(\(| )$n(,|\))" || pm="$pm $n: missing from $IS persona list;"
+done
+[ -z "$pm" ] && pass personas || fail personas "$pm"
+
+# ── 16. changelog: CHANGELOG.md carries the current version's brief, in the fixed category set, and
+# every line inside a version section is a heading, a one-line "- " bullet under a "###" category
+# or blank (whats-new.sh refuses anything else in range; this refuses it file-wide, before a release
+# can ship it). The legacy "## [≤0.21.x]" section is not numeric, so it may keep a bare bullet.
+CL=CHANGELOG.md; cl=""
+if [ ! -f "$CL" ]; then
+  cl=" missing"
+else
+  vre=$(printf '%s' "$ver" | sed 's/\./\\./g')
+  grep -Eq "^## \[$vre\] — [0-9]{4}-[0-9]{2}-[0-9]{2}\$" "$CL" || cl="$cl no '## [$ver] — YYYY-MM-DD' section;"
+  badcat=$(grep -nE '^### ' "$CL" | grep -vE '^[0-9]+:### (Action needed|Added|Changed|Fixed|Removed|Security)$' | cut -d: -f1)
+  [ -z "$badcat" ] || cl="$cl unknown category heading at line(s) $(echo $badcat);"
+  badline=$(awk '/^## / { s = 1; c = 0; num = ($0 ~ /^## \[[0-9]/); next } s && /^### / { c = 1; next } s && NF && !/^- / { print FNR; next } s && /^- / && num && !c { print FNR }' "$CL")
+  [ -z "$badline" ] || cl="$cl line(s) $(echo $badline) are not a heading, a '- ' bullet under a category, or blank;"
+fi
+[ -z "$cl" ] && pass changelog || fail changelog "$CL:$cl"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
