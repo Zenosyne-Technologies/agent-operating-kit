@@ -18,3 +18,5 @@ jobs:
         run: bash scripts/test-context-budget.sh
       - name: Run CLAUDE.md split planner tests
         run: bash scripts/test-claude-md-split.sh
+      - name: Run whats-new aggregator tests
+        run: bash scripts/test-whats-new.sh
