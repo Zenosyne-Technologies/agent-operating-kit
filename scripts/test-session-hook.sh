@@ -506,22 +506,25 @@ if cmp -s "$M7" "$HOOK"; then
   bad "M7 mutation did not change the script — frontmatter-block detection is stale, fix this harness"
 else
   chmod +x "$M7"
-  # against the mutant, the frontmatter read is a single unbounded awk over the whole file again.
-  # Use a larger body than T18's 50 MB (150 MB — comfortably past the report's own "100 MB takes
-  # about 3s" data point) so a 1-second-granularity clock reliably shows the mutant over T18's 2s
-  # bound rather than landing right on the boundary.
+  # Deterministic, not timed: with the bound dropped the frontmatter read is a single unbounded
+  # awk again, which finds a closing --- at ANY depth. The real hook reads only the first 40 lines,
+  # so a frontmatter that closes at line 63 has no trustworthy frontmatter for it ("couldn't read"),
+  # while the unbounded mutant happily reads kit_version from it and stays silent. The observable
+  # difference is the output, never the runner's speed (a 150 MB timing fixture flaked on fast CI
+  # runners: the mutant finished in exactly the 2s threshold).
   rm -rf "$WORK/proj-m7"; mkdir -p "$WORK/proj-m7/.marvin"
-  { printf -- '---\n'; yes 'kit_version: 0.32.0 padding padding padding padding padding padding padding' | head -c 150000000; } \
-    > "$WORK/proj-m7/.marvin/PROJECT-INFO.md"
+  { printf -- '---\n'; i=0; while [ "$i" -lt 60 ]; do printf 'padding_%s: x\n' "$i"; i=$((i+1)); done
+    printf 'kit_version: 0.32.0\n---\nProject facts.\n'; } > "$WORK/proj-m7/.marvin/PROJECT-INFO.md"
   mk_plugin "$WORK/plugin-m7" "0.32.0"
-  t0=$(date +%s)
+  run_hook "$HOOK" "$WORK/proj-m7" "$WORK/plugin-m7"
+  real_m7_out="$OUT"
   run_hook "$M7" "$WORK/proj-m7" "$WORK/plugin-m7"
-  t1=$(date +%s)
-  m7_elapsed=$((t1 - t0))
-  if [ "$m7_elapsed" -gt 2 ]; then
-    ok "mutation M7-frontmatter-bound caught — the mutant took ${m7_elapsed}s, past T18's 2s bound, as it must"
+  mut_m7_out="$OUT"
+  if printf '%s\n' "$real_m7_out" | grep -Fq "couldn't read this project's kit_version" \
+     && ! printf '%s\n' "$mut_m7_out" | grep -Fq "couldn't read this project's kit_version"; then
+    ok "mutation M7-frontmatter-bound caught — real hook refuses a frontmatter closing past line 40, the unbounded mutant reads it"
   else
-    bad "mutation M7-frontmatter-bound NOT caught — the mutant still finished in ${m7_elapsed}s"
+    bad "mutation M7-frontmatter-bound NOT caught — real/mutant outputs: [$real_m7_out] / [$mut_m7_out] (want real=couldn't-read, mutant=silent)"
   fi
 fi
 
@@ -530,9 +533,32 @@ hd "T-RO read-only stale PROJECT-INFO (chmod 444) — still the drift line, noth
 mk_project "$WORK/proj-ro" "0.30.0"
 mk_plugin "$WORK/plugin-ro" "0.32.0"
 chmod 444 "$WORK/proj-ro/.marvin/PROJECT-INFO.md"
-PATH_SAVE=$PATH; PATH=$(printf '%s' "$PATH" | tr ':' '\n' | while IFS= read -r d; do [ -x "$d/timeout" ] || printf '%s:' "$d"; done); PATH=${PATH%:}
-ERR=$(CLAUDE_PROJECT_DIR="$WORK/proj-ro" CLAUDE_PLUGIN_ROOT="$WORK/plugin-ro" bash "$HOOK" </dev/null 2>&1 >/dev/null)
-run_hook "$HOOK" "$WORK/proj-ro" "$WORK/plugin-ro"
+# Simulate a host with no timeout(1) (stock macOS) so the hook takes its `read -t` fallback — but
+# hide ONLY timeout. Dropping every PATH directory that holds a timeout also drops bash, head,
+# sed... on merged-/usr Linux, where /usr/bin and /bin both carry it. Instead: a shim dir with a
+# symlink to every executable on the current PATH except timeout (first match per name wins, so
+# PATH order is preserved).
+BASH_BIN=$(command -v bash)
+SHIM="$WORK/shim-no-timeout"; mkdir -p "$SHIM"
+old_ifs=$IFS; IFS=:
+for d in $PATH; do
+  [ -d "$d" ] || continue
+  for f in "$d"/*; do
+    [ -f "$f" ] && [ -x "$f" ] || continue
+    n=${f##*/}
+    [ "$n" = timeout ] && continue
+    [ -e "$SHIM/$n" ] || [ -L "$SHIM/$n" ] || ln -s "$f" "$SHIM/$n"
+  done
+done
+IFS=$old_ifs
+PATH_SAVE=$PATH; PATH=$SHIM
+if [ -z "$(command -v timeout 2>/dev/null)" ] && [ -n "$(command -v sed)" ] && [ -n "$(command -v head)" ]; then
+  ok "shim PATH hides timeout and keeps the other tools"
+else
+  bad "shim PATH is wrong — timeout visible or sed/head missing"
+fi
+ERR=$(CLAUDE_PROJECT_DIR="$WORK/proj-ro" CLAUDE_PLUGIN_ROOT="$WORK/plugin-ro" "$BASH_BIN" "$HOOK" </dev/null 2>&1 >/dev/null)
+OUT=$(printf '' | CLAUDE_PROJECT_DIR="$WORK/proj-ro" CLAUDE_PLUGIN_ROOT="$WORK/plugin-ro" "$BASH_BIN" "$HOOK" 2>&1); RC=$?
 PATH=$PATH_SAVE
 chmod 644 "$WORK/proj-ro/.marvin/PROJECT-INFO.md"
 assert_rc 0
