@@ -190,6 +190,19 @@ else
 fi
 [ -z "$ks" ] && pass kit-core-split || fail kit-core-split "$ks"
 
+# ── 15. personas: every shipped persona (agents/*.md) is in the install skill's persona list AND is a
+# legal relevance: value — a persona missing from either is invisible to installs or to briefs.
+IG=templates/marvin/agents/information-guide.md; IS=skills/install-agent-os/SKILL.md; pm=""
+rel=$(awk '/^## Relevance values/ { f = 1; next } f && NF { print; exit }' "$IG")
+lst=$(grep -o 'sub-agent personas the dispatch rules reference ([^)]*)' "$IS")
+[ -n "$lst" ] || pm=" $IS: persona list sentence not found;"
+for f in agents/*.md; do
+  n=$(basename "$f" .md)
+  printf '%s' "$rel" | grep -qF "\`$n\`" || pm="$pm $n: not a relevance: value in $IG;"
+  printf '%s' "$lst" | grep -Eq "(\(| )$n(,|\))" || pm="$pm $n: missing from $IS persona list;"
+done
+[ -z "$pm" ] && pass personas || fail personas "$pm"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"

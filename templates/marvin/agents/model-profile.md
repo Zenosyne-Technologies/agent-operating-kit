@@ -16,8 +16,8 @@ Every other file names tiers (orchestrator, heavy worker, small worker, micro, f
 |---|---|---|---|---|
 | orchestrator | Opus 5.5 | `medium`; raise to `high` when the task needs it | `ESCALATION_MODEL` | the main session |
 | heavy worker | Opus 5.5 | `medium` (pinned — the ladder's base rung) | `ESCALATION_MODEL` | `marvin:developer`, `marvin:researcher`, the three validators; the ladder's `escalation-high/-xhigh/-max` rungs raise effort on this model |
-| small worker | Sonnet 5 | host default (unpinned) | `WORKER_MODEL` | `marvin:developer-small`, `marvin:documenter` |
-| micro | Haiku 4.5 | host default (unpinned) | `MICRO_MODEL` | `marvin:ponytail` |
+| small worker | Sonnet 5.5 | `high` (pinned) | `WORKER_MODEL` | `marvin:developer-small`, `marvin:documenter`; the ladder's `escalation-small-xhigh` rung raises it to `xhigh` |
+| micro | Haiku 5.5 | `high` (pinned — rule 2) | `MICRO_MODEL` | `marvin:ponytail`, `marvin:developer-micro` |
 | frontier | Fable 5.1 | inherits the session's (opt-in only) | `FRONTIER_MODEL` | `marvin:escalation-frontier`, reached only through the max gate |
 
 The install skill writes each row's model wherever an installed file (`.marvin/CLAUDE.marvin.md`, this cascade) uses the placeholder its Resolves column names (written here without braces, so no render rewrites this table). Telemetry attributes an event from an agent it does not recognise by model prefix: `claude-opus-*` heavy · `claude-sonnet-*` small · `claude-haiku-*` micro · `claude-fable-*` ladder (`token-economics.md`).
@@ -25,6 +25,8 @@ The install skill writes each row's model wherever an installed file (`.marvin/C
 ## Model-specific rules
 
 1. **The max gate recommends `max`.** At `escalation-ladder.md`'s max gate, the RECOMMENDED option is `max` effort on the orchestrator's model (`marvin:escalation-max`). The frontier swap is the costlier alternative, offered only because a user may prefer it. Why: Opus 5.5 at `max` effort outperforms Fable 5.1 for significantly less cost (observed 2026-09-24). The gate's mechanics — defaults, recording, what counts as an answer — stay `escalation-ladder.md`'s.
+2. **The micro tier runs at `high`, always.** Every micro-tier persona (`marvin:ponytail`, `marvin:developer-micro`) pins `effort: high`; no brief lowers it. Why: Haiku 5.5 is cheap enough that the spend `low` or `medium` would save is not worth the quality risk (decided 2026-10-08).
+3. **Fully-specified code is micro-tier work.** Haiku 5.5 handles focused coding and multi-step tool use (39.2% on Terminal-Bench 4.0, from 0.0% for Haiku 4.5), so a build or correction whose brief passes `briefing.md`'s fully-specified test runs on `marvin:developer-micro`; earlier versions kept every code edit off the micro tier because Haiku 4.5 could not do it. Work that needs judgement stays on the small tier, and a stuck micro-tier build tiers up to it (`escalation-ladder.md`).
 
 ## Validated for this set only
 
