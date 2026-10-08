@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Escalation ladder — effort within a tier, then up
 
-WHEN a build task climbs is decided ONLY by the round signals in `escalation.md` (Stuck, which includes a rung's N-round cap) — never by a bare failure count, and never for a task whose pattern calls for a RETHINK. This file is HOW it climbs. Why effort and not model, and which jobs are off the ladder: `escalation.md`.
+WHEN a build task climbs is decided ONLY by the round signals in `escalation.md` (Stuck, which includes a rung's N-round cap) — never by a bare failure count, and never for a task whose pattern calls for a RETHINK. This file is HOW it climbs. Why effort within a tier, then a tier-up, and which jobs are off the ladder: `escalation.md`.
 
 ## Entering the ladder
 

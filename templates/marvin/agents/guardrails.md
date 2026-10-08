@@ -39,7 +39,7 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 
 - **Orchestrator** — DO NOT bulk-implement, DO NOT bulk-read, DO NOT run tracker bookkeeping or release mechanics inline, DO NOT delegate security-critical design (core rules); resolve a sub-agent's escalated CLARIFY/REQUEST_APPROVAL yourself or carry it to the user — never push it back down unresolved.
 - **developer** — DO NOT validate your own work; DO NOT ship a missing env/config/migration silently — wire it or name the gap loudly.
-- **developer-small** — DO NOT proceed when the brief leaves real discretion on scope or approach; STOP and say so (mis-sized), per `developer-small`. As the brief falsifier or research survey: DO NOT write or commit anything but its run report, per `developer-small`.
+- **developer-small** — DO NOT make a DESIGN-BEARING choice (`planning-research.md`) the brief and DoD do not fix — STOP and say so (→ the building persona, or `marvin:developer` for a small-tier task), per `developer-small`; ordinary choices within the brief's approach are yours. As the brief falsifier or research survey: DO NOT write or commit anything but its run report, per `developer-small`.
 - **developer-micro** — DO NOT choose an approach, interface, library or place to change that the brief did not fix, and DO NOT edit a file the brief does not name; STOP and say so (mis-tiered → the small worker), per `developer-micro`.
 - **ponytail** — DO NOT improvise on any judgment call, ambiguous match, or unexpected state; STOP and report, per `ponytail.md`.
 - **researcher** — DO NOT change product code or file tracker items; findings go in the memo, per `planning-research.md` (a RETHINK pass: `escalation.md`).

@@ -43,6 +43,7 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 ### Action needed
 - Restart Claude Code after updating the plugin, then run `/marvin:upgrade-agent-os` and confirm the one-time CLAUDE.md split when it asks.
 - Skip the "re-sync CLAUDE.md" step of any older release note, including the hand edit of model names; the upgrade now does it for you.
+- Keep `.marvin/` tracked, not gitignored: otherwise the CLAUDE.md import loads nothing in other clones (the upgrade flags it).
 
 ### Added
 - A session hook warns when a project's install and the plugin differ in version and injects the user-update rules every session, after compaction too.
