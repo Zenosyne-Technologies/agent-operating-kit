@@ -115,7 +115,7 @@ run "$CL" 0.35.0 1.2;            assert_rc 2; assert_err "not a version: 1.2"
 run "$CL" 0.35.0 12345.0.0;      assert_rc 2
 run "$CL";                       assert_rc 2; assert_err "usage"
 run "$CL" 0.1.0 0.2.0 0.3.0;     assert_rc 2; assert_err "usage"
-run "$WORK/missing.md" 0.36.0;   assert_rc 2; assert_err "no CHANGELOG at"
+run "$WORK/missing.md" 0.36.0;   assert_rc 2; assert_err "no readable CHANGELOG at"
 
 hd "W8 pre-0.22 notice only when the range starts below v0.22.0"
 run "$CL" 0.21.0 0.22.0
@@ -146,6 +146,34 @@ before=$(cksum < "$CL"); files_before=$(ls "$WORK" | wc -l)
 run "$CL" 0.22.0 0.36.0
 after=$(cksum < "$CL"); files_after=$(ls "$WORK" | wc -l)
 if [ "$before" = "$after" ] && [ "$files_before" = "$files_after" ]; then ok "nothing written"; else bad "the script wrote something"; fi
+
+hd "W13 an empty <from> is refused, not read as the whole history"
+run "$CL" "" 0.36.0
+assert_rc 2
+assert_err "not a version"
+
+hd "W14 a tab inside a bullet keeps the whole text"
+TABF="$WORK/tab.md"; printf '## [0.36.0] — 2026-10-08\n\n### Added\n- tab\there more\n' > "$TABF"
+run "$TABF" 0.35.0 0.36.0
+assert_rc 0
+assert_out "- tab here more (v0.36.0)"
+
+hd "W15 a version argument with an embedded newline is refused"
+run "$CL" "$(printf '0.35.0\nxyz')" 0.36.0
+assert_rc 2
+assert_err "not a version"
+
+hd "W16 an unreadable changelog is one clean error"
+if [ "$(id -u)" = 0 ]; then
+  printf '   note  skipped: running as root, chmod 000 does not block reads\n'
+else
+  UNR="$WORK/unreadable.md"; cp "$CL" "$UNR"; chmod 000 "$UNR"
+  run "$UNR" 0.35.0 0.36.0
+  assert_rc 2
+  assert_err "no readable CHANGELOG at"
+  if printf '%s\n' "$ERR" | grep -Fq "can't open"; then bad "awk error leaked"; else ok "no awk error leaked"; fi
+  chmod 600 "$UNR"
+fi
 
 hd "W12 the real CHANGELOG has a section for the current plugin version"
 ver=$(grep -m1 '"version"' "$SCRIPT_DIR/../.claude-plugin/plugin.json" | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')

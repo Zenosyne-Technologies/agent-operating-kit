@@ -19,6 +19,7 @@ die() { printf 'whats-new: %s\n' "$2" >&2; exit "$1"; }
 
 is_semver() {  # bounded first, so a hostile argument never reaches the regex at length
   [ "${#1}" -le 20 ] || return 1
+  case $1 in *[!0-9.]*) return 1 ;; esac  # grep matches per line, so a newline must never reach it
   printf '%s' "$1" | grep -Eq '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$'
 }
 
@@ -33,9 +34,9 @@ case $# in
   2) MODE=range; FROM="$1"; TO="$2" ;;
   *) die 2 "usage: whats-new.sh [<from>] <to>" ;;
 esac
-[ -z "$FROM" ] || is_semver "$FROM" || die 2 "not a version: $FROM"
+[ "$MODE" = one ] || is_semver "$FROM" || die 2 "not a version: $FROM"
 is_semver "$TO" || die 2 "not a version: $TO"
-[ -f "$CL" ] || die 2 "no CHANGELOG at $CL"
+[ -f "$CL" ] && [ -r "$CL" ] || die 2 "no readable CHANGELOG at $CL"
 
 SECTIONS=$(awk '/^## \[[0-9]+\.[0-9]+\.[0-9]+\]/ { v = $2; gsub(/[][]/, "", v); print v }' "$CL")
 printf '%s\n' "$SECTIONS" | grep -Fxq -- "$TO" || die 1 "no CHANGELOG section for v$TO"
@@ -71,7 +72,8 @@ RECS=$(awk -v fk="$FK" -v tk="$TK" '
   !in_r { next }
   /^### / { cat = substr($0, 5); if (!(cat in ok)) { print "!unknown category \"" cat "\" in v" v; exit 3 } next }
   /^- / { if (cat == "") { print "!bullet before any category in v" v; exit 3 }
-          print cat "\t" sk "\t" v "\t" substr($0, 3); next }
+          t = substr($0, 3); gsub(/\t/, " ", t)
+          print cat "\t" sk "\t" v "\t" t; next }
   /^[ \t]*$/ { next }
   { print "!unexpected line in v" v ": " $0; exit 3 }
 ' "$CL")
