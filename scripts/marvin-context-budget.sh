@@ -8,6 +8,10 @@
 #                      turns are compared), so the advisory lands once per crossing, not per tool call.
 #   UserPromptSubmit — on every prompt while above the soft budget: the user is present, so that is
 #                      when the orchestrator should tell them.
+# Claude Code writes ONE API message as SEVERAL assistant lines (one per content block: thinking, text,
+# tool_use), all carrying the same "id":"msg_…" and the same usage — so sizes are taken per MESSAGE (the
+# last line of each id), never per line. A crossing message with N parallel tool_use blocks fires N
+# PostToolUse hooks that each see the crossing, so the advisory may appear up to N times — accepted.
 # Budgets: 400k soft / 700k hard; a project overrides them with session_soft_ktokens /
 # session_hard_ktokens (integers, thousands of tokens, soft < hard) in .marvin/PROJECT-INFO.md
 # frontmatter. Contract: Marvin projects only; sub-agent invocations skipped; never writes a file;
@@ -18,12 +22,16 @@ DEF_SOFT=400; DEF_HARD=700
 
 stdin_json=""
 if [ ! -t 0 ]; then
+  # no `timeout` on stock macOS: the host closes stdin and enforces the hook timeout itself
   if command -v timeout >/dev/null 2>&1; then stdin_json=$(timeout 2 head -c 65536 2>/dev/null || true)
-  else IFS= read -r -t 2 stdin_json || true; fi
+  else stdin_json=$(head -c 65536 2>/dev/null || true); fi
 fi
 [ -n "$stdin_json" ] || exit 0
 
-case "$stdin_json" in
+# agent_id marks a sub-agent call; the host emits it before hook_event_name, so only that prefix is
+# searched — an agent_id key inside a later tool_input/tool_response must not silence the main thread.
+pre=${stdin_json%%\"hook_event_name\"*}
+case "$pre" in
   *\"agent_id\"*) exit 0 ;;
 esac
 
@@ -50,17 +58,27 @@ if [ ! -L "$pi" ] && [ -f "$pi" ]; then
   if [ "$((10#$s))" -gt 0 ] && [ "$((10#$s))" -lt "$((10#$h))" ]; then soft=$((10#$s)); hard=$((10#$h)); fi
 fi
 
-# Context size (in thousands) of the last two assistant turns. Only lines whose type is assistant
-# and that carry an UNESCAPED "usage":{ are read, so usage text quoted inside a tool result never counts.
-sizes=$(tail -n 400 -- "$transcript" 2>/dev/null \
-  | grep '"type":"assistant"' | grep '"usage":{' | tail -n 2 \
+# Context size (in thousands) per MESSAGE, last two messages. Only lines whose type is assistant and that
+# carry an UNESCAPED "usage":{ are read (usage text quoted inside a tool result is escaped, so never
+# counts); the counters are matched only in the text from the LAST "usage":{ on, so a tool_use input
+# holding an input_tokens key earlier on the line is ignored. One size per "id":"msg_…" (last line wins);
+# a line without a message id is its own message.
+sizes=$(tail -c 8000000 -- "$transcript" 2>/dev/null | tail -n 400 \
+  | grep '"type":"assistant"' | grep '"usage":{' \
   | awk '{
+      key = "L" NR
+      if (match($0, /"id":"msg_[^"]*"/)) key = substr($0, RSTART, RLENGTH)
+      rest = $0; pos = 0
+      while ((i = index(rest, "\"usage\":{")) > 0) { pos += i; rest = substr(rest, i + 1) }
+      u = substr($0, pos)
       n = 0
-      if (match($0, /"input_tokens":[0-9]+/))                { n += substr($0, RSTART + 15, RLENGTH - 15) }
-      if (match($0, /"cache_read_input_tokens":[0-9]+/))     { n += substr($0, RSTART + 26, RLENGTH - 26) }
-      if (match($0, /"cache_creation_input_tokens":[0-9]+/)) { n += substr($0, RSTART + 30, RLENGTH - 30) }
-      print int(n / 1000)
-    }')
+      if (match(u, /"input_tokens":[0-9]+/))                { n += substr(u, RSTART + 15, RLENGTH - 15) }
+      if (match(u, /"cache_read_input_tokens":[0-9]+/))     { n += substr(u, RSTART + 26, RLENGTH - 26) }
+      if (match(u, /"cache_creation_input_tokens":[0-9]+/)) { n += substr(u, RSTART + 30, RLENGTH - 30) }
+      if (!(key in val)) order[++cnt] = key
+      val[key] = int(n / 1000)
+    }
+    END { for (j = 1; j <= cnt; j++) print val[order[j]] }' | tail -n 2)
 [ -n "$sizes" ] || exit 0
 cur=$(printf '%s\n' "$sizes" | tail -n 1)
 prev=$(printf '%s\n' "$sizes" | head -n 1); [ "$(printf '%s\n' "$sizes" | wc -l)" -ge 2 ] || prev=0

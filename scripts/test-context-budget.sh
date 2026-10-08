@@ -21,12 +21,17 @@ assert_out()    { if printf '%s\n' "$OUT" | grep -Fq -- "$1"; then ok "out has: 
 assert_empty()  { if [ -z "$OUT" ]; then ok "no output"; else bad "expected no output, got: $(printf '%s' "$OUT" | head -c 160)"; fi; }
 assert_json()   { if printf '%s' "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then ok "valid JSON"; else bad "output is not valid JSON"; fi; }
 
-# transcript <file> <ktokens>... — one assistant line per argument, context = k*1000 split across the
-# three counted fields; a user tool-result line containing escaped "usage" text sits in between.
+# transcript <file> <ktokens>... — one API message per argument, context = k*1000 split across the three
+# counted fields. Like the real host, ONE message is written as SEVERAL assistant lines (thinking, then
+# tool_use) sharing one "id":"msg_<n>" and identical usage; a user tool-result line containing escaped
+# "usage" text sits between messages.
 transcript() {
-  local f="$1"; shift; : > "$f"
+  local f="$1"; shift; : > "$f"; local n=0 k u
   for k in "$@"; do
-    printf '{"type":"assistant","message":{"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d,"output_tokens":50}}}\n' $(( k * 1000 - 1000 )) >> "$f"
+    n=$((n+1))
+    u=$(printf '"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d,"output_tokens":50}' $(( k * 1000 - 1000 )))
+    printf '{"type":"assistant","message":{"id":"msg_%d","content":[{"type":"thinking","thinking":"hm"}],%s}}\n' "$n" "$u" >> "$f"
+    printf '{"type":"assistant","message":{"id":"msg_%d","content":[{"type":"tool_use","id":"toolu_%d","name":"Bash","input":{"command":"ls"}}],%s}}\n' "$n" "$n" "$u" >> "$f"
     printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"{\\"usage\\":{\\"input_tokens\\":999999999}}"}]}}\n' >> "$f"
   done
 }
@@ -37,10 +42,10 @@ mk_project() {  # mk_project <dir> [soft] [hard]
     [ -n "${3:-}" ] && printf 'session_hard_ktokens: %s\n' "$3"
     printf -- '---\nProject facts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
 }
-# run <hook> <project_dir> <event> <transcript> [extra_json_fields]
+# run <hook> <project_dir> <event> <transcript> [extra_json_fields after cwd] [json_fields before hook_event_name]
 run() {
-  local hook="$1" p="$2" ev="$3" t="$4" extra="${5:-}"
-  OUT=$(printf '{"session_id":"s","hook_event_name":"%s","transcript_path":"%s","cwd":"%s"%s}' "$ev" "$t" "$p" "$extra" \
+  local hook="$1" p="$2" ev="$3" t="$4" extra="${5:-}" pre="${6:-}"
+  OUT=$(printf '{"session_id":"s"%s,"hook_event_name":"%s","transcript_path":"%s","cwd":"%s"%s}' "$pre" "$ev" "$t" "$p" "$extra" \
         | CLAUDE_PROJECT_DIR="$p" bash "$hook" 2>&1); RC=$?
 }
 
@@ -96,7 +101,7 @@ done
 
 hd "B9 a sub-agent invocation is skipped"
 transcript "$T" 390 410
-run "$HOOK" "$P" PostToolUse "$T" ',"agent_id":"a1","agent_type":"marvin:developer"'; assert_rc0; assert_empty
+run "$HOOK" "$P" PostToolUse "$T" "" ',"agent_id":"a1","agent_type":"marvin:developer"'; assert_rc0; assert_empty
 
 hd "B10 missing transcript, symlinked .marvin, empty stdin — nothing, exit 0"
 run "$HOOK" "$P" PostToolUse "$WORK/none.jsonl"; assert_rc0; assert_empty
@@ -114,13 +119,28 @@ run "$HOOK" "$P" PostToolUse "$T"
 after=$(ls -R "$WORK" | cksum)
 if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
 
+hd "B13 a tool_use input with an unescaped input_tokens key is never read as usage"
+transcript "$T" 100 100
+printf '{"type":"assistant","message":{"id":"msg_z","content":[{"type":"tool_use","id":"toolu_z","name":"X","input":{"input_tokens":999999999,"cache_read_input_tokens":999999999}}],"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":149000,"output_tokens":5}}}\n' >> "$T"
+run "$HOOK" "$P" UserPromptSubmit "$T"; assert_rc0; assert_empty
+run "$HOOK" "$P" PostToolUse "$T"; assert_rc0; assert_empty
+
+hd "B14 agent_id inside a tool_input AFTER hook_event_name is not a sub-agent marker"
+transcript "$T" 390 410
+run "$HOOK" "$P" PostToolUse "$T" ',"tool_input":{"agent_id":"x","note":"agent_id"}'; assert_rc0; assert_json
+assert_out "past the 400k soft budget"
+
+hd "B15 one message spread over several assistant lines counts once (crossing seen on the last message pair)"
+transcript "$T" 300 410
+run "$HOOK" "$P" PostToolUse "$T"; assert_rc0; assert_out "past the 400k soft budget"
+
 # ── mutations: each reverts one guard in a copy; the named fixture must then fail ────────────────
 mutation() {  # mutation <name> <exact line in HOOK> <replacement> <event> <transcript-ks> <extra>
   local m="$WORK/mutant-$1.sh"
   A="$2" B="$3" awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$HOOK" > "$m"   # ENVIRON: no escape processing, unlike awk -v
   if cmp -s "$m" "$HOOK"; then bad "mutation $1: target line not found — harness is stale"; return; fi
   transcript "$T" $5
-  run "$m" "$P" "$4" "$T" "$6"
+  run "$m" "$P" "$4" "$T" "" "$6"
   if [ -z "$OUT" ]; then bad "mutation $1 survived (no advisory where the mutant should emit one)"; else ok "mutation $1 caught"; fi
 }
 hd "M1 crossing check removed — B4 (no re-advisory) must catch it"
