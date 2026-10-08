@@ -151,7 +151,7 @@ elif [ -n "$plugin_version" ] && [ "$kit_version" != "$plugin_version" ]; then
   if version_gt "$kit_version" "$plugin_version"; then
     status="Marvin: this project's install is v${kit_version}, newer than the plugin (v${plugin_version}) — update the plugin (claude plugin update marvin), don't run the upgrade skill."
   else
-    status="Marvin: this project's install is v${kit_version} but the plugin is v${plugin_version} — run /marvin:upgrade-agent-os before other work."
+    status="Marvin: this project's install is v${kit_version} but the plugin is v${plugin_version} — a newer Marvin is ready. To update safely: (1) finish the tasks running on this project; (2) start a new session once no agents are working on it; (3) run /marvin:upgrade-agent-os; (4) start a new session again so every change loads. Ask \"what's new\" (/marvin:whats-new) to hear what changed."
   fi
 fi
 if [ -n "$status" ]; then
