@@ -2,6 +2,22 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.36.0] — 2026-10-08
+
+### Added
+- A micro-tier developer (`marvin:developer-micro`, Haiku 5.5 at high effort) builds fully-specified small tasks, pieces and corrections.
+- A small-tier escalation rung (`marvin:escalation-small-xhigh`, Sonnet 5.5 at xhigh) before a stuck small task reaches the Opus rungs.
+- `/marvin:whats-new` explains what changed between your version and the latest, Action needed first.
+
+### Changed
+- Marvin targets the Claude 5.5 family: Opus 5.5 orchestrates, Sonnet 5.5 and Haiku 5.5 run their personas at high effort.
+- A stuck build climbs effort within its tier, then tiers up toward the orchestrator's model, never above it by default.
+- The update notice now carries the safe procedure: finish running tasks, start a new session with no agents working, upgrade, start a new session again.
+- Session length follows context size: past 400k tokens Marvin suggests a fresh session at a clean break; past 700k it starts no new task first. Nothing blocks.
+
+### Action needed
+- After `/marvin:upgrade-agent-os`, start a new session so the refreshed rules, personas and hooks load.
+
 ## [0.35.1] — 2026-10-07
 
 ### Action needed
