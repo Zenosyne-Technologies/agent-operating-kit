@@ -12,7 +12,7 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 ### Changed
 - Marvin targets the Claude 5.5 family: Opus 5.5 orchestrates, Sonnet 5.5 and Haiku 5.5 run their personas at high effort.
 - A stuck build climbs effort within its tier, then tiers up toward the orchestrator's model, never above it by default.
-- The update notice now carries the safe procedure: finish running tasks, start a new session with no agents working, upgrade, start a new session again.
+- The update notice now carries the safe update procedure: when to start a new session and when to upgrade.
 - Session length follows context size: past 400k tokens Marvin suggests a fresh session at a clean break; past 700k it starts no new task first. Nothing blocks.
 
 ### Action needed
