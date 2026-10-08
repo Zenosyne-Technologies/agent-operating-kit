@@ -2,7 +2,7 @@
 doc: Escalation signals and Rethink
 type: reference
 status: active
-summary: What happens after a build task's failed round — the orchestrator reads the failure PATTERN (converging, stuck, whack-a-mole, bloat, loop, cost blowout) and stays, climbs one effort rung, RETHINKs the approach, or pauses to ask the user.
+summary: What happens after a build task's failed round — the orchestrator reads the failure PATTERN (converging, stuck, whack-a-mole, bloat, loop, cost blowout) and stays, climbs one step (a tier-up or an effort rung), RETHINKs the approach, or pauses to ask the user.
 updated: {{INSTALL_DATE}}
 ---
 
@@ -32,7 +32,7 @@ After each FAILed round the orchestrator appends that round's rows to the task l
 | **Whack-a-mole** | regressed ≥ 1 AND regressed ≥ fixed, in each of 2 consecutive rounds | RETHINK — do not climb |
 | **Bloat** | the task's NET ADDED WORDS exceed 2 × the baseline — the larger of their value after the approach's first round and 200 words — with no DoD line added since | RETHINK |
 | **Loop** | 3 or more DISTINCT FAIL-grade finding IDs, across rounds, carry the same `mech:` tag, or a round resubmits an approach the ledger lists as ruled out | RETHINK; the next brief names what NOT to repeat |
-| **Stuck** | one finding ID is tagged `recurring` in 2 consecutive rounds (it survived 2 fix rounds), or the rung has run its cap of N = 4 rounds | climb one effort rung (`escalation-ladder.md`) |
+| **Stuck** | one finding ID is tagged `recurring` in 2 consecutive rounds (it survived 2 fix rounds), or the rung has run its cap of N = 4 rounds | climb one step — a tier-up or an effort rung (`escalation-ladder.md`) |
 | **Converging** | fewer OPEN findings than after the previous round, and none regressed | stay at the current rung |
 
 **Net added words** — the ONE size measure, for every deliverable: in `git diff --word-diff=porcelain <base>...HEAD` against the task's branch base (`git-strategy.md`), words on `+` lines minus words on `-` lines (headers `+++`/`---` excluded); words, not lines or bytes, because one long Markdown paragraph is one line however much it grows, and touching a long line must not count as growing it. No signal fires → the next round runs at the same rung; N still bounds it, and a RETHINK does not reset N. **Precedence (mandatory)**: Cost blowout > {Whack-a-mole, Bloat, Loop} → RETHINK > Stuck → climb > Converging → stay. When Stuck and Converging both fire — one finding stuck while the others close — Stuck wins for the WHOLE task: the climbing rung gets all of it, never just the stuck finding.
