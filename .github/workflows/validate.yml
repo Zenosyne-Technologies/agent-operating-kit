@@ -20,3 +20,5 @@ jobs:
         run: bash scripts/test-claude-md-split.sh
       - name: Run whats-new aggregator tests
         run: bash scripts/test-whats-new.sh
+      - name: Run worktree sweep tests
+        run: bash scripts/test-worktree-sweep.sh
