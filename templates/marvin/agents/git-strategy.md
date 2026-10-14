@@ -15,7 +15,7 @@ Everything about git is decided here. Another file may name a concrete INSTANCE 
 | Branch | Cut from | Merges to | Holds |
 |---|---|---|---|
 | `main` | — | — | Released state ONLY — every commit on it is a tagged release. Nothing lands here but a `release/*` or `hotfix/*` merge. |
-| `develop` | `main` | — | Integration. Every finished work item merges here. |
+| `develop` | `main` | — | Integration. Every finished work item merges here and is pushed at once (`worktrees.md`). |
 | `feature/<KEY>-<slug>` | `develop` | `develop` | ONE work item, and nothing else. |
 | `release/<version>` | `develop` | `main` **and** `develop` | A frozen scope being stabilised: version bump, release note, fixes validation finds. No new scope. |
 | `hotfix/<version>` | `main` | `main` **and** `develop` | One urgent defect against the released state. |

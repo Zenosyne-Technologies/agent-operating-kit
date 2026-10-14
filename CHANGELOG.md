@@ -2,6 +2,22 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.37.0] — 2026-10-14
+
+### Added
+- Finished agent worktrees under `.claude/worktrees/` are removed at session start and by `/marvin:clean-worktrees`, and only when seven guards all hold.
+- The sweep keeps any worktree that is locked, in use, holding another worktree or repository, active in the last 15 minutes, mid-merge or rebase, dirty, or not yet merged into another branch.
+- A local branch is deleted only when origin's copy contains the worktree's commits; otherwise it is kept and reported.
+- Every sub-agent that commits work ends with a `WORKTREE:` line saying whether its worktree is safe to delete; the session handoff lists the ones left.
+
+### Changed
+- Agents push done work often: each committing sub-agent pushes its own branch, the orchestrator merges it and pushes the parent at once; main and tags still move only at a release.
+- `.gitignore` now also ignores `.claude/worktrees/`.
+
+### Action needed
+- Update promptly: the personas and the sweep ship with the plugin and act at once, before `/marvin:upgrade-agent-os` installs `worktrees.md`.
+- After `/marvin:upgrade-agent-os`, start a new session so the new hook, skill and rules load.
+
 ## [0.36.1] — 2026-10-08
 
 ### Fixed

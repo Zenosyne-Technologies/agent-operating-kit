@@ -1,5 +1,5 @@
 {
-  "description": "SessionStart: Marvin kit-version drift check plus the always-on user-update format rules; PostToolUse + UserPromptSubmit: the context-budget advisory — Marvin-installed projects only",
+  "description": "SessionStart: Marvin kit-version drift check plus the always-on user-update format rules, and the finished-agent-worktree sweep; PostToolUse + UserPromptSubmit: the context-budget advisory — Marvin-installed projects only",
   "hooks": {
     "SessionStart": [
       {
@@ -9,6 +9,16 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-session-start.sh",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-worktree-sweep.sh --hook",
+            "timeout": 20
           }
         ]
       }
