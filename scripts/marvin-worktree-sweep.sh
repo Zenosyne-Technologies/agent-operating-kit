@@ -7,13 +7,17 @@
 # checkout, never a worktree elsewhere, never a symlink. A candidate is KEPT when any guard holds:
 #   G1 locked (Claude Code locks a running agent's worktree)
 #   G2 a session stands in it ($PWD, or the hook's stdin "cwd")
+#   G7 another worktree (any listed path under it, prunable too) or a repository (a .git below its
+#      top level — nested clones, submodules) lies inside it: `worktree remove` would delete it,
+#      and git status cannot see it when .claude/worktrees/ is git-ignored
 #   G6 anything in it or in its git admin dir changed within IDLE_MIN minutes
 #   G4 a merge, rebase, cherry-pick, revert or bisect is in progress
 #   G3 uncommitted or untracked changes (status runs with --no-optional-locks: no index write,
 #      so the sweep never "touches" what G6 measures)
 #   G5 its HEAD is in no branch other than its own (its own origin copy does not count)
 # Otherwise: `git worktree remove` (never --force), then — only when origin has a copy of its
-# branch — the local branch is deleted by compare-and-delete on the commit the guards checked.
+# branch — the local branch is deleted by compare-and-delete on the commit the guards checked,
+# and its branch.<name> config section with it.
 # Rules: .marvin/agents/worktrees.md. Paths print through q() (git core.quotePath convention).
 # --check reports only. --hook (SessionStart): Marvin projects only, one summary line when
 # something was removed, otherwise silent, always exit 0.
@@ -90,6 +94,14 @@ is_current() {  # is_current <physical worktree path> — a session stands in it
 recent() {  # recent <worktree> <admin dir> — anything modified inside the idle window
   [ -n "$(find "$1" "$2" -mmin -"$IDLE_MIN" -print -quit 2>/dev/null)" ]
 }
+nested() {  # nested <worktree> <physical path> — another worktree or a repository lies inside it
+  local o op
+  for o in ${ALL[@]+"${ALL[@]}"}; do
+    op=$(cd "$o" 2>/dev/null && pwd -P) || op=$o
+    case "$op/" in "$2"/?*|"$1"/?*) return 0 ;; esac   # a listed worktree, prunable ones too
+  done
+  [ -n "$(find "$1" -mindepth 2 -name .git -print -quit 2>/dev/null)" ]   # a clone or submodule
+}
 in_progress() {  # in_progress <admin dir>
   local f
   for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG rebase-merge rebase-apply; do
@@ -120,6 +132,7 @@ consider() {  # one linked worktree: globals p sha b locked prunable
   [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }
   [ -n "$locked" ] && { keep "$p" "G1 locked"; return; }
   is_current "$p_phys" && { keep "$p" "G2 current checkout"; return; }
+  nested "$p" "$p_phys" && { keep "$p" "G7 another worktree or repository inside it"; return; }
   gd=$(git -C "$p" rev-parse --absolute-git-dir 2>/dev/null) || { keep "$p" "git metadata unreadable"; return; }
   recent "$p" "$gd" && { keep "$p" "G6 active in the last $IDLE_MIN min"; return; }
   in_progress "$gd" && { keep "$p" "G4 merge, rebase, cherry-pick, revert or bisect in progress"; return; }
@@ -133,12 +146,18 @@ consider() {  # one linked worktree: globals p sha b locked prunable
     if git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/$b"; then
       if ! git -C "$ROOT" merge-base --is-ancestor "$sha" "refs/remotes/origin/$b" 2>/dev/null; then note=" (branch $(q "$b") kept: origin copy is behind)"
       elif git -C "$ROOT" update-ref -d "refs/heads/$b" "$sha" 2>/dev/null; then note=" (branch $(q "$b") deleted)"
+        git -C "$ROOT" config --remove-section "branch.$b" 2>/dev/null || true   # its stale push -u tracking
       else note=" (branch $(q "$b") kept: it moved)"; fi
     else note=" (branch $(q "$b") kept: no origin copy)"; fi
   fi
   say "removed: $(q "$p")$note"
   NREM=$((NREM + 1)); REMOVED="$REMOVED${REMOVED:+,} $(q "$(basename "$p")")"
 }
+
+ALL=()   # every listed worktree path, for G7
+while IFS= read -r -d '' line; do
+  case "$line" in "worktree "*) ALL[${#ALL[@]}]=${line#worktree } ;; esac
+done < <(git -C "$ROOT" worktree list --porcelain -z 2>/dev/null)
 
 n=0; p=""; sha=""; ref=""; b=""; locked=""; prunable=""
 flush() {

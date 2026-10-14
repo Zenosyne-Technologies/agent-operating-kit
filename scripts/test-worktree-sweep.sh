@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test-worktree-sweep.sh — behavioural tests for scripts/marvin-worktree-sweep.sh (AOS-196).
 # Real repos in a temp dir: a bare origin, a clone carrying .marvin/, and agent worktrees under
-# .claude/worktrees/. One fixture per keep-guard (G1–G6) asserting its NAMED reason (git's own
+# .claude/worktrees/. One fixture per keep-guard (G1–G7) asserting its NAMED reason (git's own
 # refusal must not mask a missing guard), removal fixtures, scope fixtures, --check and --hook.
 # The mutation section reverts each guard line in a copy; the guard's fixture must then fail.
 # Run from anywhere: bash scripts/test-worktree-sweep.sh — exit 0 = all passed.
@@ -74,6 +74,15 @@ fx_PR() { fresh; mkwt pr develop; work "$WT/pr" pr; merge_into develop pr; age "
           rm -f "$WT/pr/.git"; touch -t 202001010000 "$WT/pr"; sweep "$1"; }
 fx_LAG() { fresh; mkwt lag develop; work "$WT/lag" l1; git -C "$WT/lag" push -q origin lag 2>/dev/null
            work "$WT/lag" l2; merge_into develop lag; age "$WT/lag"; sweep "$1"; }   # origin/lag stops at l1
+IN="$WT/d/.claude/worktrees/agent-x"
+outer() {  # outer <ignored dir> — worktree d, otherwise removable: merged, clean (the dir is git-ignored)
+  fresh; mkwt d develop; printf '%s\n' "$1" > "$WT/d/.gitignore"; git -C "$WT/d" add .gitignore; work "$WT/d" d; merge_into develop d
+}
+fx_G7() { outer .claude/worktrees/; git -C "$WT/d" worktree add -q -b agent-x "$IN" develop   # inner worktree, untracked work
+          echo wip > "$IN/wip.txt"; age "$IN"; age "$WT/d"; sweep "$1"; }
+fx_G7P() { outer .claude/worktrees/; git -C "$WT/d" worktree add -q -b agent-x "$IN" develop; echo wip > "$IN/wip.txt"
+           age "$IN"; age "$WT/d"; rm -f "$IN/.git"; touch -t 202001010000 "$IN"; sweep "$1"; }   # inner prunable: no .git left
+fx_G7R() { outer vendor/; git init -q "$WT/d/vendor/lib"; echo wip > "$WT/d/vendor/lib/wip.txt"; age "$WT/d"; sweep "$1"; }  # ignored clone
 
 hd "G1 a locked worktree is kept"
 fx_G1 "$SWEEP"; assert_rc 0; assert_out "kept: $WT/g1 — G1 locked"; assert_there "$WT/g1"
@@ -99,9 +108,19 @@ fx_G6 "$SWEEP"; assert_out "kept: $WT/g6 — G6 active in the last 15 min"; asse
 hd "IDX a second sweep inside the window still names the real guard (status writes no index)"
 fx_IDX "$SWEEP"; assert_out "kept: $WT/g5 — G5"; assert_no_out "G6"
 
+hd "G7 a worktree holding another worktree or a repository is kept, and so is what is inside it"
+fx_G7 "$SWEEP"; assert_rc 0; assert_out "kept: $WT/d — G7 another worktree or repository inside it"; assert_out "kept: $IN — G3"
+assert_there "$WT/d"; assert_there "$IN"
+if [ -f "$IN/wip.txt" ]; then ok "inner work survives"; else bad "inner work deleted"; fi
+sweep "$SWEEP" --check; assert_no_out "would remove: $WT/d"; assert_out "kept: $WT/d — G7"
+fx_G7P "$SWEEP"; assert_out "kept: $WT/d — G7"; if [ -f "$IN/wip.txt" ]; then ok "prunable inner's work survives"; else bad "prunable inner's work deleted"; fi
+fx_G7R "$SWEEP"; assert_out "kept: $WT/d — G7"; if [ -f "$WT/d/vendor/lib/wip.txt" ]; then ok "nested clone survives"; else bad "nested clone deleted"; fi
+
 hd "R1 sub-branch merged into a LOCAL feature branch, pushed — removed, local branch deleted"
-fresh; mkwt sub feat; work "$WT/sub" sub; git -C "$WT/sub" push -q origin sub 2>/dev/null; merge_into feat sub; age "$WT/sub"
+fresh; mkwt sub feat; work "$WT/sub" sub; git -C "$WT/sub" push -q -u origin sub 2>/dev/null; merge_into feat sub; age "$WT/sub"
+if [ "$(git -C "$R" config --get branch.sub.remote)" = origin ]; then ok "push -u set branch.sub.remote"; else bad "push -u did not set branch.sub.remote"; fi
 sweep "$SWEEP"; assert_rc 0; assert_out "removed: $WT/sub (branch sub deleted)"; assert_gone "$WT/sub"; assert_no_branch sub
+if [ -z "$(git -C "$R" config --get branch.sub.remote)" ]; then ok "branch.sub config removed"; else bad "branch.sub config left behind"; fi
 if git -C "$O" show-ref --verify --quiet refs/heads/sub; then ok "remote branch untouched"; else bad "remote branch deleted"; fi
 
 hd "R5 origin holds only an older copy of the branch — removed, branch kept (origin copy is behind)"
@@ -178,6 +197,9 @@ mutation G3 fx_G3 '  [ -n "$st" ] && { keep "$p" "G3 uncommitted or untracked ch
 mutation G4 fx_G4 '  in_progress "$gd" && { keep "$p" "G4 merge, rebase, cherry-pick, revert or bisect in progress"; return; }' '  :' "G4"
 mutation G5 fx_G5 '  landed "$sha" "$b" || { keep "$p" "G5 commits not in any other branch"; return; }' '  :' "G5 commits"
 mutation G6 fx_G6 '  recent "$p" "$gd" && { keep "$p" "G6 active in the last $IDLE_MIN min"; return; }' '  :' "G6 active"
+mutation G7 fx_G7 '  nested "$p" "$p_phys" && { keep "$p" "G7 another worktree or repository inside it"; return; }' '  :' "G7 another"
+mutation G7LISTED fx_G7P '    case "$op/" in "$2"/?*|"$1"/?*) return 0 ;; esac   # a listed worktree, prunable ones too' '    :' "G7 another"
+mutation G7REPO fx_G7R '  [ -n "$(find "$1" -mindepth 2 -name .git -print -quit 2>/dev/null)" ]   # a clone or submodule' '  false' "G7 another"
 mutation NOLOCK fx_IDX '  st=$(git -C "$p" --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' \
                        '  st=$(git -C "$p" status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' "G5 commits"
 mutation PRUNABLE fx_PR '  [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }' '  :' "— prunable"

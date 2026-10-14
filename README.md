@@ -290,7 +290,7 @@ scripts/plan-claude-md-split.sh      read-only planner for the one-time v0.33.0 
 scripts/claude-core-history/        every always-loaded core the kit shipped at a tag (v0.22.0–v0.32.0) — the planner's reference set
 scripts/test-claude-md-split.sh      planner fixtures P1–P8 plus inline mutation checks (CI runs it too)
 scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md briefs over a version range by category, Action needed first (backs /marvin:whats-new)
-scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind six guards (backs the SessionStart sweep and /marvin:clean-worktrees)
+scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind seven guards (backs the SessionStart sweep and /marvin:clean-worktrees)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
