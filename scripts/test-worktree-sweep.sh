@@ -70,6 +70,10 @@ fx_G4() { fresh; mkwt g4 develop; work "$WT/g4" g4; merge_into develop g4
 fx_G5() { fresh; mkwt g5 develop; work "$WT/g5" g5; git -C "$WT/g5" push -q origin g5 2>/dev/null; age "$WT/g5"; sweep "$1"; }
 fx_G6() { fresh; mkwt g6 develop; work "$WT/g6" g6; merge_into develop g6; sweep "$1"; }
 fx_IDX() { fx_G5 "$1"; sweep "$1"; }   # a second sweep inside the window must still report G5, not G6
+fx_PR() { fresh; mkwt pr develop; work "$WT/pr" pr; merge_into develop pr; age "$WT/pr"   # its .git file gone: git lists it prunable
+          rm -f "$WT/pr/.git"; touch -t 202001010000 "$WT/pr"; sweep "$1"; }
+fx_LAG() { fresh; mkwt lag develop; work "$WT/lag" l1; git -C "$WT/lag" push -q origin lag 2>/dev/null
+           work "$WT/lag" l2; merge_into develop lag; age "$WT/lag"; sweep "$1"; }   # origin/lag stops at l1
 
 hd "G1 a locked worktree is kept"
 fx_G1 "$SWEEP"; assert_rc 0; assert_out "kept: $WT/g1 — G1 locked"; assert_there "$WT/g1"
@@ -100,6 +104,9 @@ fresh; mkwt sub feat; work "$WT/sub" sub; git -C "$WT/sub" push -q origin sub 2>
 sweep "$SWEEP"; assert_rc 0; assert_out "removed: $WT/sub (branch sub deleted)"; assert_gone "$WT/sub"; assert_no_branch sub
 if git -C "$O" show-ref --verify --quiet refs/heads/sub; then ok "remote branch untouched"; else bad "remote branch deleted"; fi
 
+hd "R5 origin holds only an older copy of the branch — removed, branch kept (origin copy is behind)"
+fx_LAG "$SWEEP"; assert_rc 0; assert_out "removed: $WT/lag (branch lag kept: origin copy is behind)"; assert_gone "$WT/lag"; assert_branch lag
+
 hd "R2 merged into develop, never pushed — removed, branch kept (no origin copy)"
 fresh; mkwt r2 develop; work "$WT/r2" r2; merge_into develop r2; age "$WT/r2"
 sweep "$SWEEP"; assert_out "removed: $WT/r2 (branch r2 kept: no origin copy)"; assert_gone "$WT/r2"; assert_branch r2
@@ -111,6 +118,15 @@ sweep "$SWEEP"; assert_out "removed: $WT/det"; assert_gone "$WT/det"
 hd "R4 a directory name with a space is printed encoded"
 fresh; git -C "$R" worktree add -q -b spaced "$WT/my wt" develop; work "$WT/my wt" sp; merge_into develop spaced; age "$WT/my wt"
 sweep "$SWEEP"; assert_out "removed: \"$WT/my wt\" (branch spaced kept: no origin copy)"; assert_gone "$WT/my wt"
+
+hd "P1 a prunable entry (its .git file gone) is reported, never touched"
+fx_PR "$SWEEP"; assert_rc 0; assert_out "kept: $WT/pr — prunable"; assert_there "$WT/pr"
+sweep "$SWEEP" --check; assert_no_out "would remove"; assert_out "kept: $WT/pr — prunable"; assert_there "$WT/pr"
+
+hd "P2 a prunable entry whose directory is gone prints exactly one kept line"
+fresh; mkwt pm develop; work "$WT/pm" pm; merge_into develop pm; age "$WT/pm"; rm -rf "$WT/pm"
+sweep "$SWEEP"; assert_rc 0; assert_out "kept: $WT/pm — "
+if [ "$(printf '%s\n' "$OUT" | grep -Fc -- "$WT/pm")" = 1 ]; then ok "exactly one line"; else bad "not exactly one line for the path"; fi
 
 hd "S1 a worktree outside .claude/worktrees/ is never touched or reported"
 fresh; git -C "$R" worktree add -q -b outside "$WORK/outside" develop; work "$WORK/outside" out; merge_into develop outside; age "$WORK/outside"
@@ -164,6 +180,9 @@ mutation G5 fx_G5 '  landed "$sha" "$b" || { keep "$p" "G5 commits not in any ot
 mutation G6 fx_G6 '  recent "$p" "$gd" && { keep "$p" "G6 active in the last $IDLE_MIN min"; return; }' '  :' "G6 active"
 mutation NOLOCK fx_IDX '  st=$(git -C "$p" --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' \
                        '  st=$(git -C "$p" status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' "G5 commits"
+mutation PRUNABLE fx_PR '  [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }' '  :' "— prunable"
+mutation ORIGBEHIND fx_LAG '      if ! git -C "$ROOT" merge-base --is-ancestor "$sha" "refs/remotes/origin/$b" 2>/dev/null; then note=" (branch $(q "$b") kept: origin copy is behind)"' \
+                           '      if false; then note=""' "origin copy is behind"
 
 printf '\n----\ntest-worktree-sweep: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

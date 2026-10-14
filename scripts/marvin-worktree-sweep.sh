@@ -108,7 +108,7 @@ landed() {  # landed <sha> <own branch or ""> — the commit is in a branch othe
         END { exit found ? 0 : 1 }'
 }
 
-consider() {  # one linked worktree: globals p sha b locked
+consider() {  # one linked worktree: globals p sha b locked prunable
   local p_phys gd st note
   [ -n "$p" ] || return 0
   if [ -L "$p" ]; then
@@ -117,6 +117,7 @@ consider() {  # one linked worktree: globals p sha b locked
   p_phys=$(cd "$p" 2>/dev/null && pwd -P) || {
     case "$p/" in "$WT_DIR"/?*|"$WT_PHYS"/?*) keep "$p" "missing — run git worktree prune" ;; esac; return 0; }
   case "$p_phys/" in "$WT_PHYS"/?*) ;; *) return 0 ;; esac
+  [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }
   [ -n "$locked" ] && { keep "$p" "G1 locked"; return; }
   is_current "$p_phys" && { keep "$p" "G2 current checkout"; return; }
   gd=$(git -C "$p" rev-parse --absolute-git-dir 2>/dev/null) || { keep "$p" "git metadata unreadable"; return; }
@@ -130,7 +131,8 @@ consider() {  # one linked worktree: globals p sha b locked
   note=""
   if [ -n "$b" ]; then
     if git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/$b"; then
-      if git -C "$ROOT" update-ref -d "refs/heads/$b" "$sha" 2>/dev/null; then note=" (branch $(q "$b") deleted)"
+      if ! git -C "$ROOT" merge-base --is-ancestor "$sha" "refs/remotes/origin/$b" 2>/dev/null; then note=" (branch $(q "$b") kept: origin copy is behind)"
+      elif git -C "$ROOT" update-ref -d "refs/heads/$b" "$sha" 2>/dev/null; then note=" (branch $(q "$b") deleted)"
       else note=" (branch $(q "$b") kept: it moved)"; fi
     else note=" (branch $(q "$b") kept: no origin copy)"; fi
   fi
@@ -138,11 +140,11 @@ consider() {  # one linked worktree: globals p sha b locked
   NREM=$((NREM + 1)); REMOVED="$REMOVED${REMOVED:+,} $(q "$(basename "$p")")"
 }
 
-n=0; p=""; sha=""; ref=""; b=""; locked=""
+n=0; p=""; sha=""; ref=""; b=""; locked=""; prunable=""
 flush() {
   n=$((n + 1)); b=${ref#refs/heads/}; [ -n "$ref" ] || b=""
   [ "$n" -gt 1 ] && consider   # the first record is always the main checkout
-  p=""; sha=""; ref=""; b=""; locked=""
+  p=""; sha=""; ref=""; b=""; locked=""; prunable=""
 }
 while IFS= read -r -d '' line; do
   case "$line" in
@@ -151,6 +153,7 @@ while IFS= read -r -d '' line; do
     "HEAD "*)       sha=${line#HEAD } ;;
     "branch "*)     ref=${line#branch } ;;
     locked|"locked "*) locked=1 ;;
+    prunable|"prunable "*) prunable=1 ;;
   esac
 done < <(git -C "$ROOT" worktree list --porcelain -z 2>/dev/null)
 [ -z "$p" ] || flush
