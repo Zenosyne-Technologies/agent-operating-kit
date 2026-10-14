@@ -29,7 +29,7 @@ sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has 
 | Apply an irreversible or unguarded migration (no dry-run, no guard, data-destroying) | REQUEST_APPROVAL |
 | Copy or restore a file or DB into a destination that already exists, or that is (or sits behind) a symlink — ordinary edits to existing files are not copies | REQUEST_APPROVAL |
 | Force-push, rewrite pushed history, `rm -rf`, or mass-move/rename across the tree (except the run-report prune, orchestrator only, exactly as `briefing.md` item 11 defines it, symlink refusal included) | REQUEST_APPROVAL |
-| Remove a worktree or delete a branch by hand (the sweep `worktrees.md` names is the only removal), or push `main` or a tag outside the release cut | REQUEST_APPROVAL |
+| Remove an agent worktree, or delete its branch, by hand (the sweep `worktrees.md` names is the only removal; merged feature/release/hotfix branches die per `git-strategy.md`), or, as a sub-agent, push anything but your own branch — `main`, `develop` and tags move only as `worktrees.md` and `git-strategy.md` say | REQUEST_APPROVAL |
 | Delete or overwrite a file you have not read | DO_INSTEAD — read it first |
 | Act outside your brief's scope, or touch paths you do not own | CLARIFY |
 | Guess your way through a destructive or irreversible step when unsure | CLARIFY |

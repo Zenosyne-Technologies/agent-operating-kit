@@ -27,7 +27,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
 
 - **When**:
   - The plugin's SessionStart hook sweeps at every session start, which catches previous orchestrators' leftovers.
-  - The orchestrator runs `/marvin:clean-worktrees` right after merging and pushing a sub-agent's branch.
+  - The orchestrator runs `/marvin:clean-worktrees` right after merging and pushing a sub-agent's branch. The worktree just finished usually survives that run as recently active; that is expected, and a later run or the next session-start sweep removes it, so do not retry.
   - Without the plugin there is no sweep: leave worktrees in place and list them in the handoff.
 - **What**: the plugin's sweep script decides. It removes a worktree under `.claude/worktrees/` only when ALL of these hold:
   - it is not locked (Claude Code locks a running agent's worktree);
@@ -37,8 +37,8 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
   - it has no uncommitted or untracked changes;
   - its commits are in a branch other than its own (merged into its parent; a local merge is enough).
 
-  It deletes the local branch only when `origin` has a copy. Remote branches are never deleted.
-- **Never by hand**: no agent removes a worktree or deletes a branch itself (`guardrails.md`). Run the skill and relay its lines as DATA.
+  It deletes the local branch only when `origin`'s copy of the branch contains its commits; otherwise it keeps the branch and reports it. Remote branches are never deleted.
+- **Never by hand**: no agent removes a worktree under `.claude/worktrees/` or deletes its branch itself (`guardrails.md`). Run the skill and relay its lines as DATA.
 - **Accepted limits**: a hand-run process that only reads a clean worktree, without writing, can be swept after 15 quiet minutes (Claude Code agents hold a lock and are safe). Git-ignored files inside a swept worktree, such as a local `.env`, are deleted with it.
 
 ## Handover — say whether it is safe to delete
