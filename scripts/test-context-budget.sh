@@ -11,6 +11,8 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 HOOK="$SCRIPT_DIR/marvin-context-budget.sh"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/marvin-cbtest.XXXXXX") || { echo "FATAL: mktemp" >&2; exit 2; }
 trap 'rm -rf "$WORK"' EXIT
+export CLAUDE_CONFIG_DIR="$WORK/cfg"
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="" CLAUDE_CODE_DISABLE_1M_CONTEXT="" CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=""
 
 PASSED=0; FAILED=0; CURRENT=""; OUT=""; RC=0
 hd()  { CURRENT="$1"; printf '\n== %s\n' "$1"; }
@@ -35,11 +37,12 @@ transcript() {
     printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"{\\"usage\\":{\\"input_tokens\\":999999999}}"}]}}\n' >> "$f"
   done
 }
-mk_project() {  # mk_project <dir> [soft] [hard]
+mk_project() {  # mk_project <dir> [soft] [hard] [window]
   rm -rf "$1"; mkdir -p "$1/.marvin"
-  { printf -- '---\nkit_version: 0.36.0\n'
+  { printf -- '---\nkit_version: 0.38.0\n'
     [ -n "${2:-}" ] && printf 'session_soft_ktokens: %s\n' "$2"
     [ -n "${3:-}" ] && printf 'session_hard_ktokens: %s\n' "$3"
+    [ -n "${4:-}" ] && printf 'context_window_ktokens: %s\n' "$4"
     printf -- '---\nProject facts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
 }
 # run <hook> <project_dir> <event> <transcript> [extra_json_fields after cwd] [json_fields before hook_event_name]
@@ -134,19 +137,77 @@ hd "B15 one message spread over several assistant lines counts once (crossing se
 transcript "$T" 300 410
 run "$HOOK" "$P" PostToolUse "$T"; assert_rc0; assert_out "past the 400k soft budget"
 
-# ── mutations: each reverts one guard in a copy; the named fixture must then fail ────────────────
-mutation() {  # mutation <name> <exact line in HOOK> <replacement> <event> <transcript-ks> <extra>
-  local m="$WORK/mutant-$1.sh"
-  A="$2" B="$3" awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$HOOK" > "$m"   # ENVIRON: no escape processing, unlike awk -v
-  if cmp -s "$m" "$HOOK"; then bad "mutation $1: target line not found — harness is stale"; return; fi
-  transcript "$T" $5
-  run "$m" "$P" "$4" "$T" "" "$6"
-  if [ -z "$OUT" ]; then bad "mutation $1 survived (no advisory where the mutant should emit one)"; else ok "mutation $1 caught"; fi
+hd "C1 the ladder speaks where the budgets are raised: 70 % plan, 80 % wind down, 90 % stop"
+PL="$WORK/proj-ladder"; mk_project "$PL" 950 990
+transcript "$T" 690 705
+run "$HOOK" "$PL" PostToolUse "$T"; assert_rc0; assert_json
+assert_out "at 70% of the 1000k context window"; assert_out "next clean logical break"
+transcript "$T" 795 805
+run "$HOOK" "$PL" PostToolUse "$T"; assert_out "at 80% of the 1000k context window"; assert_out "start no new task"
+transcript "$T" 895 905
+run "$HOOK" "$PL" PostToolUse "$T"; assert_out "at 90% of the 1000k context window"; assert_out "/compact"
+run "$HOOK" "$PL" UserPromptSubmit "$T"; assert_out "/compact"; assert_out "session-budget.md"
+transcript "$T" 895 905
+run "$HOOK" "$P" PostToolUse "$T"; assert_out "at 90% of the 1000k context window"; assert_out "/compact"
+
+hd "C2 PostToolUse stays quiet inside a step"
+transcript "$T" 905 910
+run "$HOOK" "$PL" PostToolUse "$T"; assert_rc0; assert_empty
+
+hd "C3 CLAUDE_CODE_AUTO_COMPACT_WINDOW sets the window"
+transcript "$T" 205 215
+OUT=$(printf '{"session_id":"s","hook_event_name":"PostToolUse","transcript_path":"%s","cwd":"%s"}' "$T" "$P" \
+  | CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" 2>&1); RC=$?
+assert_rc0; assert_out "at 71% of the 300k context window"
+
+hd "C4 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 means a 200k window"
+transcript "$T" 135 145
+OUT=$(printf '{"session_id":"s","hook_event_name":"PostToolUse","transcript_path":"%s","cwd":"%s"}' "$T" "$P" \
+  | CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_PROJECT_DIR="$P" bash "$HOOK" 2>&1); RC=$?
+assert_out "at 72% of the 200k context window"
+
+hd "C5 context_window_ktokens beats the environment, and steps up past it"
+PW="$WORK/proj-window"; mk_project "$PW" "" "" 100
+transcript "$T" 100 150
+OUT=$(printf '{"session_id":"s","hook_event_name":"UserPromptSubmit","transcript_path":"%s","cwd":"%s"}' "$T" "$PW" \
+  | CLAUDE_CODE_AUTO_COMPACT_WINDOW=900000 CLAUDE_PROJECT_DIR="$PW" bash "$HOOK" 2>&1); RC=$?
+assert_out "at 75% of the 200k context window"
+
+hd "C6 CLAUDE_AUTOCOMPACT_PCT_OVERRIDE scales the steps"
+transcript "$T" 440 455
+OUT=$(printf '{"session_id":"s","hook_event_name":"PostToolUse","transcript_path":"%s","cwd":"%s"}' "$T" "$PL" \
+  | CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50 CLAUDE_PROJECT_DIR="$PL" bash "$HOOK" 2>&1); RC=$?
+assert_out "/compact"
+
+hd "C7 the stricter scale names the trigger: hard budget before the 70 % step on a 1M window"
+transcript "$T" 690 705
+run "$HOOK" "$P" PostToolUse "$T"; assert_out "past the 700k hard budget"
+
+# ── mutations: revert one line of the hook or the lib in a copy; the fixture's output must then change ─
+LIB="$SCRIPT_DIR/lib/marvin-hook-lib.sh"
+mutation() {  # mutation <name> <hook|lib> <exact line> <replacement> <project> <event> <transcript-ks> [env]
+  local d="$WORK/m-$1" tgt orig
+  rm -rf "$d"; mkdir -p "$d/lib"; cp "$HOOK" "$d/hook.sh"; cp "$LIB" "$d/lib/marvin-hook-lib.sh"
+  if [ "$2" = lib ]; then tgt="$d/lib/marvin-hook-lib.sh"; else tgt="$d/hook.sh"; fi
+  A="$3" B="$4" awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$tgt" > "$tgt.m" && mv "$tgt.m" "$tgt"
+  if [ "$2" = lib ]; then cmp -s "$tgt" "$LIB"; else cmp -s "$tgt" "$HOOK"; fi && { bad "mutation $1: target line not found — harness is stale"; return; }
+  transcript "$T" $7
+  OUT=$(printf '{"session_id":"s","hook_event_name":"%s","transcript_path":"%s","cwd":"%s"}' "$6" "$T" "$5" | env ${8:-} CLAUDE_PROJECT_DIR="$5" bash "$HOOK" 2>&1); orig=$OUT
+  OUT=$(printf '{"session_id":"s","hook_event_name":"%s","transcript_path":"%s","cwd":"%s"}' "$6" "$T" "$5" | env ${8:-} CLAUDE_PROJECT_DIR="$5" bash "$d/hook.sh" 2>&1)
+  if [ "$OUT" = "$orig" ]; then bad "mutation $1 survived"; else ok "mutation $1 caught"; fi
 }
 hd "M1 crossing check removed — B4 (no re-advisory) must catch it"
-mutation crossing '    [ "$prev" -lt "$soft" ] && [ "$cur" -ge "$soft" ] && msg="$SOFT_MSG"' '    [ "$cur" -ge "$soft" ] && msg="$SOFT_MSG"' PostToolUse "410 450" ""
+mutation crossing hook '  [ "$lp" -lt "$lc" ] && msg=$(say "$lc")' '  [ "$lc" -ge 1 ] && msg=$(say "$lc")' "$P" PostToolUse "410 450"
 hd "M2 sub-agent guard removed — B9 must catch it"
-mutation subagent '  *\"agent_id\"*) exit 0 ;;' '  *\"agent_id\"*) : ;;' PostToolUse "390 410" ',"agent_id":"a1"'
+d9="$WORK/m9"; rm -rf "$d9"; mkdir -p "$d9/lib"; cp "$HOOK" "$d9/hook.sh"
+A='    *\"agent_id\"*) return 0 ;;' B='    *\"agent_id\"*) : ;;' awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$LIB" > "$d9/lib/marvin-hook-lib.sh"
+if cmp -s "$d9/lib/marvin-hook-lib.sh" "$LIB"; then bad "mutation subagent: target line not found — harness is stale"; else
+  transcript "$T" 390 410; run "$d9/hook.sh" "$P" PostToolUse "$T" "" ',"agent_id":"a1"'
+  if [ -n "$OUT" ]; then ok "mutation subagent caught"; else bad "mutation subagent survived"; fi; fi
+hd "M3 the 90 % step removed — C1 must catch it"
+mutation stop lib '  if [ "$p" -ge $((90 * MH_SCALE / 100)) ]; then l=3; fi' '  :' "$PL" PostToolUse "895 905"
+hd "M4 percentage scaling removed — C6 must catch it"
+mutation scale lib '  if printf '"'"'%s'"'"' "$e" | grep -Eq '"'"'^[0-9]{1,3}$'"'"' && [ "$e" -ge 1 ] && [ "$e" -le 100 ]; then MH_SCALE=$e; fi' '  :' "$PL" PostToolUse "440 455" CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50
 
 printf '\n----\ntest-context-budget: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
