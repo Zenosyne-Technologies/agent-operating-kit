@@ -56,6 +56,7 @@ for f in $(git ls-files templates/); do
 done
 for b in $inv; do
   case "$b" in README.md|BOOTSTRAP.md|CHANGELOG.md) continue;; esac
+  git ls-files --error-unmatch -- "output-styles/$b" >/dev/null 2>&1 && continue  # plugin-level output styles are factory files, not payload
   git ls-files templates/ | grep -qE "/$b\$|^templates/$b\$" || miss_repo="$miss_repo $b"
 done
 [ -z "$miss_inv" ] && [ -z "$miss_repo" ] && pass inventory || fail inventory "not in README:$miss_inv | in README but not tracked:$miss_repo"
@@ -219,6 +220,50 @@ else
   [ -z "$badline" ] || cl="$cl line(s) $(echo $badline) are not a heading, a '- ' bullet under a category, or blank;"
 fi
 [ -z "$cl" ] && pass changelog || fail changelog "$CL:$cl"
+
+# ── 17. style-sync: the user-update rules block is defined ONCE (hooks/user-update-rules.txt); the
+# SessionStart hook prints that file and the Marvin output style embeds it verbatim between markers
+RF=hooks/user-update-rules.txt; OS=output-styles/marvin.md; ss=""
+[ -s "$RF" ] || ss="$ss $RF missing or empty;"
+[ -f "$OS" ] || ss="$ss $OS missing;"
+if [ -z "$ss" ]; then
+  emb=$(awk '/<!-- user-update-rules:end/ { f = 0 } f { print } /<!-- user-update-rules:begin/ { f = 1 }' "$OS")
+  [ "$emb" = "$(cat "$RF")" ] || ss="$ss $OS's embedded block differs from $RF;"
+  grep -q '^keep-coding-instructions: true$' "$OS" || ss="$ss $OS lacks keep-coding-instructions: true;"
+  grep -q 'force-for-plugin' "$OS" && ss="$ss $OS must never set force-for-plugin;"
+fi
+grep -qF 'hooks/user-update-rules.txt' scripts/marvin-session-start.sh || ss="$ss marvin-session-start.sh does not print $RF;"
+[ -z "$ss" ] && pass style-sync || fail style-sync "$ss"
+
+# ── 18. hooks-registered: every hook script runs under its event in hooks/hooks.json, the sub-agent
+# hooks scoped to the marvin:* personas and the brief lint to the Agent tool
+IFS= read -r -d '' HR_PY <<'PY' || true
+import json
+want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh"],
+        "PostToolUse": ["marvin-context-budget.sh"],
+        "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
+        "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
+        "SubagentStop": ["marvin-subagent-gate.sh"], "PreToolUse": ["marvin-brief-lint.sh"]}
+matcher = {"SubagentStart": "^marvin:", "SubagentStop": "^marvin:", "PreToolUse": "Agent|Task"}
+h = json.load(open("hooks/hooks.json"))["hooks"]
+for ev, scripts in want.items():
+    for sc in scripts:
+        groups = [g for g in h.get(ev, []) if any(("/scripts/" + sc) in x.get("command", "") for x in g.get("hooks", []))]
+        if not groups:
+            print(ev + " does not run " + sc + ";")
+        elif ev in matcher and any(g.get("matcher") != matcher[ev] for g in groups):
+            print(ev + " runs " + sc + " without matcher " + matcher[ev] + ";")
+PY
+hr=$(python3 -c "$HR_PY" 2>&1)
+[ -z "$hr" ] && pass hooks-registered || fail hooks-registered "$(echo $hr)"
+
+# ── 19. profile-window: the hook lib's default context window is the model profile's orchestrator window
+pw=$(awk -F'|' '/^\| orchestrator \|/ { gsub(/ /, "", $4); print $4; exit }' "$MP")
+case "$pw" in *M) pw=${pw%M}; m=1000 ;; *K|*k) pw=${pw%[Kk]}; m=1 ;; *) pw=""; m=1 ;; esac
+case "$pw" in ""|*[!0-9]*) pw="" ;; *) pw=$(( pw * m )) ;; esac
+lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-lib.sh)
+if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
+else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

@@ -23,6 +23,8 @@ if [ -z "${WORK:-}" ] || [ ! -d "${WORK:-}" ]; then
   exit 2
 fi
 trap 'rm -rf "$WORK"' EXIT
+export CLAUDE_CONFIG_DIR="$WORK/cfg"; mkdir -p "$WORK/cfg"
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="" CLAUDE_CODE_DISABLE_1M_CONTEXT="" CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=""
 
 PASSED=0; FAILED=0; CURRENT=""
 OUT=""; RC=0
@@ -280,6 +282,31 @@ if [ "$elapsed" -le 3 ]; then ok "returned in ${elapsed}s"
 else bad "took ${elapsed}s — a FIFO placed at PROJECT-INFO.md must never block the hook"; fi
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+hd "OS1 project outputStyle marvin:marvin — no rules block; the drift line still prints"
+mk_plugin "$WORK/plug38" 0.38.0; mk_project "$WORK/os1" 0.37.0
+mkdir -p "$WORK/os1/.claude"; printf '{\n  "outputStyle": "marvin:marvin"\n}\n' > "$WORK/os1/.claude/settings.json"
+run_hook "$HOOK" "$WORK/os1" "$WORK/plug38"; assert_rc 0; assert_no_out "$RULES_MARK"; assert_out "a newer Marvin is ready"
+
+hd "OS2 a local outputStyle overrides the project's — the rules block prints again"
+printf '{"outputStyle":"Explanatory"}\n' > "$WORK/os1/.claude/settings.local.json"
+run_hook "$HOOK" "$WORK/os1" "$WORK/plug38"; assert_out "$RULES_MARK"
+rm -f "$WORK/os1/.claude/settings.local.json"
+
+hd "OS3 user-level outputStyle is read from CLAUDE_CONFIG_DIR, and the project's beats it"
+mk_project "$WORK/os3" 0.38.0; printf '{"outputStyle":"marvin:marvin"}\n' > "$WORK/cfg/settings.json"
+run_hook "$HOOK" "$WORK/os3" "$WORK/plug38"; assert_empty "user style is Marvin's, versions match"
+mkdir -p "$WORK/os3/.claude"; printf '{"outputStyle":"default"}\n' > "$WORK/os3/.claude/settings.json"
+run_hook "$HOOK" "$WORK/os3" "$WORK/plug38"; assert_out "$RULES_MARK"
+rm -f "$WORK/cfg/settings.json"
+
+hd "OS4 an escaped look-alike is not a style value"
+mk_project "$WORK/os4" 0.38.0; mkdir -p "$WORK/os4/.claude"
+printf '{"x":"\\"outputStyle\\": \\"marvin:marvin\\""}\n' > "$WORK/os4/.claude/settings.json"
+run_hook "$HOOK" "$WORK/os4" "$WORK/plug38"; assert_out "$RULES_MARK"
+
+hd "OS5 the printed rules are hooks/user-update-rules.txt, line for line"
+while IFS= read -r line; do assert_out "$line"; done < "$SCRIPT_DIR/../hooks/user-update-rules.txt"
+
 # ── mutation checks: revert one guard at a time in a throwaway copy, its named fixture must fail
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 mutate_replace_line() {  # mutate_replace_line <src> <dst> <exact-line-text> <replacement-line>
@@ -564,6 +591,22 @@ chmod 644 "$WORK/proj-ro/.marvin/PROJECT-INFO.md"
 assert_rc 0
 assert_out "this project's install is v0.30.0 but the plugin is v0.32.0"
 if [ -z "$ERR" ]; then ok "stderr empty"; else bad "stderr not empty: $ERR"; fi
+
+hd "MOS style skip removed — OS1 must catch it"
+mutate_replace_line "$HOOK" "$WORK/mut-os.sh" 'case "$style" in marvin:*) exit 0 ;; esac' 'case "$style" in marvin:*) : ;; esac'
+run_hook "$WORK/mut-os.sh" "$WORK/os1" "$WORK/plug38"
+if printf '%s\n' "$OUT" | grep -Fq "$RULES_MARK"; then ok "mutation style-skip caught"; else bad "mutation style-skip survived"; fi
+
+hd "T-NOHOME HOME and CLAUDE_CONFIG_DIR both unset — still exits 0 under set -u, rules still print"
+OUT=$(printf '' | env -u HOME -u CLAUDE_CONFIG_DIR CLAUDE_PROJECT_DIR="$WORK/os4" CLAUDE_PLUGIN_ROOT="$WORK/plug38" bash "$HOOK" 2>&1); RC=$?
+assert_rc 0 "no HOME, no CLAUDE_CONFIG_DIR"
+assert_out "$RULES_MARK"
+
+hd "MNH unset-HOME expansion reverts to a bare \$HOME — T-NOHOME must catch it"
+sed 's|\${HOME:-}|$HOME|' "$HOOK" > "$WORK/mut-nh.sh"
+if cmp -s "$HOOK" "$WORK/mut-nh.sh"; then bad "mutation did not apply"; fi
+OUT=$(printf '' | env -u HOME -u CLAUDE_CONFIG_DIR CLAUDE_PROJECT_DIR="$WORK/os4" CLAUDE_PLUGIN_ROOT="$WORK/plug38" bash "$WORK/mut-nh.sh" 2>&1); RC=$?
+if [ "$RC" != 0 ]; then ok "mutation bare-HOME caught"; else bad "mutation bare-HOME survived"; fi
 
 printf '\n----\ntest-session-hook: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ] || exit 1
