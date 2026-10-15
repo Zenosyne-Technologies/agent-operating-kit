@@ -87,6 +87,7 @@ run "$GATE" "$P" "$(stop_in marvin:developer "ZQX-MSG-MARK \" \\")"; assert_json
 hd "R1 SubagentStart injects the rules for a marvin persona"
 run "$RULES" "$P" "$(start_in marvin:developer-small "$P")"; assert_rc0; assert_json
 assert_out '"hookEventName":"SubagentStart"'; assert_out "Marvin sub-agent rules"; assert_out "TRACKER:"; assert_out "never create, move or delete a git tag"
+assert_out "tidying.md"; assert_out "label every Docker resource you create"; assert_out "binary logging off"
 
 hd "R2 not for other agents or non-Marvin projects"
 run "$RULES" "$P" "$(start_in Explore "$P")"; assert_empty

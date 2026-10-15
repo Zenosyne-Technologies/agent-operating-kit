@@ -235,7 +235,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 ## The discipline stack
 
-**Context proportionality.** `CLAUDE.md` and the kit core it imports (`.marvin/CLAUDE.marvin.md`) are the only always-loaded files, and they hold only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, guardrails, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks. Briefs cite the file; they never inline its content.
+**Context proportionality.** `CLAUDE.md` and the kit core it imports (`.marvin/CLAUDE.marvin.md`) are the only always-loaded files, and they hold only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, guardrails, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks, host tidying. Briefs cite the file; they never inline its content.
 
 **Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message capped at a digest (verdict, one line per finding with `file:line`, gate lines — 25 lines at most), the full report going to a gitignored run report under `.marvin/runs/` (never committed, pruned at milestone close) that the orchestrator opens only to act on a finding. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
 
@@ -354,6 +354,7 @@ templates/
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
     worktrees.md                   agent worktree location, push cadence, the sweep's when/what, WORKTREE: handover line
+    tidying.md                     Docker labels, naming, who removes what and when, the backstop sweep, binary logging off for throwaway databases
     user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
   docs/                            the .docs/ taxonomy seeds — every folder gets one lowercase index.md
