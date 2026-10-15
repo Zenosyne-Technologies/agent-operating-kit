@@ -2,6 +2,26 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.39.0] — 2026-10-15
+
+### Added
+- A Docker sweep (session start and `/marvin:clean-worktrees`) removes the throwaway containers, networks, volumes and images of finished agent worktrees, keeping anything that is another checkout's, not `throwaway`, main-owned, still in use, or an image with several tags.
+- Four Docker labels (`marvin.project`, `marvin.checkout`, `marvin.owner`, `marvin.lifetime`) that every agent-created resource carries; the new `.marvin/agents/tidying.md` owns them.
+- A Docker lint advises on unlabelled resources, compose stacks without a project name, and throwaway MySQL/MariaDB containers with binary logging on; throwaway databases now run with binary logging off.
+- A ticket lint checks tracker writes to the project's own tracker for the required labels and registry values (`ticket_lint: block | advise | off`); a `gh` command it cannot parse with certainty only gets advice.
+- The intake brief's label audit: it reports non-conforming open items by default and backfills only after you say yes.
+
+### Changed
+- Label registry v1.5.0: `size:` on every non-epic item at filing, labels never prose, severity spelled exactly (`sev4-low`).
+- Every upgrade now ends with ONE yes/no on backfilling the items the audit flagged.
+
+### Fixed
+- Tracker items filed with a size or severity only in prose, or with bare `sev4`, are now flagged and denied instead of passing as labelled.
+
+### Action needed
+- Label your Docker resources per `tidying.md`; resources created before this upgrade carry no labels and are never swept, so remove them by hand.
+- After `/marvin:upgrade-agent-os`, start a new session so the new hooks and rules load.
+
 ## [0.38.0] — 2026-10-15
 
 ### Added
