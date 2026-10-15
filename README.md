@@ -315,7 +315,7 @@ scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md b
 scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind seven guards (backs the SessionStart sweep and /marvin:clean-worktrees)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
-scripts/marvin-docker-sweep.sh       removes throwaway Docker resources of finished agent worktrees behind six guards (backs the SessionStart Docker sweep and /marvin:clean-worktrees)
+scripts/marvin-docker-sweep.sh       removes throwaway Docker resources of finished agent worktrees behind eight keep guards (D0–D7) (backs the SessionStart Docker sweep and /marvin:clean-worktrees)
 scripts/test-docker-sweep.sh         fixture suite for the Docker sweep against a fake docker, incl. inline mutation checks (CI runs it too)
 hooks/user-update-rules.txt          the user-update rules block, defined once — printed by the SessionStart hook, embedded by the output style
 hooks/style-plugins.txt              registry of plugins that inject a competing output style (install/upgrade offer to disable them per user)
