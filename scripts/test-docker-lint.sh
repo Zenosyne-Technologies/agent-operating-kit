@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # test-docker-lint.sh — behavioural tests for scripts/marvin-docker-lint.sh (PreToolUse Bash, v0.39.0).
-# Pins: every resource-creating form gets the label advice unless marvin.project is in the command;
+# Pins: every resource-creating form gets the label advice unless marvin.project AND marvin.checkout
+# (or --label-file) are in the command;
 # compose up|create|run without a global -p/--project-name gets the compose advice; mysql/percona
 # without a binlog-off flag and mariadb with --log-bin get the binlog advice; docker only in command
 # position (echo docker run … stays silent); never a decision; no echo; sub-agent calls NOT skipped;
@@ -9,7 +10,8 @@ set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 HOOK="$SCRIPT_DIR/marvin-docker-lint.sh"; LIB="$SCRIPT_DIR/lib/marvin-hook-lib.sh"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/marvin-dltest.XXXXXX") || { echo "FATAL: mktemp" >&2; exit 2; }
-trap 'rm -rf "$WORK"' EXIT
+TF="$WORK.elapsed"   # outside $WORK, so D9's snapshot of $WORK sees only what the hook writes
+trap 'rm -rf "$WORK" "$TF"' EXIT
 
 PASSED=0; FAILED=0; CURRENT=""; OUT=""; RC=0
 hd()  { CURRENT="$1"; printf '\n== %s\n' "$1"; }
@@ -44,11 +46,11 @@ pre_in() {  # pre_in <command> [prefix-fields] [tool]
 }
 run() {  # run <project> <stdin> — sets OUT, RC and ELAPSED (seconds); HOOKX overrides the hook
   local TIMEFORMAT=%R
-  { time OUT=$(printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash "${HOOKX:-$HOOK}" 2>&1); } 2>"$WORK/elapsed"
-  RC=$?; ELAPSED=$(tail -n 1 "$WORK/elapsed")
+  { time OUT=$(printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash "${HOOKX:-$HOOK}" 2>&1); } 2>"$TF"
+  RC=$?; ELAPSED=$(tail -n 1 "$TF")
 }
 fast() { awk -v t="$ELAPSED" 'BEGIN { exit !(t + 0 < 1) }'; }
-LBL="without a marvin.project label"; CMP="without -p/--project-name"; BIN="binary logging on"
+LBL="without the marvin.project and marvin.checkout labels"; CMP="without -p/--project-name"; BIN="binary logging on"
 lint() { run "$P" "$(pre_in "$1")"; }
 fires()  { lint "$2"; if printf '%s\n' "$OUT" | grep -Fq -- "$1"; then ok "fires [$1]: $2"; else bad "silent [$1]: $2"; fi; [ "$RC" = 0 ] || bad "exit $RC: $2"; }
 quiet()  { lint "$2"; if printf '%s\n' "$OUT" | grep -Fq -- "$1"; then bad "fired [$1]: $2"; else ok "no [$1]: $2"; fi; [ "$RC" = 0 ] || bad "exit $RC: $2"; }
@@ -77,13 +79,13 @@ for c in 'FOO=1 BAR=2 docker run nginx' 'sudo docker run nginx' 'sudo -u root -E
 hd "D4 non-triggers stay silent"
 for c in 'docker ps' 'docker ps -a' 'docker logs web' 'docker rm -f web' 'docker volume ls' 'docker volume rm v' \
   'docker network inspect n' 'docker image ls' 'docker images' 'docker exec web ls' 'docker stop web' \
-  'docker volume create --label marvin.project=p v' 'docker run --label marvin.project=p --label marvin.owner=main nginx' \
-  'docker build --label marvin.project=p .' 'echo docker run nginx' 'echo "docker run nginx"' "echo 'docker run nginx'" \
+  'docker volume create --label marvin.project=p --label marvin.checkout=/x v' 'docker run --label marvin.project=p --label marvin.checkout=/x --label marvin.owner=main nginx' \
+  'docker build --label marvin.project=p --label marvin.checkout=/x .' 'echo docker run nginx' 'echo "docker run nginx"' "echo 'docker run nginx'" \
   'grep docker notes.txt' 'mydocker run nginx' 'docker-machine create m' '# docker run nginx' 'ls # docker run nginx' \
   'docker compose down -v' 'docker-compose down' 'docker compose ps' 'docker compose logs -f' 'docker' 'docker --help' \
   'docker volume' 'docker compose -p p up -d' 'docker compose --project-name p up' 'docker compose --project-name=p up' \
   'docker compose -pp up' 'COMPOSE_PROJECT_NAME=p docker compose up' 'docker-compose -p p up' 'docker container ls' \
-  'docker run --help --label marvin.project=p'; do
+  'docker run --help --label marvin.project=p --label marvin.checkout=/x'; do
   silent "$c"; done
 
 hd "D5 compose up|create|run without a global -p"
@@ -100,7 +102,7 @@ for c in 'docker run mysql' 'docker run -d mysql:8.4' 'docker run docker.io/libr
   'docker run -e MYSQL_ROOT_PASSWORD=x -p 3306:3306 --name db -d mysql:8' 'docker run -dit mysql' 'docker create percona' \
   'docker run percona/percona-server:8.0' 'docker container run --rm MySQL:8' 'docker run --network=n -v d:/var/lib/mysql mysql' \
   'docker run mariadb:11 --log-bin' 'docker run mariadb --log-bin=mysql-bin' 'docker run mariadb --log_bin' \
-  'docker container create mariadb:10.11 --log-bin' 'docker run --label marvin.project=p mysql:8'; do
+  'docker container create mariadb:10.11 --log-bin' 'docker run --label marvin.project=p --label marvin.checkout=/x mysql:8'; do
   fires "$BIN" "$c"; done
 for c in 'docker run mysql:8 --skip-log-bin' 'docker run mysql:8 --disable-log-bin' 'docker run mysql:8 --log-bin=OFF' \
   'docker run mysql:8 --log_bin=OFF' 'docker run mysql:8 --log-bin=0' 'docker run mysql:8 --skip_log_bin' \
@@ -109,8 +111,8 @@ for c in 'docker run mysql:8 --skip-log-bin' 'docker run mysql:8 --disable-log-b
   'docker run --network mysql nginx' 'docker run --name mysql nginx' 'docker run -e mysql nginx' 'docker run -h mysql nginx' 'docker volume create mysql' \
   'docker run mysqlrouter' 'docker run --log-bin mariadb'; do
   quiet "$BIN" "$c"; done
-silent 'docker run --label marvin.project=p mysql:8.4 --skip-log-bin'
-lint 'docker run --label marvin.project=p mysql:8'; assert_json; assert_no "$LBL"; assert_out "tidying.md"
+silent 'docker run --label marvin.project=p --label marvin.checkout=/x mysql:8.4 --skip-log-bin'
+lint 'docker run --label marvin.project=p --label marvin.checkout=/x mysql:8'; assert_json; assert_no "$LBL"; assert_out "tidying.md"
 lint 'docker compose up && docker run mysql'; assert_json; assert_out "$LBL"; assert_out "$CMP"; assert_out "$BIN"
 
 hd "D7 never a decision, never a rewrite, never an echo"
@@ -151,8 +153,14 @@ for c in 'docker run --rm -v "$PWD":/w mysql:8.4 mysqldump -h db app' 'docker ru
 hd "D12 a 60 KB word before a docker command finishes under 1 s"
 LONGQ=$(head -c 60000 /dev/zero | tr '\0' q); LONGS=$(head -c 60000 /dev/zero | tr '\0' /)
 lint "$LONGQ; docker ps"; if fast; then ok "60 KB slash-free word: ${ELAPSED}s"; else bad "60 KB slash-free word took ${ELAPSED}s"; fi
-lint "$(printf 'cat > f <<EOF\n%s\nEOF\ndocker run --label marvin.project=p nginx' "$LONGQ")"; if fast; then ok "60 KB heredoc line: ${ELAPSED}s"; else bad "60 KB heredoc line took ${ELAPSED}s"; fi; assert_empty
+lint "$(printf 'cat > f <<EOF\n%s\nEOF\ndocker run --label marvin.project=p --label marvin.checkout=/x nginx' "$LONGQ")"; if fast; then ok "60 KB heredoc line: ${ELAPSED}s"; else bad "60 KB heredoc line took ${ELAPSED}s"; fi; assert_empty
 lint "$LONGS; docker run nginx"; if fast; then ok "60 KB slash word: ${ELAPSED}s"; else bad "60 KB slash word took ${ELAPSED}s"; fi; assert_out "$LBL"
+
+hd "D13 marvin.project alone is not enough — the sweep keeps resources without marvin.checkout"
+fires "$LBL" 'docker run --label marvin.project=p nginx'
+fires "$LBL" 'docker volume create --label marvin.project=p --label marvin.owner=main v'
+fires "$LBL" 'docker run --label marvin.checkout=/x nginx'
+silent 'docker run -l marvin.project=p -l marvin.checkout=/x -l marvin.owner=main -l marvin.lifetime=throwaway nginx'
 
 hd "D9 never writes"
 before=$(ls -laR "$WORK" | cksum); lint 'docker run mysql'
@@ -178,7 +186,9 @@ mutation() {  # mutation <name> <exact line> <replacement> <expect> <command> [p
   if check "$4"; then bad "mutation $1 survived ($4 still holds)"; else ok "mutation $1 caught"; fi
 }
 hd "M1 marvin.project suppression removed — D4 labelled run must catch it"
-mutation label 'case "$cmd" in *marvin.project*|*--label-file*) hits=${hits#R} ;; esac' 'case "$cmd" in *--label-file*) hits=${hits#R} ;; esac' silent 'docker run --label marvin.project=p nginx'
+mutation label 'case "$cmd" in *marvin.project*) case "$cmd" in *marvin.checkout*) labelled=1 ;; esac ;; esac' ':' silent 'docker run --label marvin.project=p --label marvin.checkout=/x nginx'
+hd "M1b marvin.checkout no longer required — D13 project alone must catch it"
+mutation checkout 'case "$cmd" in *marvin.project*) case "$cmd" in *marvin.checkout*) labelled=1 ;; esac ;; esac' 'case "$cmd" in *marvin.project*) labelled=1 ;; esac' "has:$LBL" 'docker run --label marvin.project=p nginx'
 hd "M2 binlog-off flags ignored — D6 --skip-log-bin must catch it"
 mutation binoff 'case "$lc" in *skip-log-bin*|*disable-log-bin*|*log-bin=off*|*log-bin=0*) binoff=1 ;; esac' ':' "no:$BIN" 'docker run mysql:8 --skip-log-bin'
 hd "M3 compose -p not recognised — D4 compose -p must catch it"
@@ -186,14 +196,14 @@ mutation composep '  if (k <= e && (tok[k] == "up" || tok[k] == "create" || tok[
 hd "M4 command position dropped (any docker word counts) — D4 echo must catch it"
 mutation position '  if (b != "docker") return' '  if (b != "docker") { for (k = s; k <= e && tok[k] != "docker"; k++); if (k > e) return }' silent 'echo docker run nginx'
 hd "M5 short option values not skipped — D6 -h mysql must catch it"
-mutation optval '        if (index("acehlmpuvw", c)) { if (j == length(t)) k++; break } }' '        if (0) break }' silent 'docker run -h mysql nginx --label marvin.project=p'
+mutation optval '        if (index("acehlmpuvw", c)) { if (j == length(t)) k++; break } }' '        if (0) break }' silent 'docker run -h mysql nginx --label marvin.project=p --label marvin.checkout=/x'
 hd "M6 mariadb --log-bin check removed — D6 mariadb --log-bin must catch it"
-mutation mariadb '    if (t == "--log-bin" || (t ~ /^--log-bin=/ && t != "--log-bin=off" && t != "--log-bin=0")) db = 1 } }' '    } }' "has:$BIN" 'docker run --label marvin.project=p mariadb --log-bin'
+mutation mariadb '    if (t == "--log-bin" || (t ~ /^--log-bin=/ && t != "--log-bin=off" && t != "--log-bin=0")) db = 1 } }' '    } }' "has:$BIN" 'docker run --label marvin.project=p --label marvin.checkout=/x mariadb --log-bin'
 hd "M7 sub-agent calls skipped — D8 must catch it"
 mutation subagent 'MH_IN=$RAW' 'MH_IN=$RAW; mh_is_subagent_call && exit 0' "has:$LBL" 'docker run nginx' ',"agent_id":"a1"'
 
 hd "M8 --label-file not counted — D10 must catch it"
-mutation labelfile 'case "$cmd" in *marvin.project*|*--label-file*) hits=${hits#R} ;; esac' 'case "$cmd" in *marvin.project*) hits=${hits#R} ;; esac' silent 'docker run --label-file l.txt nginx'
+mutation labelfile 'case "$cmd" in *--label-file*) labelled=1 ;; esac' ':' silent 'docker run --label-file l.txt nginx'
 hd "M9 basename strip dropped — D3 /usr/local/bin/docker must catch it"
 mutation base '  while ((i = index(t, "/")) > 0) t = substr(t, i + 1)' '  i = 0' "has:$LBL" '/usr/local/bin/docker run nginx'
 hd "M11 Oracle MySQL images dropped — D11 mysql/mysql-server must catch it"

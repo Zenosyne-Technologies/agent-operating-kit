@@ -3,7 +3,8 @@
 # Advises — additionalContext, constant text, never a decision — when a Bash command run by the
 # orchestrator OR a sub-agent:
 #   - creates a Docker resource (docker run|create, docker container run|create, docker volume|network
-#     create, docker build, docker builder|image|buildx build) with no `marvin.project` anywhere in it;
+#     create, docker build, docker builder|image|buildx build) without both `marvin.project` and
+#     `marvin.checkout` in it (the sweep keeps forever a resource without marvin.checkout);
 #   - starts a compose stack (docker compose / docker-compose … up|create|run) without a global
 #     -p/--project-name (or COMPOSE_PROJECT_NAME= in front of it or exported earlier in the command);
 #   - runs/creates a mysql, percona, percona-server, mysql/mysql-server or …/mysql/community-server
@@ -19,8 +20,8 @@
 # nice (and their options). So `echo docker run x` and `echo "docker run x"` stay silent.
 # Known limits: docker inside a quoted string run by another program (bash -c '…', ssh host '…'),
 # through a variable/alias/function ($DOCKER run), via xargs/watch, or written with JSON \u escapes is
-# not seen; heredoc bodies are read as commands; `marvin.project` or `--label-file` anywhere (even in
-# an echo) suppresses the label advice; a compose file's own top-level `name:` is not read (the command
+# not seen; heredoc bodies are read as commands; `marvin.project` plus `marvin.checkout`, or
+# `--label-file`, anywhere (even in an echo) suppresses the label advice; a compose file's own top-level `name:` is not read (the command
 # alone decides, so such a stack still gets the compose advice); only the first 64 KiB of the command
 # is parsed.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; nothing
@@ -149,11 +150,14 @@ END { flush()
 AWK
 
 hits=$(printf '%s\n' "$cmd" | LC_ALL=C awk -v binoff="$binoff" "$DL_AWK" 2>/dev/null) || exit 0
-case "$cmd" in *marvin.project*|*--label-file*) hits=${hits#R} ;; esac
+labelled=0
+case "$cmd" in *--label-file*) labelled=1 ;; esac
+case "$cmd" in *marvin.project*) case "$cmd" in *marvin.checkout*) labelled=1 ;; esac ;; esac
+[ "$labelled" = 1 ] && hits=${hits#R}
 [ -n "$hits" ] || exit 0
 
 out="Marvin Docker lint (.marvin/agents/tidying.md):"
-case "$hits" in *R*) out="$out this command creates a Docker resource without a marvin.project label — label every container, volume, network and image you create with marvin.project, marvin.checkout, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
+case "$hits" in *R*) out="$out this command creates a Docker resource without the marvin.project and marvin.checkout labels — label every container, volume, network and image you create with marvin.project, marvin.checkout, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
 case "$hits" in *C*) out="$out This command starts a compose stack without -p/--project-name — run it as -p <P>-<O> and declare the four labels on every service, volume and network in its compose file." ;; esac
 case "$hits" in *B*) out="$out This command starts a MySQL/Percona/MariaDB container with binary logging on — a throwaway database runs with it off: MySQL/Percona --skip-log-bin (8.0+: --disable-log-bin too), MariaDB never --log-bin (Throwaway databases — binary logging off)." ;; esac
 printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$out"
