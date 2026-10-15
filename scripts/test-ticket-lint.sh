@@ -325,6 +325,20 @@ lint "$J" "$(jira "$V" 'Fix' '```
 x
 ```
 Size: m')"; denied "C5 the size is stated only"
+ADFCB='{"type":"doc","version":1,"content":[{"type":"codeBlock","attrs":{"language":"js"},"content":[{"type":"text","text":"size = s"}]},{"type":"paragraph","content":[{"type":"text","text":"Rows drop."}]}]}'
+ADFCM='{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Size: m","marks":[{"type":"code"}]}]}]}'
+ADFCB2='{"type":"doc","content":[{"type":"codeBlock","content":[{"type":"text","text":"Done. Size: m"}]}]}'
+ADFTX='{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Size: m"}]}]}'
+adf() { printf '{"cloudId":"c","projectKey":"AOS","issueTypeName":"%s","summary":"x","description":%s,"additional_fields":{"labels":[%s]}}' "$1" "$2" "$3"; }
+lint "$J" "$(adf Epic "$ADFCB" "$V")"; silent "ADF codeBlock in an Epic"
+lint "$J" "$(adf Epic "$ADFCM" "$V")"; silent "ADF code mark"
+lint "$J" "$(adf Epic "$ADFTX" "$V")"; denied "C5 the size is stated only"
+lint "$J" "$(adf Epic "$(jstr "$ADFCB")" "$V")"; silent "ADF codeBlock passed as a JSON string"
+lint "$J" "$(adf Epic "$(jstr "$ADFCB2")" "$V")"; silent "ADF codeBlock with a sentence-anchored size, as a JSON string"
+lint "$J" "$(adf Epic "$(jstr "$ADFTX")" "$V")"; denied "C5 the size is stated only"
+lint "$J" "$(adf Epic "$(jstr '{not json
+Size: m')" "$V")"; denied "C5 the size is stated only"
+lint "$JE" "{\"cloudId\":\"c\",\"issueIdOrKey\":\"AOS-1\",\"fields\":{\"labels\":[$V],\"description\":$ADFCB}}"; silent "ADF codeBlock on an edit"
 
 hd "T16 Linear templates and Local edits"
 lint "$LN" '{"team":"T","title":"x","template":"Bug report"}'; advised "C1 a create with no labels"
@@ -358,7 +372,16 @@ SUBQ='gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui,origin:agen
 ghl "$SUBQ"; lacks "$DENY"; lacks "C1"
 ghl 'gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui'; advised "C2 missing"; advised "$UNC"
 ghl 'gh issue create -t x -b y'; denied "C1 a create with no labels"; lacks "$UNC"
-ghl 'gh issue create -t x -b "$(date)" -l type:feature'; denied "C2 missing"; lacks "$UNC"
+ghl 'gh issue create -t x -b "$(date)" -l type:feature'; advised "C2 missing"; advised "$UNC"
+ghl 'LBL=type:feature,area:docs,origin:roadmap,size:m; gh issue create -t Fix -b x -l "$LBL"'; lacks "$DENY"; advised "$UNC"
+ghl 'gh issue create -t Fix -b x -l "$LBL"'; lacks "$DENY"; advised "$UNC"
+ghl 'gh issue create -t Fix -b x -l `cat labels.txt`'; lacks "$DENY"; advised "$UNC"
+ghl 'gh issue create -t "Fix `date`" -b x'; advised "C1"; advised "$UNC"
+ghl 'gh issue create -t Fix -b x --label=$L'; lacks "$DENY"
+ghl 'gh issue create -t Fix -b x -l type:bug,area:ui,origin:agent-qa,size:s,sev2-high'; silent "literal labels, nothing missing"
+ghl 'gh issue create -t Fix -b x -l type:bug'; denied "C2 missing"; lacks "$UNC"
+ghl 'gh issue create -t Fix -b x -l $(cat labels.txt)'; lacks "$DENY"; advised "$UNC"
+ghl 'cd "$(git rev-parse --show-toplevel)" && gh issue create -t Fix -b x'; denied "C1"
 ghl "$(printf 'gh issue create -t x <<EOF\nbody without a terminator')"; advised "C1 a create with no labels"; advised "$UNC"
 ghl 'gh issue create -t "x -b y'; advised "C1"; advised "$UNC"
 ghl 'gh issue create -t `echo "x"` -b y'; advised "C1"; advised "$UNC"
@@ -435,8 +458,8 @@ mutation pathfilter '         case "$fp" in */project-management/issues/*.md|pro
 labels: [type:feature]
 ---
 x" /r/notes/issues/AOS-1.md)"
-hd "M20 fast path narrowed to gh — T2 Jira create must catch it"
-mutation fastpath 'case "$RAW" in *ssue*) ;; *) exit 0 ;; esac' 'case "$RAW" in *gh*issue*) ;; *) exit 0 ;; esac' deny "$P" "$(pre_in "$J" '{"cloudId":"c","projectKey":"AOS","issueTypeName":"Task","summary":"x"}')"
+hd "M20 fast path narrowed to Bash payloads — T2 Jira create must catch it"
+mutation fastpath 'case "$RAW" in *ssue*) ;; *) exit 0 ;; esac' 'case "$RAW" in *\"command\"*issue*) ;; *) exit 0 ;; esac' deny "$P" "$(pre_in "$J" '{"cloudId":"c","projectKey":"AOS","issueTypeName":"Task","summary":"x"}')"
 hd "M21 tracker scope dropped (any Jira project) — T13 must catch it"
 mutation scope '        [ -n "$pkey" ] && [ "$k" = "$pkey" ] || exit 0 ;;' '        : ;;' silent "$P" "$(pre_in "$J" '{"cloudId":"c","projectKey":"OTHER","issueTypeName":"Task","summary":"x"}')"
 hd "M22 gh -R not compared — T13 upstream must catch it"
@@ -463,7 +486,16 @@ hd "M29 issue_write gated on a github server name — T13 must catch it"
 mutation anyserver '             *__issue_write) ;;                                        # GitHub'"'"'s own tool name: any server' '             *__issue_write) case "$srv" in *github*) ;; *) exit 0 ;; esac ;;' deny "$PGH" "$(pre_in mcp__fa0230fe-9999__issue_write '{"method":"create","title":"x"}')"
 
 hd "M30 certainty flag dropped — T17 quote-in-substitution must catch it"
-mutation certain '  if (unc) out("U")' '  :' nodeny "$PGH" "$(gh_in 'gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui')"
+mutation certain '  if (unc || ru) out("U")' '  :' nodeny "$PGH" "$(gh_in 'gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui')"
+
+hd "M31 expanded gh values counted as certain — T17 -l \"\$LBL\" must catch it"
+mutation expand '  if (index(v, "$") || index(v, "`")) ru = 1' '  ru = ru' nodeny "$PGH" "$(gh_in 'LBL=type:feature,area:docs,origin:roadmap,size:m; gh issue create -t Fix -b x -l "$LBL"')"
+hd "M32 ADF codeBlock read as prose — T15 must catch it"
+mutation adfcb '          if (s == "codeBlock") CB[d] = 1' '          CB[d] = 0' silent "$P" "$(pre_in "$J" "$(adf Epic "$ADFCB" "$V")")"
+hd "M33 ADF code mark read as prose — T15 must catch it"
+mutation adfcm '          if (s == "code" && d >= 3 && T[d - 1] == "[" && K[d - 2] == "marks") SK[d - 2] = 1   # a code mark' '          SK[d] = 0' silent "$P" "$(pre_in "$J" "$(adf Epic "$ADFCM" "$V")")"
+hd "M34 JSON-string ADF not re-walked — T15 must catch it"
+mutation adfstr '          if (pl == d && ch(pos + 1) == "{") { print "J " path(); rstr(0); continue }' '          pl = pl' silent "$P" "$(pre_in "$J" "$(adf Epic "$(jstr "$ADFCB2")" "$V")")"
 
 printf '\n----\ntest-ticket-lint: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

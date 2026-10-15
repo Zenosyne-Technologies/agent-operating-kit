@@ -18,8 +18,9 @@
 #   local  — Write of */project-management/issues/*.md (frontmatter `labels:` inline or block list,
 #            `children:` marks an epic); a new file is a create, an existing one an edit carrying labels
 # Labels = every string in any JSON array keyed `labels` (full set) or `addLabels` (additive), at any
-# depth. Prose = strings under summary/title/description/body at any depth (Jira ADF objects included),
-# fenced code blocks and inline code skipped.
+# depth. Prose = strings under summary/title/description/body at any depth (Jira ADF — an object or a
+# JSON string of a doc — included); markdown fences and inline code, ADF codeBlock nodes and code marks
+# skipped.
 # Checks (an edit is checked only when it carries labels or prose; C2/C3 and C5 violations need the
 # FULL label set — a create, or an edit that sets `labels`; additive or label-less edits only advise):
 #   C1 a create with no labels · C2 missing type:/area:/origin: · C3 type:bug without a severity label ·
@@ -38,10 +39,11 @@
 # Known limits: only the first 64 KiB of a Bash command is parsed; gh run through a variable, alias,
 # bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched;
 # Edit-tool writes to Local issue files are not linted; Linear `patch` ops are not read as prose; Jira
-# ADF passed as a JSON string (not an object) is read as plain prose text; create_issue/update_issue on
+# create_issue/update_issue on
 # a GitHub MCP server whose name lacks "github" is not linted. A gh command parse is heuristic: it
 # denies only when certain (quotes balanced, heredocs terminated, no quote inside a substitution
-# outside a heredoc body); otherwise its violations only advise.
+# outside a heredoc body, no $/backtick expansion in a flag value it reads); otherwise its violations
+# only advise.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; output is
 # constant text, dimension names and label values matching ^[A-Za-z0-9:._-]{1,40}$ (else <label>) —
 # never prose, never a title.
@@ -101,7 +103,9 @@ esac
 
 # The tool_input walker: one pass, an explicit stack, strings decoded. Prints "K key<TAB>value" for the
 # top-level id/method/issueTypeName/template/templateId, "H" when a full `labels` array opens, "L"/"A" per label string
-# (labels / addLabels) and "P" per prose line. Malformed input → exit 1 (the hook stays silent).
+# (labels / addLabels) and "P" per prose line — an ADF text node only when neither it (a code mark) nor an
+# ancestor (a codeBlock) is code; "J path" for a prose string that holds a JSON doc (ADF as a string),
+# which the shell re-walks. Malformed input → exit 1 (the hook stays silent).
 IFS= read -r -d '' TW_AWK <<'AWK' || true
 function hx(h,   i, v, d) { v = 0; h = tolower(h)
   for (i = 1; i <= 4; i++) { d = index("0123456789abcdef", substr(h, i, 1)); if (!d) return -1; v = v * 16 + d - 1 }
@@ -142,8 +146,10 @@ function rstr(mm,   c, st, e) {  # mm: 1 collect (capped) · 2 stream as prose l
       st = pos; continue }
     pos++ }
   exit 1 }
-function prose(   k) { for (k = 2; k <= d; k++) if (T[k] == "{" && K[k] ~ /^(summary|title|description|body)$/) return 1
+function prose(   k) { for (k = 2; k <= d; k++) if (T[k] == "{" && K[k] ~ /^(summary|title|description|body)$/) return k
   return 0 }
+function path(   k, p) { p = ""; for (k = 2; k <= d; k++) p = p (k > 2 ? "." : "") K[k]; return p }
+function incode(e,   k) { for (k = 1; k <= e; k++) if (CB[k]) return 1; return 0 }
 BEGIN { CK = 4096 }
 { buf = buf $0 "\n"
   while (length(buf) >= CK) { ck[++nck] = substr(buf, 1, CK); buf = substr(buf, CK + 1) } }
@@ -155,11 +161,22 @@ END { if (buf != "") ck[++nck] = buf
       inti = d >= 2 && K[1] == "tool_input"
       if (inti && T[d] == "[" && (K[d - 1] == "labels" || K[d - 1] == "addLabels")) { s = rstr(1); gsub(/[\n\t]/, " ", s); print (K[d - 1] == "labels" ? "L " : "A ") s; continue }
       if (inti && d == 2 && K[2] ~ /^(id|method|issueTypeName|template|templateId)$/) { s = rstr(1); gsub(/[\n\t]/, " ", s); print "K " K[2] "\t" s; continue }
-      if (inti && prose()) { rstr(2); continue }
+      if (inti && (pl = prose())) {
+        if (pl == d || T[d] == "[") {   # the prose value itself; a JSON-string ADF doc is re-walked by the shell
+          if (pl == d && ch(pos + 1) == "{") { print "J " path(); rstr(0); continue }
+          rstr(2); continue }
+        if (T[d] == "{" && K[d] == "text") { s = rstr(1); PT[d] = PT[d] s "\n"; continue }   # an ADF text node, held to its close
+        if (T[d] == "{" && K[d] == "type") { s = rstr(1)
+          if (s == "codeBlock") CB[d] = 1
+          if (s == "code" && d >= 3 && T[d - 1] == "[" && K[d - 2] == "marks") SK[d - 2] = 1   # a code mark
+          continue }
+        rstr(0); continue }
       rstr(0); continue }
-    if (c == "{") { if (++d > 64) exit 1; T[d] = "{"; EK[d] = 1; K[d] = ""; pos++; continue }
+    if (c == "{") { if (++d > 64) exit 1; T[d] = "{"; EK[d] = 1; K[d] = ""; CB[d] = 0; SK[d] = 0; PT[d] = ""; pos++; continue }
     if (c == "[") { if (++d > 64) exit 1; T[d] = "["; K[d] = ""; if (d >= 3 && K[1] == "tool_input" && K[d - 1] == "labels") print "H"; pos++; continue }
-    if (c == "}" || c == "]") { if (--d < 0) exit 1; pos++; continue }
+    if (c == "}" || c == "]") {
+      if (c == "}" && PT[d] != "") { if (!SK[d] && !incode(d)) { s = PT[d]; sub(/\n$/, "", s); gsub(/\n/, "\nP ", s); print "P " s }; PT[d] = "" }
+      if (--d < 0) exit 1; pos++; continue }
     if (c == ",") { if (T[d] == "{") EK[d] = 1; pos++; continue }
     pos++ }
   if (d != 0) exit 1 }
@@ -172,11 +189,20 @@ AWK
 # of that word, so a --body heredoc is read as prose. One
 # record per gh call; a call whose -R/--repo is not the tracker's owner/repo (-v repo) is dropped. The parse
 # is heuristic: unbalanced quotes or substitutions, an unterminated heredoc, or a quote inside a $( … ) /
-# backtick substitution (outside a heredoc body) mark every record "U" — its violations only advise.
+# backtick substitution (outside a heredoc body) mark every record "U", and so does a $ or backtick
+# expansion in that call's --label/-l/--add-label/--title/--body/--repo value (a "$(cat <<'EOF' … EOF)"
+# body excepted) — its violations only advise.
 IFS= read -r -d '' GH_AWK <<'AWK' || true
-function flush() { if (inw) { tok[++nt] = w; w = ""; inw = 0 } }
+function flush() { if (inw) { tok[++nt] = w; th[nt] = hwt; w = ""; inw = 0; hwt = 0 } }
 function brk() { flush(); if (nt && tok[nt] != SEP) tok[++nt] = SEP }
 function out(x) { rb = rb x "\n" }
+function xv(k,   v, a, b) {  # token k is a flag value: any $ or backtick expansion outside a heredoc body → uncertain
+  v = tok[k]
+  if (th[k]) { a = index(v, "\n"); b = v; sub(/^.*\n/, "", b)
+    if (substr(v, 1, a - 1) ~ /^\$\(cat[ \t]*$/ && b ~ /^[ \t]*\)$/) return v }
+  if (index(v, "$") || index(v, "`")) ru = 1
+  return v }
+function xs(v) { if (index(v, "$") || index(v, "`")) ru = 1; return v }
 function lab(v, tag,   p, q, j) { gsub(/[\n\t\r]/, " ", v); q = split(v, p, ","); for (j = 1; j <= q; j++) { gsub(/^[ \t]+|[ \t]+$/, "", p[j]); if (p[j] != "") out(tag " " p[j]) } }
 function pr(v) { gsub(/\r/, "", v); gsub(/\n/, "\nP ", v); out("P " v) }
 function here(i,   j, c, k, d, st) {  # a heredoc operator at i: queue its terminator, return the index to resume after
@@ -187,7 +213,7 @@ function here(i,   j, c, k, d, st) {  # a heredoc operator at i: queue its termi
   if (c == "'" || c == "\"") { k = index(substr($0, j + 1), c); if (!k) return i; d = substr($0, j + 1, k - 1); j += k + 1 }
   else if (match(substr($0, j), /^[^ \t;&|()<>"'`\\]+/)) { d = substr($0, j, RLENGTH); j += RLENGTH }
   if (d == "") return i
-  hd[++nh] = d; hs[nh] = st; hw[nh] = (q == 2)   # inside "$(…)": the body is part of the current word
+  hd[++nh] = d; hs[nh] = st; hw[nh] = (q == 2); if (q == 2) hwt = 1   # inside "$(…)": the body is part of the current word
   return j - 1 }
 function seg(s, e,   k, t, b, op, tag, rv) {
   k = s
@@ -195,28 +221,29 @@ function seg(s, e,   k, t, b, op, tag, rv) {
   if (k > e) return
   b = tok[k]; sub(/.*\//, "", b); if (b != "gh") return
   k++; if (k > e || tok[k] != "issue") return
-  rv = ""
+  rv = ""; ru = 0
   for (k++; k <= e && tok[k] ~ /^-/; k++) {
-    if (tok[k] == "-R" || tok[k] == "--repo") { rv = tok[k + 1]; k++ }
-    else if (tok[k] ~ /^--repo=/) rv = substr(tok[k], 8)
-    else if (tok[k] ~ /^-R./) rv = substr(tok[k], 3) }
+    if (tok[k] == "-R" || tok[k] == "--repo") { rv = xv(k + 1); k++ }
+    else if (tok[k] ~ /^--repo=/) rv = xs(substr(tok[k], 8))
+    else if (tok[k] ~ /^-R./) rv = xs(substr(tok[k], 3)) }
   if (k > e) return
   if (tok[k] == "create" || tok[k] == "new") op = "create"; else if (tok[k] == "edit") op = "edit"; else return
   tag = op == "create" ? "L" : "A"; rb = ""
   out("R"); out("OP " op); out("E unknown"); if (op == "create") out("H")
-  if (unc) out("U")
   for (k++; k <= e; k++) { t = tok[k]
-    if (t == "--label" || t == "-l" || t == "--add-label") { if (k < e) lab(tok[++k], tag); continue }
-    if (t ~ /^--(add-)?label=/) { lab(substr(t, index(t, "=") + 1), tag); continue }
-    if (t ~ /^-l./) { lab(substr(t, 3), tag); continue }
-    if (t == "--title" || t == "-t" || t == "--body" || t == "-b") { if (k < e) pr(tok[++k]); continue }
-    if (t ~ /^--(title|body)=/) { pr(substr(t, index(t, "=") + 1)); continue }
-    if (t ~ /^-[tb]./) { pr(substr(t, 3)); continue }
-    if (t == "-R" || t == "--repo") { if (k < e) rv = tok[++k]; continue }
-    if (t ~ /^--repo=/) { rv = substr(t, 8); continue }
-    if (t ~ /^-R./) { rv = substr(t, 3); continue }
+    if (t == "--label" || t == "-l" || t == "--add-label") { if (k < e) lab(xv(++k), tag); continue }
+    if (t ~ /^--(add-)?label=/) { lab(xs(substr(t, index(t, "=") + 1)), tag); continue }
+    if (t ~ /^-l./) { lab(xs(substr(t, 3)), tag); continue }
+    if (t == "--title" || t == "-t" || t == "--body" || t == "-b") { if (k < e) pr(xv(++k)); continue }
+    if (t ~ /^--(title|body)=/) { pr(xs(substr(t, index(t, "=") + 1))); continue }
+    if (t ~ /^-[tb]./) { pr(xs(substr(t, 3))); continue }
+    if (t == "-R" || t == "--repo") { if (k < e) rv = xv(++k); continue }
+    if (t ~ /^--repo=/) { rv = xs(substr(t, 8)); continue }
+    if (t ~ /^-R./) { rv = xs(substr(t, 3)); continue }
     if (t ~ /^(-a|--assignee|-m|--milestone|-p|--project|-T|--template|--recover|--remove-label|--add-assignee|--remove-assignee|--add-project|--remove-project|-F|--body-file)$/) k++ }
   if (rv != "") { rv = tolower(rv); sub(/^.*github\.com[\/:]/, "", rv); sub(/\.git$/, "", rv); if (repo == "" || rv != repo) return }
+  if (sx[e + 1]) ru = 1   # the call runs into an unquoted substitution: a flag value may be in it
+  if (unc || ru) out("U")
   printf "%s", rb }
 BEGIN { SEP = "\001"; hi = 1 }
 { if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; else if (hw[hi]) w = w $0 "\n"; if (hi > nh) { nh = 0; hi = 1 }; next }
@@ -233,7 +260,8 @@ BEGIN { SEP = "\001"; hi = 1 }
     else if (c == "\"") { q = 2; inw = 1 }
     else if (c == " " || c == "\t" || c == "\r") flush()
     else if (c == "#" && !inw) break
-    else if (index(";&|()`", c)) { if (c == "(" && inw && substr(w, length(w), 1) == "$") ts++; else if (c == ")" && ts) ts--; else if (c == "`") bt = !bt; brk() }
+    else if (index(";&|()`", c)) { o = 0; if (c == "(" && inw && substr(w, length(w), 1) == "$") { ts++; o = 1 } else if (c == ")" && ts) ts--; else if (c == "`") { bt = !bt; o = bt }
+      brk(); if (o) sx[nt] = 1 }   # sx: this separator opens a substitution
     else { w = w c; inw = 1 } }
   if (esc) { esc = 0; if (w == "") inw = 0 }
   else if (q) w = w "\n"
@@ -338,6 +366,18 @@ AWK
 case "$kind" in
   mcp)
     w=$(printf '%s' "$MH_IN" | LC_ALL=C awk "$TW_AWK" 2>/dev/null) || exit 0
+    jps=$(printf '%s\n' "$w" | sed -n 's/^J //p' | head -n 8)
+    if [ -n "$jps" ]; then   # ADF passed as a JSON string: walk it as an object; not JSON → plain prose
+      while IFS= read -r jp; do
+        adf=$(printf '%s' "$MH_IN" | mh_get "tool_input.$jp") || continue
+        if x=$(printf '{"tool_input":{"description":%s}}' "$adf" | LC_ALL=C awk "$TW_AWK" 2>/dev/null); then x=$(printf '%s\n' "$x" | grep '^P ')
+        else x=$(printf '%s\n' "$adf" | sed 's/^/P /'); fi
+        w="$w
+$x"
+      done <<EOF
+$jps
+EOF
+    fi
     kv() { printf '%s\n' "$w" | sed -n "s/^K $1	//p" | head -n 1; }
     op=edit; ep=unknown
     case "$tool" in
