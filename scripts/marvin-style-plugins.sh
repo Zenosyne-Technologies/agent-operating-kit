@@ -13,7 +13,7 @@ set -u
 . "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || exit 0
 [ "$#" -le 1 ] || { echo "usage: marvin-style-plugins.sh [<project-root>]" >&2; exit 2; }
 root="${1:-${CLAUDE_PROJECT_DIR:-$PWD}}"
-cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+cfg="${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}"
 if [ -n "${MARVIN_MANAGED_SETTINGS:-}" ]; then managed="$MARVIN_MANAGED_SETTINGS"
 elif [ "$(uname)" = Darwin ]; then managed="/Library/Application Support/ClaudeCode/managed-settings.json"
 else managed=/etc/claude-code/managed-settings.json; fi

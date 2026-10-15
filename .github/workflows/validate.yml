@@ -22,3 +22,13 @@ jobs:
         run: bash scripts/test-whats-new.sh
       - name: Run worktree sweep tests
         run: bash scripts/test-worktree-sweep.sh
+      - name: Run hook library tests
+        run: bash scripts/test-hook-lib.sh
+      - name: Run update gate tests
+        run: bash scripts/test-update-gate.sh
+      - name: Run sub-agent hook tests
+        run: bash scripts/test-subagent-hooks.sh
+      - name: Run brief lint tests
+        run: bash scripts/test-brief-lint.sh
+      - name: Run style-plugin finder tests
+        run: bash scripts/test-style-plugins.sh

@@ -597,6 +597,17 @@ mutate_replace_line "$HOOK" "$WORK/mut-os.sh" 'case "$style" in marvin:*) exit 0
 run_hook "$WORK/mut-os.sh" "$WORK/os1" "$WORK/plug38"
 if printf '%s\n' "$OUT" | grep -Fq "$RULES_MARK"; then ok "mutation style-skip caught"; else bad "mutation style-skip survived"; fi
 
+hd "T-NOHOME HOME and CLAUDE_CONFIG_DIR both unset — still exits 0 under set -u, rules still print"
+OUT=$(printf '' | env -u HOME -u CLAUDE_CONFIG_DIR CLAUDE_PROJECT_DIR="$WORK/os4" CLAUDE_PLUGIN_ROOT="$WORK/plug38" bash "$HOOK" 2>&1); RC=$?
+assert_rc 0 "no HOME, no CLAUDE_CONFIG_DIR"
+assert_out "$RULES_MARK"
+
+hd "MNH unset-HOME expansion reverts to a bare \$HOME — T-NOHOME must catch it"
+sed 's|\${HOME:-}|$HOME|' "$HOOK" > "$WORK/mut-nh.sh"
+if cmp -s "$HOOK" "$WORK/mut-nh.sh"; then bad "mutation did not apply"; fi
+OUT=$(printf '' | env -u HOME -u CLAUDE_CONFIG_DIR CLAUDE_PROJECT_DIR="$WORK/os4" CLAUDE_PLUGIN_ROOT="$WORK/plug38" bash "$WORK/mut-nh.sh" 2>&1); RC=$?
+if [ "$RC" != 0 ]; then ok "mutation bare-HOME caught"; else bad "mutation bare-HOME survived"; fi
+
 printf '\n----\ntest-session-hook: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ] || exit 1
 exit 0

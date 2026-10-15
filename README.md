@@ -178,12 +178,20 @@ flowchart LR
 
 ## SessionStart hook
 
-The plugin ships a `SessionStart` hook (`hooks/hooks.json`, matchers `startup`/`resume`/`clear`/`compact` — it fires again after every compaction) that runs `scripts/marvin-session-start.sh`. It only does anything in a project the kit is installed in (`.marvin/` present as a real directory, not a symlink); everywhere else it exits silently. When it does run, it injects two things into context:
+The plugin ships its hooks in `hooks/hooks.json` — SessionStart (`scripts/marvin-session-start.sh`, matchers `startup`/`resume`/`clear`/`compact` — it fires again after every compaction) plus the enforcement hooks below. It only does anything in a project the kit is installed in (`.marvin/` present as a real directory, not a symlink); everywhere else it exits silently. When it does run, it injects two things into context:
 
 - **A version-drift check.** It compares the plugin's own version against the project's installed `kit_version` (`.marvin/PROJECT-INFO.md` frontmatter, numerically, component by component) and, on a mismatch, prints one line: if the project is older, it prints the safe two-session update procedure (ending at `/marvin:upgrade-agent-os`); if the project is newer than the plugin, it says so and points at updating the plugin instead, since running the upgrade skill there would downgrade the install. An unreadable or symlinked `PROJECT-INFO.md`, or a `kit_version` that is not a plain `X.Y.Z` in the frontmatter, counts as unknown and gets its own one-line nudge to run the upgrade skill — never a raw file dump.
-- **The user-update format rules**, always, in full path (`.marvin/agents/user-updates.md`) — stating that they take precedence over any active output style, since those are exactly the rules an output style might otherwise override.
+- **The user-update format rules**, in full path (`.marvin/agents/user-updates.md`), stating that they take precedence over any active output style — printed only when the project's effective `outputStyle` is not Marvin's own (`marvin:marvin`, which carries the same block from `hooks/user-update-rules.txt`).
 
 It never writes a file, never blocks the session, and always exits 0 — including when `.marvin`, `plugin.json` or `PROJECT-INFO.md` is missing or unreadable. Editing `hooks/hooks.json` in the installed plugin cache does not survive the next plugin update, so to disable it durably, either disable the whole plugin (`/plugin disable marvin`) or turn off all hooks via the `"disableAllHooks": true` setting ([hooks reference](https://code.claude.com/docs/en/hooks.md)); there is no flag that disables only this hook.
+
+**Rule enforcement (v0.38.0).** In a Marvin project the plugin also checks its rules mechanically, never echoing message content and never blocking on a parse failure:
+
+- **User-update gate** (UserPromptSubmit + Stop, `scripts/marvin-update-gate.sh`): checks the orchestrator's messages for a `<details>` fold, status emoji outside the legend, an incomplete issue callout, and a status update without its Next / Open questions tail. `update_gate` in `.marvin/PROJECT-INFO.md`: `advise` (default — a note rides on the next prompt), `block` (a failing message is sent back once at Stop), `off`.
+- **Sub-agent contract gate** (SubagentStop, `marvin:*` only, `scripts/marvin-subagent-gate.sh`): a final message missing a reserved line (`TRACKER:`, `GUARDRAILS:`, or one its brief reserves) or over 25 lines goes back to the agent once.
+- **Sub-agent rules** (SubagentStart, `scripts/marvin-subagent-rules.sh`) and **brief lint** (PreToolUse on `Agent`, `scripts/marvin-brief-lint.sh`): a constant rules block for every persona; advice when a brief lacks its run-report path, FINAL MESSAGE spec or DoD.
+- **Context ladder** (`scripts/marvin-context-budget.sh`): 70 / 80 / 90 % of the compaction window alongside the 400k / 700k budgets, the stricter one speaking (`.marvin/agents/session-budget.md`).
+- **Output style**: `output-styles/marvin.md`, selected per project by `"outputStyle": "marvin:marvin"`; install and upgrade offer it, and offer — never silently apply — a per-user disable of competing style plugins (`scripts/marvin-style-plugins.sh`, registry `hooks/style-plugins.txt`).
 
 ## PM tools
 
@@ -267,9 +275,14 @@ bash scripts/test-context-budget.sh
 bash scripts/test-claude-md-split.sh
 bash scripts/test-whats-new.sh
 bash scripts/test-worktree-sweep.sh
+bash scripts/test-hook-lib.sh
+bash scripts/test-update-gate.sh
+bash scripts/test-subagent-hooks.sh
+bash scripts/test-brief-lint.sh
+bash scripts/test-style-plugins.sh
 ```
 
-The static gate's sixteen checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`).
+The static gate's eighteen checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:` and the brief lint to the Agent tool (`hooks-registered`).
 
 ## Inventory
 
@@ -277,12 +290,12 @@ The static gate's sixteen checks: known placeholders only · template line budge
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 CHANGELOG.md                       categorised per-release briefs (Action needed · Added · Changed · Fixed · Removed · Security), newest first — read by /marvin:whats-new
-hooks/*.json                         hook registration — SessionStart (startup/resume/clear/compact) runs scripts/marvin-session-start.sh, a second SessionStart entry (startup/resume/clear) runs scripts/marvin-worktree-sweep.sh --hook; PostToolUse + UserPromptSubmit run scripts/marvin-context-budget.sh
+hooks/*.json                         hook registration — SessionStart runs marvin-session-start.sh and marvin-worktree-sweep.sh --hook; PostToolUse + UserPromptSubmit run marvin-context-budget.sh; UserPromptSubmit + Stop run marvin-update-gate.sh; SubagentStart/SubagentStop (^marvin:) run marvin-subagent-rules.sh / marvin-subagent-gate.sh; PreToolUse (Agent|Task) runs marvin-brief-lint.sh
 scripts/marvin-session-start.sh      SessionStart hook body: version-drift check + always-on user-update rules, silent no-op outside a Marvin project
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
-scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: advises a clean session break when context size crosses the soft budget; never blocks, silent outside a Marvin project
+scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
 scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
-scripts/validate-kit.sh              sixteen-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              eighteen-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -293,6 +306,20 @@ scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md b
 scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind seven guards (backs the SessionStart sweep and /marvin:clean-worktrees)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
+hooks/user-update-rules.txt          the user-update rules block, defined once — printed by the SessionStart hook, embedded by the output style
+hooks/style-plugins.txt              registry of plugins that inject a competing output style (install/upgrade offer to disable them per user)
+output-styles/marvin.md              the Marvin output style (marvin:marvin), selected per project by outputStyle
+scripts/lib/marvin-hook-lib.sh       shared hook library — bounded streaming JSON walker, transcript readers, window resolution and level ladder
+scripts/test-hook-lib.sh             unit suite for the hook library, incl. inline mutation checks (CI runs it too)
+scripts/marvin-update-gate.sh        UserPromptSubmit + Stop hook body: the user-update format gate (advise / block / off)
+scripts/test-update-gate.sh          behavioural suite for the update gate, incl. inline mutation checks (CI runs it too)
+scripts/marvin-subagent-gate.sh      SubagentStop hook body: the marvin:* FINAL MESSAGE contract gate
+scripts/marvin-subagent-rules.sh     SubagentStart hook body: the constant marvin:* rules block
+scripts/test-subagent-hooks.sh       behavioural suite for both sub-agent hooks, incl. inline mutation checks (CI runs it too)
+scripts/marvin-brief-lint.sh         PreToolUse hook body: brief lint for marvin:* dispatches plus the wind-down context line
+scripts/test-brief-lint.sh           behavioural suite for the brief lint, incl. inline mutation checks (CI runs it too)
+scripts/marvin-style-plugins.sh      read-only finder of enabled competing style plugins (run by install/upgrade)
+scripts/test-style-plugins.sh        fixture suite for the finder, incl. an inline mutation check (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's fourteen sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual, the micro-tier developer-micro and the five escalation rungs (escalation-small-xhigh, -high, -xhigh, -max, -frontier)
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)

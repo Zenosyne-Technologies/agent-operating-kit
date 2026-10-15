@@ -10,7 +10,8 @@
 # Contract: never writes a file, never blocks a session, always exits 0 — including when
 # .marvin is absent, plugin.json is missing, or PROJECT-INFO.md is unreadable or hostile.
 # Only validated version strings (matching ^[0-9]+\.[0-9]+\.[0-9]+$) ever reach the output;
-# no other file content is echoed into context.
+# nothing from the project or the settings files is echoed into context; the plugin's own rules
+# file (hooks/user-update-rules.txt) is printed.
 set -u
 
 is_semver() {
@@ -162,9 +163,10 @@ fi
 # ── 6. the user-update rules — defined once in hooks/user-update-rules.txt (the Marvin output style
 # embeds the same block; validate-kit style-sync). Skipped when the effective outputStyle (local >
 # project > user settings; a top-level string match on bounded reads) is Marvin's own: the style carries
-# the rules then, and printing them again would only double the context. Nothing read here is printed.
+# the rules then, and printing them again would only double the context. Nothing from the project or
+# settings is printed; the plugin's own rules file (hooks/user-update-rules.txt) is.
 style=""
-for f in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" "$root/.claude/settings.json" "$root/.claude/settings.local.json"; do
+for f in "${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}/settings.json" "$root/.claude/settings.json" "$root/.claude/settings.local.json"; do
   [ -f "$f" ] || continue
   v=$(head -c 1048576 -- "$f" 2>/dev/null | grep -o '"outputStyle"[[:space:]]*:[[:space:]]*"[^"\\]*"' | head -n 1 \
     | sed -E 's/^"outputStyle"[[:space:]]*:[[:space:]]*"//; s/"$//')
