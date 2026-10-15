@@ -19,7 +19,8 @@ docs_location: {{DOCS_LOCATION}}
 issue_log_path: {{DOCS_ISSUE_LOG_PATH}}
 telemetry: {{TELEMETRY}}
 update_gate: advise
-# context_window_ktokens: 1000   # optional — overrides the window the context ladder measures (.marvin/agents/session-budget.md)
+# Optional: overrides the window the context ladder measures (.marvin/agents/session-budget.md)
+# context_window_ktokens: 1000
 kit_version: {{KIT_VERSION}}
 label_syntax_version: {{LABEL_SYNTAX_VERSION}}
 ---

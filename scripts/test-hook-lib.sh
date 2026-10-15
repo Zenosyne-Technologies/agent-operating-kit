@@ -97,6 +97,10 @@ OUT=$(CLAUDE_CODE_AUTO_COMPACT_WINDOW=99999 probe ""); eq "400 700 1000 100"
 OUT=$(CLAUDE_CODE_AUTO_COMPACT_WINDOW=abc probe "context_window_ktokens: 0"); eq "400 700 1000 100"
 OUT=$(CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50 probe "session_soft_ktokens: 100
 session_hard_ktokens: 200"); eq "100 200 1000 50"
+OUT=$(CLAUDE_CODE_AUTO_COMPACT_WINDOW=500000 probe "context_window_ktokens: 300   # note"); eq "400 700 300 100"
+OUT=$(probe "session_soft_ktokens: 100 # x
+session_hard_ktokens: 200"); eq "100 200 1000 100"
+OUT=$(probe "context_window_ktokens: 12x"); eq "400 700 1000 100"
 OUT=$(CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=500 probe "session_soft_ktokens: 300
 session_hard_ktokens: 200"); eq "400 700 1000 100"
 
@@ -145,6 +149,9 @@ hd "ML2 escape skipping in skipped strings broken — J5 must catch it"
 mutlib skip '    if (c == "\\") { pos += 2; continue }' '    if (c == "\\") { pos += 1; continue }' f_skip
 hd "ML3 frontmatter window no longer first — L3 must catch it"
 mutlib win '  if [ -n "$w" ] && [ "$((10#$w))" -gt 0 ]; then MH_WIN=$((10#$w))' '  if false; then :' f_win
+f_cwin()  { OUT=$(probe "context_window_ktokens: 300   # note"); RC=0; }
+hd "ML6 window read bypasses the comment-stripping reader — L3 must catch it"
+mutlib cwin "  w=\$(mh_fm_value \"\$fm\" context_window_ktokens)" "  w=\$(printf '%s\\n' \"\$fm\" | sed -nE 's/^context_window_ktokens:[[:space:]]*([0-9]{1,5})[[:space:]]*\$/\\1/p' | head -n 1)" f_cwin
 hd "ML4 depth guard removed — J7 must catch it"
 mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
 hd "ML5 trailing-comment strip removed — L7 must catch it"

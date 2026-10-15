@@ -141,7 +141,7 @@ hd "C1 the ladder speaks where the budgets are raised: 70 % plan, 80 % wind down
 PL="$WORK/proj-ladder"; mk_project "$PL" 950 990
 transcript "$T" 690 705
 run "$HOOK" "$PL" PostToolUse "$T"; assert_rc0; assert_json
-assert_out "at 70% of the 1000k context window"; assert_out "next clean logical break"
+assert_out "at 70% of the 1000k context window"; assert_out "next clean logical break"; assert_out "the 80% step or the hard budget"
 transcript "$T" 795 805
 run "$HOOK" "$PL" PostToolUse "$T"; assert_out "at 80% of the 1000k context window"; assert_out "start no new task"
 transcript "$T" 895 905

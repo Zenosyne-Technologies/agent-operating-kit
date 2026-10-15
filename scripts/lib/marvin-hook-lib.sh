@@ -208,12 +208,15 @@ mh_first_user_text() {
 mh_budget_init() {
   local fm="$1" s h w e
   MH_SOFT=400; MH_HARD=700
-  s=$(printf '%s\n' "$fm" | sed -nE 's/^session_soft_ktokens:[[:space:]]*([0-9]{1,5})[[:space:]]*$/\1/p' | head -n 1)
-  h=$(printf '%s\n' "$fm" | sed -nE 's/^session_hard_ktokens:[[:space:]]*([0-9]{1,5})[[:space:]]*$/\1/p' | head -n 1)
+  s=$(mh_fm_value "$fm" session_soft_ktokens)
+  printf '%s' "$s" | grep -Eq '^[0-9]{1,5}$' || s=
+  h=$(mh_fm_value "$fm" session_hard_ktokens)
+  printf '%s' "$h" | grep -Eq '^[0-9]{1,5}$' || h=
   s=${s:-400}; h=${h:-700}
   if [ "$((10#$s))" -gt 0 ] && [ "$((10#$s))" -lt "$((10#$h))" ]; then MH_SOFT=$((10#$s)); MH_HARD=$((10#$h)); fi
   MH_WIN=$MH_DEFAULT_WINDOW_K
-  w=$(printf '%s\n' "$fm" | sed -nE 's/^context_window_ktokens:[[:space:]]*([0-9]{1,5})[[:space:]]*$/\1/p' | head -n 1)
+  w=$(mh_fm_value "$fm" context_window_ktokens)
+  printf '%s' "$w" | grep -Eq '^[0-9]{1,5}$' || w=
   e="${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-}"
   if [ -n "$w" ] && [ "$((10#$w))" -gt 0 ]; then MH_WIN=$((10#$w))
   elif printf '%s' "$e" | grep -Eq '^[0-9]{6,7}$' && [ "$e" -ge 100000 ] && [ "$e" -le 1000000 ]; then MH_WIN=$((e / 1000))

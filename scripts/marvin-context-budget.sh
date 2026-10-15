@@ -30,7 +30,7 @@ cur=$(printf '%s\n' "$sizes" | tail -n 1)
 prev=$(printf '%s\n' "$sizes" | head -n 1); [ "$(printf '%s\n' "$sizes" | wc -l)" -ge 2 ] || prev=0
 lc=$(mh_level "$cur"); lp=$(mh_level "$prev")
 
-S1="plan only work that can finish before the 80% step — split or defer anything larger, dispatch no size:l or size:xl task — and at the next clean logical break (all work committed, tracker current, no sub-agent running) tell the user where the session stands."
+S1="plan only work that can finish before level 2 (the 80% step or the hard budget, whichever comes first) — split or defer anything larger, dispatch no size:l or size:xl task — and at the next clean logical break (all work committed, tracker current, no sub-agent running) tell the user where the session stands."
 S2="start no new task: finish the in-flight one to the next clean logical break (all work committed, tracker current, no sub-agent running) and write the handoff now."
 S3="STOP at the next clean logical break and lead every reply with the nudge until the user acts: /compact mid-epic, the handoff written first so compaction keeps the thread, or a fresh session with the one-line resume prompt at an epic or release edge."
 why() {  # why <level> — the budget that triggered it, else the ladder step
