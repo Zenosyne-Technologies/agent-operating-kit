@@ -34,5 +34,7 @@ jobs:
         run: bash scripts/test-brief-lint.sh
       - name: Run Docker lint tests
         run: bash scripts/test-docker-lint.sh
+      - name: Run ticket lint tests
+        run: bash scripts/test-ticket-lint.sh
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
