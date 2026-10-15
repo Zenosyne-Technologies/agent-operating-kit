@@ -81,6 +81,8 @@ mk_t "✅ AOS-12 merged." ascii; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
 hd "G4 U3: a callout missing a point, or out of order; the full callout passes"
 mk_t "$GOOD_CALLOUT"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
 mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | grep -v Cause)"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"
+mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/\*\*(What|Impact|Cause|Fix|Needs you\?)\*\*:/**\1:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # **What:** colon inside the bold
+mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/\*\*(What|Impact|Cause|Fix|Needs you\?)\*\*:/**\1:**/' | grep -v Cause)"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"
 mk_t "> **⚠️ x**
 > - **Impact**: a
 > - **What**: b
@@ -142,6 +144,8 @@ hd "G5 U4: a legend table without the tail is advised; with it, or a plain one-l
 mk_t "$GOOD_TABLE"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
 mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed '/Next/,$d')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U4"
 mk_t "✅ AOS-12 merged to develop."; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
+mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed -E 's/^\*\*(Next|Open questions)\*\*$/**\1:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # **Next:** tail
+mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/^\*\*Open questions\*\*$/**Open questions:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
 
 hd "G6 fenced and inline code is ignored"
 mk_t 'Example:
@@ -159,7 +163,7 @@ run "$HOOK" "$PB" "$(stop_in "$PB" "<details>x</details>" true)"; assert_empty
 run "$HOOK" "$PB" "$(stop_in "$PB" "<details>x</details>" false running)"; assert_empty
 run "$HOOK" "$PB" "$(stop_in "$PB" "<details>x</details>" false completed)"; assert_out '"decision":"block"'
 run "$HOOK" "$PB" "$(stop_in "$PB" "$(printf '%s\n' "$GOOD_TABLE" | sed '/Next/,$d')")"; assert_empty
-mk_t "<details>x</details>"; run "$HOOK" "$PB" "$(ups_in "$PB")"; assert_empty
+mk_t "<details>x</details>"; run "$HOOK" "$PB" "$(ups_in "$PB")"; assert_out "U1"   # R12: block-mode UserPromptSubmit advises U1–U3 too (a skipped Stop must not hide them)
 mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed '/Next/,$d')"; run "$HOOK" "$PB" "$(ups_in "$PB")"; assert_out "U4"
 
 hd "G8b an inline YAML comment after the mode still selects it"
@@ -230,6 +234,13 @@ mk_t '> **❌ AOS-13 blocked**
 
 - x'
 mutation tablebelow '      if (!haspoint(c)) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' '      if (0) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' "$P" "$(ups_in "$P")"
+
+hd "M6 colon inside bold labels not normalised — G4 must catch it"
+mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/\*\*(What|Impact|Cause|Fix|Needs you\?)\*\*:/**\1:**/')"
+mutation labelcolon '  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return lb(s)' '  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return s' "$P" "$(ups_in "$P")"
+hd "M7 colon inside a bold tail heading not accepted — G5 must catch it"
+mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed -E 's/^\*\*(Next|Open questions)\*\*$/**\1:**/')"
+mutation tailcolon '    if (l ~ /^[ \t]*(\*\*(Next|Open questions):?\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }' '    if (l ~ /^[ \t]*(\*\*(Next|Open questions)\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }' "$P" "$(ups_in "$P")"
 
 printf '\n----\ntest-update-gate: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

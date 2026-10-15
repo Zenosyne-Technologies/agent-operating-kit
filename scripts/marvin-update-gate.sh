@@ -10,6 +10,8 @@
 #                      inject one note with the prompt: passive, no extra turn. Stop stays silent.
 #   block            — on Stop, send a message failing U1–U3 back once (never when stop_hook_active,
 #                      never while a background task runs). U4 only ever advises: an empty tail is legal.
+#                      UserPromptSubmit advises every failed check exactly as in advise mode (passive, no extra
+#                      turn), so a message posted while a background task ran (Stop skipped) is still checked.
 #   off              — nothing.
 # Advice is never given at Stop: Stop additionalContext forces an immediate continuation and loops (spec H11).
 # Contract: Marvin projects only; sub-agent invocations skipped; never writes; always exits 0; the output
@@ -29,8 +31,12 @@ case "$mode" in block|off) ;; *) mode=advise ;; esac
 # Byte-level (LC_ALL=C): ✅ \342\234\205 · ❌ \342\235\214 · ⚠ \342\232\240 · ⏳ \342\217\263 · ⏭ \342\217\255.
 # "Pictographic" = U+1F000–1FAFF (\360\237[\200-\253]) or U+2600–27BF, U+2B00–2BFF (\342[\230-\236\254-\257]).
 IFS= read -r -d '' UG_AWK <<'AWK' || true
-function pt(s,   x, p) {  # a table row -> its first cell as a bold point token ("" if no point); other lines pass through
-  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return s
+function lb(s,   i, k, p) {  # bold labels written with the colon inside (**What:**) -> **What**
+  split("What|Impact|Cause|Fix|Needs you?", k, "|")
+  for (i = 1; i <= 5; i++) while ((p = index(s, "**" k[i] ":**")) > 0) s = substr(s, 1, p - 1) "**" k[i] "**" substr(s, p + length(k[i]) + 5)
+  return s }
+function pt(s,   x, p) {  # a table row -> its first cell as a bold point token ("" if no point); other lines are label-normalised
+  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return lb(s)
   x = s; sub(/^[ \t]*(>[ \t]*)?\|/, "", x); p = index(x, "|"); if (p) x = substr(x, 1, p - 1)
   gsub(/\*\*/, "", x); sub(/^[ \t]+/, "", x); sub(/[ \t]+$/, "", x); sub(/:$/, "", x); sub(/[ \t]+$/, "", x)
   if (x == "What" || x == "Impact" || x == "Cause" || x == "Fix" || x == "Needs you?") return "**" x "**"
@@ -58,7 +64,7 @@ END {
       if (!inorder(c)) u3 = 1
       st = i }
     if (l ~ /^[ \t]*\|/ && (index(l, ck) || index(l, cx) || index(l, wn) || index(l, hg) || index(l, sk))) st = i
-    if (l ~ /^[ \t]*(\*\*(Next|Open questions)\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }
+    if (l ~ /^[ \t]*(\*\*(Next|Open questions):?\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }
   if (u1) print "U1"
   if (u2) print "U2"
   if (u3) print "U3"
@@ -96,7 +102,6 @@ fi
 tp=$(printf '%s' "$MH_IN" | mh_get transcript_path) || exit 0
 text=$(mh_last_text "$tp") || exit 0
 ids=$(printf '%s\n' "$text" | LC_ALL=C awk "$UG_AWK")
-[ "$mode" = block ] && ids=$(printf '%s\n' "$ids" | grep U4)
 [ -n "$ids" ] || exit 0
 printf '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Marvin update check — your previous message to the user broke the format (.marvin/agents/user-updates.md): %s. Apply the formats from this reply on; do not re-send or apologise for the earlier message."}}\n' "$(note "$ids")"
 exit 0
