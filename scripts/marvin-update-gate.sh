@@ -2,7 +2,8 @@
 # marvin-update-gate.sh — UserPromptSubmit + Stop hook for the marvin plugin (v0.38.0).
 # Checks the orchestrator's messages to the user against .marvin/agents/user-updates.md:
 #   U1 a <details> fold · U2 a pictographic emoji outside the legend (✅ ❌ ⚠️ ⏳ ⏭️) · U3 a ⚠️/❌ issue
-#   callout without What / Impact / Cause / Fix / Needs you? in that order · U4 a status update (a table
+#   callout (bold-bullet points, or the equal two-column point | detail table, inside the blockquote or
+#   directly below it) without What / Impact / Cause / Fix / Needs you? in that order · U4 a status update (a table
 #   row carrying a legend emoji, or a callout) with no Next / Open questions heading after it.
 # Fenced and inline code is ignored. Mode = update_gate in .marvin/PROJECT-INFO.md frontmatter:
 #   advise (default) — on UserPromptSubmit, check the PREVIOUS assistant text in the transcript and
@@ -28,6 +29,13 @@ case "$mode" in block|off) ;; *) mode=advise ;; esac
 # Byte-level (LC_ALL=C): ✅ \342\234\205 · ❌ \342\235\214 · ⚠ \342\232\240 · ⏳ \342\217\263 · ⏭ \342\217\255.
 # "Pictographic" = U+1F000–1FAFF (\360\237[\200-\253]) or U+2600–27BF, U+2B00–2BFF (\342[\230-\236\254-\257]).
 IFS= read -r -d '' UG_AWK <<'AWK' || true
+function pt(s,   x, p) {  # a table row -> its first cell as a bold point token ("" if no point); other lines pass through
+  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return s
+  x = s; sub(/^[ \t]*(>[ \t]*)?\|/, "", x); p = index(x, "|"); if (p) x = substr(x, 1, p - 1)
+  gsub(/\*\*/, "", x); sub(/^[ \t]+/, "", x); sub(/[ \t]+$/, "", x); sub(/:$/, "", x); sub(/[ \t]+$/, "", x)
+  if (x == "What" || x == "Impact" || x == "Cause" || x == "Fix" || x == "Needs you?") return "**" x "**"
+  return "" }
+function haspoint(c) { return index(c, "**What**") || index(c, "**Impact**") || index(c, "**Cause**") || index(c, "**Fix**") || index(c, "**Needs you?**") }
 function inorder(c,   k, p, q, r) {
   split("**What**|**Impact**|**Cause**|**Fix**|**Needs you?**", k, "|"); p = 0
   for (q = 1; q <= 5; q++) { r = index(substr(c, p + 1), k[q]); if (!r) return 0; p += r }
@@ -44,7 +52,9 @@ END {
     t = l; gsub(ck, "", t); gsub(cx, "", t); gsub(wn, "", t)
     if (t ~ /\360\237[\200-\253]/ || t ~ /\342[\230-\236\254-\257]/) u2 = 1
     if (l ~ /^[ \t]*>[ \t]*\*\*[ \t]*(\342\232\240|\342\235\214)/) {
-      c = ""; for (j = i + 1; j <= n && L[j] ~ /^[ \t]*>/; j++) c = c "\n" L[j]
+      c = ""; for (j = i + 1; j <= n && L[j] ~ /^[ \t]*>/; j++) c = c "\n" pt(L[j])
+      if (!haspoint(c)) { while (j <= n && L[j] ~ /^[ \t]*$/) j++
+        for (; j <= n && L[j] ~ /^[ \t]*(>[ \t]*)?\|/; j++) c = c "\n" pt(L[j]) }
       if (!inorder(c)) u3 = 1
       st = i }
     if (l ~ /^[ \t]*\|/ && (index(l, ck) || index(l, cx) || index(l, wn) || index(l, hg) || index(l, sk))) st = i

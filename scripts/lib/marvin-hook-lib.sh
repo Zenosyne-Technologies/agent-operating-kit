@@ -139,6 +139,7 @@ mh_frontmatter() {
 }
 mh_fm_value() {
   printf '%s\n' "$1" | sed -nE "s/^$2:[[:space:]]*//p" | head -n 1 \
+    | sed -E 's/(^|[[:space:]]+)#.*$//' \
     | sed -E 's/^[[:space:]"'"'"']+//; s/[[:space:]"'"'"']+$//'
 }
 

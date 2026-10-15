@@ -43,6 +43,7 @@ stop_in() {  # stop_in <project> <text> [active] [bg-status]
 run() { OUT=$(printf '%s' "$3" | CLAUDE_PROJECT_DIR="$2" bash "$1" 2>&1); RC=$?; }   # run <hook> <project> <stdin>
 
 P="$WORK/p"; mk_project "$P"; PB="$WORK/pb"; mk_project "$PB" block; PO="$WORK/po"; mk_project "$PO" off
+PC="$WORK/pc"; mk_project "$PC" "block   # strict"
 T="$WORK/t.jsonl"
 GOOD_TABLE='| item | result | where |
 |---|---|---|
@@ -86,6 +87,56 @@ mk_t "> **⚠️ x**
 > - **Cause**: c
 > - **Fix**: d
 > - **Needs you?**: no."; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"
+mk_t '> **⚠️ AOS-13 slow**
+> | point | detail |
+> |---|---|
+> | What | export is slow. |
+> | Impact | AOS-13 waits. |
+> | Cause | unknown |
+> | Fix | add an index. |
+> | Needs you? | no |
+
+**Next**
+
+- fix it'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
+mk_t '> **❌ AOS-13 blocked**
+
+| point | detail |
+|---|---|
+| **What** | rows drop. |
+| **Impact** | AOS-13 waits. |
+| **Cause** | unknown |
+| **Fix** | rebuild. |
+| **Needs you?:** | no |
+
+**Open questions**
+
+- ship it?'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
+mk_t '> **❌ AOS-13 blocked**
+
+| point | detail |
+|---|---|
+| Impact | AOS-13 waits. |
+| What | rows drop. |
+| Cause | unknown |
+| Fix | rebuild. |
+| Needs you? | no |
+
+**Next**
+
+- fix it'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"
+mk_t '> **❌ AOS-13 blocked**
+
+| point | detail |
+|---|---|
+| What | rows drop. |
+| Impact | AOS-13 waits. |
+| Fix | rebuild. |
+| Needs you? | no |
+
+**Next**
+
+- fix it'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"
 
 hd "G5 U4: a legend table without the tail is advised; with it, or a plain one-liner, passes"
 mk_t "$GOOD_TABLE"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
@@ -110,6 +161,9 @@ run "$HOOK" "$PB" "$(stop_in "$PB" "<details>x</details>" false completed)"; ass
 run "$HOOK" "$PB" "$(stop_in "$PB" "$(printf '%s\n' "$GOOD_TABLE" | sed '/Next/,$d')")"; assert_empty
 mk_t "<details>x</details>"; run "$HOOK" "$PB" "$(ups_in "$PB")"; assert_empty
 mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed '/Next/,$d')"; run "$HOOK" "$PB" "$(ups_in "$PB")"; assert_out "U4"
+
+hd "G8b an inline YAML comment after the mode still selects it"
+run "$HOOK" "$PC" "$(stop_in "$PC" "<details>x</details>")"; assert_out '"decision":"block"'
 
 hd "G9 off: nothing anywhere"
 mk_t "<details>x</details>"; run "$HOOK" "$PO" "$(ups_in "$PO")"; assert_empty
@@ -139,12 +193,13 @@ run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U1"
 
 # ── mutations ──────────────────────────────────────────────────────────────────────────────────────
 mutation() {  # mutation <name> <exact line> <replacement> <project> <stdin> — a mutant must change the output
-  local d="$WORK/m-$1" orig
+  local d="$WORK/m-$1" orig rc1
   rm -rf "$d"; mkdir -p "$d/lib"; cp "$LIB" "$d/lib/"
   A="$2" B="$3" awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$HOOK" > "$d/hook.sh"
-  if cmp -s "$d/hook.sh" "$HOOK"; then bad "mutation $1: target line not found — harness is stale"; return; fi
-  run "$HOOK" "$4" "$5"; orig=$OUT
+  if [ ! -f "$HOOK" ] || cmp -s "$d/hook.sh" "$HOOK"; then bad "mutation $1: target line not found — harness is stale"; return; fi
+  run "$HOOK" "$4" "$5"; orig=$OUT; rc1=$RC
   run "$d/hook.sh" "$4" "$5"
+  if [ "$rc1" != 0 ] || [ "$RC" != 0 ]; then bad "mutation $1: run failed (exit $rc1 / $RC)"; return; fi
   if [ "$OUT" = "$orig" ]; then bad "mutation $1 survived"; else ok "mutation $1 caught"; fi
 }
 hd "M1 fence skipping removed — G6 must catch it"
@@ -160,6 +215,21 @@ mutation bg '    [ "$st" = running ] && exit 0' '    :' "$PB" "$(stop_in "$PB" "
 hd "M4 legend not stripped before the emoji test — G3 must catch it"
 mk_t "✅ AOS-12 merged."
 mutation legend '    t = l; gsub(ck, "", t); gsub(cx, "", t); gsub(wn, "", t)' '    t = l' "$P" "$(ups_in "$P")"
+hd "M5 table-below-the-callout not read — G4 must catch it"
+mk_t '> **❌ AOS-13 blocked**
+
+| point | detail |
+|---|---|
+| What | a |
+| Impact | b |
+| Cause | c |
+| Fix | d |
+| Needs you? | no |
+
+**Next**
+
+- x'
+mutation tablebelow '      if (!haspoint(c)) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' '      if (0) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' "$P" "$(ups_in "$P")"
 
 printf '\n----\ntest-update-gate: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

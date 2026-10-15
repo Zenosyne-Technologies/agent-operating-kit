@@ -117,6 +117,14 @@ hd "L6 mh_is_subagent_call looks only before hook_event_name"
 OUT=$( ( . "$LIBUSE"; MH_IN='{"agent_id":"a","hook_event_name":"PostToolUse"}'; mh_is_subagent_call && echo yes || echo no ) ); eq yes
 OUT=$( ( . "$LIBUSE"; MH_IN='{"hook_event_name":"PostToolUse","tool_input":{"agent_id":"a"}}'; mh_is_subagent_call && echo yes || echo no ) ); eq no
 
+hd "L7 mh_fm_value: quotes trimmed, a trailing # comment dropped, a # inside a word kept"
+FM=$'a: block   # strict\nb: "q" #c\nc: x#y\nd: # only a comment\ne: plain'
+F mh_fm_value "$FM" a; eq "block"
+F mh_fm_value "$FM" b; eq "q"
+F mh_fm_value "$FM" c; eq "x#y"
+F mh_fm_value "$FM" d; eq ""
+F mh_fm_value "$FM" e; eq "plain"
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
@@ -130,6 +138,7 @@ f_sur()   { J '{"a":"\ud83d\ude80"}' get a; }
 f_skip()  { J '{"t":"a\"b","k":"v"}' get k; }
 f_win()   { OUT=$(CLAUDE_CODE_AUTO_COMPACT_WINDOW=500000 probe "context_window_ktokens: 300"); RC=0; }
 f_deep()  { J "$deep" get "$dpath"; }
+f_cmt()   { F mh_fm_value "update_gate: block   # strict" update_gate; }
 hd "ML1 surrogate-pair combining removed — J2 must catch it"
 mutlib sur '    if (b >= 56320 && b <= 57343) { pos += 6; a = 65536 + (a - 55296) * 1024 + (b - 56320) }' '    b = b' f_sur
 hd "ML2 escape skipping in skipped strings broken — J5 must catch it"
@@ -138,6 +147,8 @@ hd "ML3 frontmatter window no longer first — L3 must catch it"
 mutlib win '  if [ -n "$w" ] && [ "$((10#$w))" -gt 0 ]; then MH_WIN=$((10#$w))' '  if false; then :' f_win
 hd "ML4 depth guard removed — J7 must catch it"
 mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
+hd "ML5 trailing-comment strip removed — L7 must catch it"
+mutlib cmt "    | sed -E 's/(^|[[:space:]]+)#.*\$//' \\" '    | cat \' f_cmt
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
