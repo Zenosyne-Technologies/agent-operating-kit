@@ -13,11 +13,11 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
 ## Label every Docker resource you create
 
 - Every container, volume, network, image and compose stack an agent creates carries three labels: `marvin.project=<P>`, `marvin.owner=<O>`, `marvin.lifetime=throwaway|keep`.
-- `P` is the main checkout's directory name:
-  `P=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")`
+- `P` is the main checkout's directory name (the first `git worktree list` entry):
+  `P=$(basename "$(git worktree list --porcelain | sed -n '1s/^worktree //p')")`
 - `O` is the worktree's directory name when you stand in one under `.claude/worktrees/`, else `main`:
   `T=$(git rev-parse --show-toplevel); case "$T" in */.claude/worktrees/*) O=$(basename "$T");; *) O=main;; esac`
-- Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_.-]`. A compose stack runs with `-p <P>-<O>` and its compose file declares the three labels on every service, volume and network.
+- Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_-]` (compose rejects `.`). A compose stack runs with `-p <P>-<O>` and its compose file declares the three labels on every service, volume and network.
 - `throwaway` is the default. `keep` only when the brief or the user says the resource outlives the task.
 
 ## Remove it when definitely done
@@ -29,8 +29,8 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
 
 ## Never touch what is not ours
 
-- A resource not labelled `marvin.project=<P>` is the user's or another project's: never remove, prune or force-remove it (`guardrails.md` generic baseline).
-- Never `docker system prune`, never a prune without a `label=marvin.project=<P>` filter, never `--force` on a resource you did not create.
+- A resource not labelled `marvin.project=<P>` is the user's or another project's: never remove, prune or force-remove it without the user's approval (`guardrails.md` generic baseline).
+- Never `docker system prune`, never a prune without a `label=marvin.project=<P>` filter, never `--force` on a resource you did not create — the same `guardrails.md` row.
 
 ## Backstop and handover
 
@@ -43,7 +43,7 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
 - A database snapshot, copy or throwaway instance made for a sandbox, a test run or an agent worktree runs with binary logging OFF for its whole life. No general query log either.
   - MySQL / Percona: `--skip-log-bin` (8.0+: `--disable-log-bin` too).
   - MariaDB: never pass `--log-bin`.
-  - Loading into a server that logs: `SET SESSION sql_log_bin = 0` in the loading session.
+  - Loading a throwaway copy into a shared server that logs: `SET SESSION sql_log_bin = 0` in the loading session only — it switches off logging for that one session, never the server's.
   - Other engines: switch off the replication or archive logging the throwaway does not need — PostgreSQL: `wal_level=minimal`, `max_wal_senders=0`, `archive_mode=off`.
 - Re-enable it ONLY for a debug task whose brief names the need, ONLY on that task's own copy, and switch it off again (or remove the copy) when that debug task ends.
 - Never change the logging of the project's real dev, staging or production databases (`guardrails.md`).
