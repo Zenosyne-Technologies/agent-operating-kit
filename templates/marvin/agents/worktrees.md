@@ -29,6 +29,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
   - The plugin's SessionStart hook sweeps at every session start, which catches previous orchestrators' leftovers.
   - The orchestrator runs `/marvin:clean-worktrees` right after merging and pushing a sub-agent's branch. The worktree just finished usually survives that run as recently active; that is expected, and a later run or the next session-start sweep removes it, so do not retry.
   - Without the plugin there is no sweep: leave worktrees in place and list them in the handoff.
+  - Docker resources and throwaway databases an agent leaves follow `tidying.md`, not this sweep.
 - **What**: the plugin's sweep script decides. It removes a worktree under `.claude/worktrees/` only when ALL of these hold:
   - it is not locked (Claude Code locks a running agent's worktree);
   - no session stands in it;
@@ -45,4 +46,4 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
 ## Handover — say whether it is safe to delete
 
 - The final message of a sub-agent that commits work carries one line (`briefing.md` item 11): `WORKTREE: <path> — branch <b> pushed; safe to delete once merged`, or `WORKTREE: <path> — branch <b> not pushed (<why>)`, or `WORKTREE: none`.
-- The orchestrator's handoff in `.marvin/MEMORY.md` lists every worktree it leaves as either `<path> — safe to delete` (merged and pushed) or `<path> — NOT safe: <why>`. The next orchestrator and the sweep then act on facts, not guesses.
+- The orchestrator's handoff in `.marvin/MEMORY.md` lists every worktree it leaves as either `<path> — safe to delete` (merged and pushed) or `<path> — NOT safe: <why>`, and every `keep` and every main-owned throwaway Docker resource it leaves (`tidying.md`). The next orchestrator and the sweep then act on facts, not guesses.

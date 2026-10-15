@@ -19,6 +19,7 @@ docs_location: {{DOCS_LOCATION}}
 issue_log_path: {{DOCS_ISSUE_LOG_PATH}}
 telemetry: {{TELEMETRY}}
 update_gate: advise
+ticket_lint: block
 # Optional: overrides the window the context ladder measures (.marvin/agents/session-budget.md)
 # context_window_ktokens: 1000
 kit_version: {{KIT_VERSION}}
@@ -33,5 +34,6 @@ Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Th
 - Hierarchy details, virtual milestones, severity/size native mappings: `.marvin/agents/tracker-config.md`
 - `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`)
 - `update_gate` sets the user-update format check (`advise` | `block` | `off`, `.marvin/agents/user-updates.md` *Enforcement*); `context_window_ktokens`, `session_soft_ktokens` and `session_hard_ktokens` are optional overrides for `.marvin/agents/session-budget.md`
+- `ticket_lint` sets the tracker-write label check (`block` | `advise` | `off`; absent = `block`) — `.marvin/agents/ticket-filing.md`
 - Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
 - Operating rules: `.marvin/CLAUDE.marvin.md` (imported by `CLAUDE.md`) + the `.marvin/agents/` rules cascade
