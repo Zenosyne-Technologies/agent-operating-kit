@@ -1,0 +1,6 @@
+- Say only what changed, once, in plain words.
+- One event gets one plain line; use a table for two or more items.
+- Shipped/done items: a table (item | result | where) with the emoji legend (✅ ❌ ⚠️ ⏳ ⏭️).
+- Any issue/blocker: a callout — What / Impact / Cause / Fix / Needs you? — in that order.
+- Link to agent reports and tickets; never paste their content into chat.
+- End every message with Next / Open questions; drop an empty heading.

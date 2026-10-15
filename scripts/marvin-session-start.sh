@@ -3,13 +3,15 @@
 #
 # Fires on startup/resume/clear/compact (hooks/hooks.json). For a project the kit is installed
 # in (<root>/.marvin exists), it (a) compares the plugin's version against this project's
-# installed kit_version and flags drift, and (b) always injects the short user-update format
-# rules, since those rules must hold even when an output style would otherwise override them.
+# installed kit_version and flags drift, and (b) injects the short user-update format rules
+# (hooks/user-update-rules.txt) unless the project's effective outputStyle is Marvin's own, which
+# carries the same block.
 #
 # Contract: never writes a file, never blocks a session, always exits 0 — including when
 # .marvin is absent, plugin.json is missing, or PROJECT-INFO.md is unreadable or hostile.
 # Only validated version strings (matching ^[0-9]+\.[0-9]+\.[0-9]+$) ever reach the output;
-# no other file content is echoed into context.
+# nothing from the project or the settings files is echoed into context; the plugin's own rules
+# file (hooks/user-update-rules.txt) is printed.
 set -u
 
 is_semver() {
@@ -158,15 +160,21 @@ if [ -n "$status" ]; then
   printf '%s\n\n' "$status"
 fi
 
-# ── 6. the always-on user-update rules block (constant; nothing from the project flows in) ───
-cat <<'RULES'
-Marvin user-update rules (full formats: .marvin/agents/user-updates.md; these take precedence over any output style):
-- Say only what changed, once, in plain words.
-- One event gets one plain line; use a table for two or more items.
-- Shipped/done items: a table (item | result | where) with the emoji legend (✅ ❌ ⚠️ ⏳ ⏭️).
-- Any issue/blocker: a callout — What / Impact / Cause / Fix / Needs you? — in that order.
-- Link to agent reports and tickets; never paste their content into chat.
-- End every message with Next / Open questions; drop an empty heading.
-RULES
+# ── 6. the user-update rules — defined once in hooks/user-update-rules.txt (the Marvin output style
+# embeds the same block; validate-kit style-sync). Skipped when the effective outputStyle (local >
+# project > user settings; a top-level string match on bounded reads) is Marvin's own: the style carries
+# the rules then, and printing them again would only double the context. Nothing from the project or
+# settings is printed; the plugin's own rules file (hooks/user-update-rules.txt) is.
+style=""
+for f in "${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}/settings.json" "$root/.claude/settings.json" "$root/.claude/settings.local.json"; do
+  [ -f "$f" ] || continue
+  v=$(head -c 1048576 -- "$f" 2>/dev/null | grep -o '"outputStyle"[[:space:]]*:[[:space:]]*"[^"\\]*"' | head -n 1 \
+    | sed -E 's/^"outputStyle"[[:space:]]*:[[:space:]]*"//; s/"$//')
+  [ -n "$v" ] && style="$v"
+done
+case "$style" in marvin:*) exit 0 ;; esac
+rules="$(dirname "$0")/../hooks/user-update-rules.txt"
+printf '%s\n' "Marvin user-update rules (full formats: .marvin/agents/user-updates.md; these take precedence over any output style):"
+[ -f "$rules" ] && cat -- "$rules"
 
 exit 0

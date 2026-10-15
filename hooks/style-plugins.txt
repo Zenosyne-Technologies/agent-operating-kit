@@ -1,0 +1,6 @@
+# Plugins whose SessionStart hook injects an output-style-like instruction block, competing with
+# Marvin's output style (they are not output styles, so "outputStyle" cannot displace them — spec H10).
+# One <plugin>@<marketplace> id per line. The install and upgrade skills OFFER to disable each enabled
+# one for the project on the user's machine (.claude/settings.local.json) — never silently.
+explanatory-output-style@claude-plugins-official
+learning-output-style@claude-plugins-official
