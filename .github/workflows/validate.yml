@@ -22,6 +22,8 @@ jobs:
         run: bash scripts/test-whats-new.sh
       - name: Run worktree sweep tests
         run: bash scripts/test-worktree-sweep.sh
+      - name: Run Docker sweep tests
+        run: bash scripts/test-docker-sweep.sh
       - name: Run hook library tests
         run: bash scripts/test-hook-lib.sh
       - name: Run update gate tests

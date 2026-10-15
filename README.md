@@ -193,6 +193,8 @@ It never writes a file, never blocks the session, and always exits 0 — includi
 - **Context ladder** (`scripts/marvin-context-budget.sh`): 70 / 80 / 90 % of the compaction window alongside the 400k / 700k budgets, the stricter one speaking (`.marvin/agents/session-budget.md`).
 - **Output style**: `output-styles/marvin.md`, selected per project by `"outputStyle": "marvin:marvin"`; install and upgrade offer it, and offer — never silently apply — a per-user disable of competing style plugins (`scripts/marvin-style-plugins.sh`, registry `hooks/style-plugins.txt`).
 
+**Docker sweep (v0.39.0).** At `startup`/`resume`/`clear`, after the worktree sweep, `scripts/marvin-docker-sweep.sh --hook` removes Docker containers, networks, volumes and images labelled `marvin.project=<this project>` and `marvin.lifetime=throwaway` whose owner worktree under `.claude/worktrees/` is gone — never a `keep` or main-owned one, never a running container, never `-f`, never a prune, never a resource without the project label (`.marvin/agents/tidying.md`). It prints at most two lines (what it removed; main-owned throwaways still waiting) and stays silent when Docker is missing or its daemon is down; `/marvin:clean-worktrees` runs it too.
+
 ## PM tools
 
 The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
@@ -223,7 +225,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 | `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, and whether the companion plugin is present. Never modifies anything. |
 | `/marvin:play <scenario>` | Runs one bounded, self-terminating play scenario — a declared GOAL, numeric LIMITS, a POSITIVE and a NEGATIVE exit set before any dispatch, and a periodic report between rounds so the orchestrator can close a looping or overrunning run gracefully at its current state. Bare `/marvin:play` lists the available scenarios instead of guessing one. Runs in sub-agent mode today, re-dispatching fresh `marvin:*` personas each round; agent-teams behaviour is a dormant seam that only activates once Milestone E's execution-mode setting exists. |
 | `/marvin:whats-new [from] [to]` | Explains what changed between this project's Marvin version and the plugin's (or any two versions), from the per-release briefs in `CHANGELOG.md`, Action needed first. |
-| `/marvin:clean-worktrees [--check]` | Removes finished agent worktrees under `.claude/worktrees/` (locked, in-use, recently active, dirty or unmerged ones are kept, each with its reason) and their local branches when origin has a copy; the SessionStart hook runs the same sweep. |
+| `/marvin:clean-worktrees [--check]` | Removes finished agent worktrees under `.claude/worktrees/` (locked, in-use, recently active, dirty or unmerged ones are kept, each with its reason) and their local branches when origin has a copy, then the throwaway Docker resources those finished worktrees left; the SessionStart hook runs the same sweeps. |
 
 | Scenario | What it runs |
 |---|---|
@@ -265,7 +267,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the eleven test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+Every PR must pass the static release gate and the twelve test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
@@ -275,6 +277,7 @@ bash scripts/test-context-budget.sh
 bash scripts/test-claude-md-split.sh
 bash scripts/test-whats-new.sh
 bash scripts/test-worktree-sweep.sh
+bash scripts/test-docker-sweep.sh
 bash scripts/test-hook-lib.sh
 bash scripts/test-update-gate.sh
 bash scripts/test-subagent-hooks.sh
@@ -290,7 +293,7 @@ The static gate's nineteen checks: known placeholders only · template line budg
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 CHANGELOG.md                       categorised per-release briefs (Action needed · Added · Changed · Fixed · Removed · Security), newest first — read by /marvin:whats-new
-hooks/*.json                         hook registration — SessionStart runs marvin-session-start.sh and marvin-worktree-sweep.sh --hook; PostToolUse + UserPromptSubmit run marvin-context-budget.sh; UserPromptSubmit + Stop run marvin-update-gate.sh; SubagentStart/SubagentStop (^marvin:) run marvin-subagent-rules.sh / marvin-subagent-gate.sh; PreToolUse (Agent|Task) runs marvin-brief-lint.sh
+hooks/*.json                         hook registration — SessionStart runs marvin-session-start.sh, marvin-worktree-sweep.sh --hook and marvin-docker-sweep.sh --hook; PostToolUse + UserPromptSubmit run marvin-context-budget.sh; UserPromptSubmit + Stop run marvin-update-gate.sh; SubagentStart/SubagentStop (^marvin:) run marvin-subagent-rules.sh / marvin-subagent-gate.sh; PreToolUse (Agent|Task) runs marvin-brief-lint.sh
 scripts/marvin-session-start.sh      SessionStart hook body: version-drift check + the user-update rules block (only when the Marvin output style is not in effect), silent no-op outside a Marvin project
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
@@ -306,6 +309,8 @@ scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md b
 scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind seven guards (backs the SessionStart sweep and /marvin:clean-worktrees)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
+scripts/marvin-docker-sweep.sh       removes throwaway Docker resources of finished agent worktrees behind six guards (backs the SessionStart Docker sweep and /marvin:clean-worktrees)
+scripts/test-docker-sweep.sh         fixture suite for the Docker sweep against a fake docker, incl. inline mutation checks (CI runs it too)
 hooks/user-update-rules.txt          the user-update rules block, defined once — printed by the SessionStart hook, embedded by the output style
 hooks/style-plugins.txt              registry of plugins that inject a competing output style (install/upgrade offer to disable them per user)
 output-styles/marvin.md              the Marvin output style (marvin:marvin), selected per project by outputStyle

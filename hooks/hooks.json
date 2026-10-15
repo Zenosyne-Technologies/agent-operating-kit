@@ -1,5 +1,5 @@
 {
-  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), and the finished-agent-worktree sweep; PostToolUse + UserPromptSubmit: the context ladder and budgets; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection and the FINAL MESSAGE contract gate; PreToolUse (Agent): the brief lint — Marvin-installed projects only",
+  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), the finished-agent-worktree sweep and the Docker sweep (throwaway resources of finished agent worktrees); PostToolUse + UserPromptSubmit: the context ladder and budgets; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection and the FINAL MESSAGE contract gate; PreToolUse (Agent): the brief lint — Marvin-installed projects only",
   "hooks": {
     "SessionStart": [
       {
@@ -11,7 +11,8 @@
       {
         "matcher": "startup|resume|clear",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-worktree-sweep.sh --hook", "timeout": 20 }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-worktree-sweep.sh --hook", "timeout": 20 },
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-docker-sweep.sh --hook", "timeout": 20 }
         ]
       }
     ],

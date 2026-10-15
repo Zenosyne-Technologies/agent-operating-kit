@@ -239,7 +239,7 @@ grep -qF 'hooks/user-update-rules.txt' scripts/marvin-session-start.sh || ss="$s
 # hooks scoped to the marvin:* personas and the brief lint to the Agent tool
 IFS= read -r -d '' HR_PY <<'PY' || true
 import json
-want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh"],
+want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh"],
         "PostToolUse": ["marvin-context-budget.sh"],
         "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
         "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
