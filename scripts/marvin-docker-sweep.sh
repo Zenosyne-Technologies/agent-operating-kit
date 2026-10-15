@@ -14,8 +14,10 @@
 #   D4 <main checkout>/.claude/worktrees/<owner> exists (any type, a symlink included)
 #   D5 a container's state is not exited, created or dead
 #   D6 docker refused the removal (in use)
+#   D7 an image carries several tags — never untagged here: a tag moved since inspect could name a
+#      foreign image, and `image rm <repo:tag>` would delete it; `image rm <ID>` cannot
 # Otherwise: docker rm / network rm / volume rm / image rm, in that order — never -f, never prune.
-# An image with several tags is untagged tag by tag (image rm <repo:tag>), then removed by its ID.
+# An image is only ever removed by its ID, never by a tag.
 # Rules: .marvin/agents/tidying.md. Names print through q() (git core.quotePath convention).
 # --check reports only. --hook (SessionStart): Marvin projects only, at most two summary lines,
 # otherwise silent, always exit 0. Docker missing or its daemon unreachable: --hook silent, else
@@ -105,7 +107,7 @@ list() {  # list <kind> — IDs (volume names) carrying the project label, de-du
 }
 
 consider() {  # consider <kind> <id>
-  local kind="$1" id="$2" fmt out name state="" proj ck owner life tags="" rest t
+  local kind="$1" id="$2" fmt out name state="" proj ck owner life tags=""
   eval "fmt=\$F_$kind"
   out=$(dk "$kind" inspect --format "$fmt" -- "$id" 2>/dev/null) || { keep "$kind" "$id" "labels unreadable"; return; }
   case "$out" in *"$NL"*) keep "$kind" "$id" "labels unreadable"; return ;; esac
@@ -125,12 +127,8 @@ consider() {  # consider <kind> <id>
   if [ "$kind" = container ]; then
     case "$state" in exited|created|dead) ;; *) keep "$kind" "$name" "D5 container running"; return ;; esac
   fi
+  case "$tags" in *,*) keep "$kind" "$name" "D7 several tags — untag it by hand"; return ;; esac
   if [ "$MODE" = check ]; then say "would remove: $kind $(q "$name")"; return 0; fi
-  rest=$tags   # several tags: untag all but the last; removing the ID then drops the image
-  while :; do
-    case "$rest" in *,*) t=${rest%%,*}; rest=${rest#*,} ;; *) break ;; esac
-    dk image rm -- "$t" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }
-  done
   dk "$kind" rm -- "$id" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }
   say "removed: $kind $(q "$name")"
   NREM=$((NREM + 1)); REMOVED="$REMOVED${REMOVED:+,} $(q "$name")"

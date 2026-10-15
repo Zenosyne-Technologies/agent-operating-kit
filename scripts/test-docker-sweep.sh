@@ -4,7 +4,7 @@
 # every call; a removal it accepts lands in rmlog. The fake IGNORES the label filter on purpose, so
 # the sweep's own project-label re-check is what keeps another project's resource safe. One
 # fixture per keep-guard (D1–D6) asserting its NAMED reason and no removal, removal of each kind,
-# removal order, multi-tag images, scope, --check, --hook and docker-missing. The mutation section reverts each guard
+# removal order, multi-tag images kept, scope, --check, --hook and docker-missing. The mutation section reverts each guard
 # in a copy: a mutation counts as caught only when the fixture passes on the real script, the
 # mutant run exits 0, and the fixture then fails.
 # Run from anywhere: bash scripts/test-docker-sweep.sh — exit 0 = all passed.
@@ -116,8 +116,8 @@ fx_D6() { fresh; ctr c6 c6busy exited repo gone throwaway; echo c6 > "$FX/rmfail
 ck_D6() { has "kept: container c6busy — D6 docker refused (in use)" && ! rmd c6; }
 fx_PROJ() { fresh; ctr cx cxname exited other gone throwaway; vol vx repo-x gone throwaway; net nx nxname "" gone throwaway; sweep "$1"; }
 ck_PROJ() { ! has cxname && ! has vx && ! has nxname && ! rmd cx && ! rmd vx && ! rmd nx; }
-fx_TAGS() { fresh; img sha256:9999aaaabbbbcccc "m:a,m:b,m:c" repo gone throwaway; sweep "$1"; }
-ck_TAGS() { has 'removed: image "m:a"' && [ "$(awk '{ print $2 }' "$FX/rmlog" | tr '\n' ' ')" = "m:a m:b sha256:9999aaaabbbbcccc " ]; }
+fx_D7() { fresh; img sha256:9999aaaabbbbcccc "m:a,m:b,m:c" repo gone throwaway; sweep "$1"; }
+ck_D7() { has 'kept: image "m:a" — D7 several tags — untag it by hand' && ! rmd sha256:9999aaaabbbbcccc && [ ! -s "$FX/rmlog" ]; }
 orphans() {  # one orphaned throwaway of each kind (owner worktree gone), listed images-first
   img sha256:aaaabbbbccccdddd1111 "" repo gone throwaway
   img sha256:aaaabbbbccccdddd1111 "" repo gone throwaway   # a second tag row: listed twice, removed once
@@ -169,11 +169,15 @@ if [ "$(grep -c 'sha256:aaaabbbbccccdddd1111' "$FX/rmlog")" = 1 ]; then ok "dupl
 if grep -Eq '(^| )(-f|--force)( |$)|prune' "$FX/calls"; then bad "a forced or prune call was made"; else ok "never -f, never prune"; fi
 if grep -Fq -- "--filter label=marvin.project=repo" "$FX/calls"; then ok "listing filtered by project label"; else bad "no project label filter"; fi
 
-hd "R3 an image with several tags is untagged tag by tag, then removed by ID — never -f"
-fx_TAGS "$SWEEP"; assert_rc 0; if ck_TAGS; then ok "untagged m:a, m:b, then removed the ID"; else bad "rm sequence: $(tr '\n' ' ' < "$FX/rmlog")"; fi
-if grep -Eq '(^| )(-f|--force)( |$)' "$FX/calls"; then bad "a forced call was made"; else ok "never -f"; fi
-fresh; img sha256:8888aaaabbbbcccc "n:a,n:b" repo gone throwaway; echo n:a > "$FX/rmfail"; sweep "$SWEEP"; assert_rc 0
-assert_out 'kept: image "n:a" — D6 docker refused (in use)'; assert_no_rm sha256:8888aaaabbbbcccc
+hd "D7 an image with several tags is kept, never untagged (a moved tag could name a foreign image)"
+fx_D7 "$SWEEP"; assert_rc 0; assert_out 'kept: image "m:a" — D7 several tags — untag it by hand'; assert_no_rm sha256:9999aaaabbbbcccc
+if [ -s "$FX/rmlog" ]; then bad "something was removed: $(tr '\n' ' ' < "$FX/rmlog")"; else ok "nothing removed"; fi
+
+hd "R3 no image rm call ever receives a repo:tag — single-tag, untagged and multi-tag images alike"
+fresh; orphans; img sha256:7777aaaabbbbcccc "k:a,k:b" repo gone throwaway; sweep "$SWEEP"; assert_rc 0
+assert_out 'removed: image "app:t"'; assert_out 'kept: image "k:a" — D7'
+bad_args=$(awk '$1 == "image" && $2 == "rm" && $NF !~ /^sha256:/' "$FX/calls")
+if [ -z "$bad_args" ] && grep -q '^image rm' "$FX/calls"; then ok "image rm only ever by ID"; else bad "image rm by tag: $bad_args"; fi
 
 hd "R2 a name with a space prints encoded"
 fresh; ctr cs "my box" exited repo gone throwaway; sweep "$SWEEP"; assert_out 'removed: container "my box"'
@@ -251,7 +255,7 @@ mutation D4LINK fx_D4L ck_D4L '  [ -e "$WT_DIR/$owner" ] || [ -L "$WT_DIR/$owner
                               '  [ -e "$WT_DIR/$owner" ] && { keep "$kind" "$name" "D4 owner worktree still present"; return; }'
 mutation D6 fx_D6 ck_D6 '  dk "$kind" rm -- "$id" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }' \
                         '  dk "$kind" rm -- "$id" >/dev/null 2>&1 || :'
-mutation UNTAG fx_TAGS ck_TAGS '    dk image rm -- "$t" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }' '    :'
+mutation D7 fx_D7 ck_D7 '  case "$tags" in *,*) keep "$kind" "$name" "D7 several tags — untag it by hand"; return ;; esac' '  :'
 mutation D5 fx_D5 ck_D5 '    case "$state" in exited|created|dead) ;; *) keep "$kind" "$name" "D5 container running"; return ;; esac' '    :'
 
 printf '\n----\ntest-docker-sweep: %d passed, %d failed\n' "$PASSED" "$FAILED"
