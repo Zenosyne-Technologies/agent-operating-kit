@@ -139,8 +139,8 @@ case "$cmd" in *marvin.project*) hits=${hits#R} ;; esac
 [ -n "$hits" ] || exit 0
 
 out="Marvin Docker lint (.marvin/agents/tidying.md):"
-case "$hits" in *R*) out="$out this command creates a Docker resource without a marvin.project label — label every container, volume, network and image you create with marvin.project, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
-case "$hits" in *C*) out="$out This command starts a compose stack without -p/--project-name — run it as -p <P>-<O> and declare the three labels on every service, volume and network in its compose file." ;; esac
+case "$hits" in *R*) out="$out this command creates a Docker resource without a marvin.project label — label every container, volume, network and image you create with marvin.project, marvin.checkout, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
+case "$hits" in *C*) out="$out This command starts a compose stack without -p/--project-name — run it as -p <P>-<O> and declare the four labels on every service, volume and network in its compose file." ;; esac
 case "$hits" in *B*) out="$out This command starts a MySQL/Percona/MariaDB container with binary logging on — a throwaway database runs with it off: MySQL/Percona --skip-log-bin (8.0+: --disable-log-bin too), MariaDB never --log-bin (Throwaway databases — binary logging off)." ;; esac
 printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$out"
 exit 0

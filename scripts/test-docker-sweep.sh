@@ -4,7 +4,7 @@
 # every call; a removal it accepts lands in rmlog. The fake IGNORES the label filter on purpose, so
 # the sweep's own project-label re-check is what keeps another project's resource safe. One
 # fixture per keep-guard (D1–D6) asserting its NAMED reason and no removal, removal of each kind,
-# removal order, scope, --check, --hook and docker-missing. The mutation section reverts each guard
+# removal order, multi-tag images, scope, --check, --hook and docker-missing. The mutation section reverts each guard
 # in a copy: a mutation counts as caught only when the fixture passes on the real script, the
 # mutant run exits 0, and the fixture then fails.
 # Run from anywhere: bash scripts/test-docker-sweep.sh — exit 0 = all passed.
@@ -24,8 +24,9 @@ mkdir -p "$FAKE" "$SYS"
 # ── the fake docker ────────────────────────────────────────────────────────────────────────────
 cat > "$FAKE/docker" <<'SH'
 #!/usr/bin/env bash
-# fixture files in $DOCKER_FX: containers (id name state project owner lifetime), networks / images
-# (id name project owner lifetime), volumes (name name project owner lifetime) — tab-separated;
+# fixture files in $DOCKER_FX: containers (id name state project checkout owner lifetime), networks /
+# images (id name project checkout owner lifetime; an image's name is its comma-joined tags), volumes
+# (name name project checkout owner lifetime) — tab-separated;
 # down, lsfail-<kind>, inspectfail, inspectnl, rmfail (id lists) steer failures.
 FX=${DOCKER_FX:?}
 printf '%s\n' "$*" >> "$FX/calls"
@@ -78,20 +79,26 @@ assert_rm()     { if rmd "$1"; then ok "removed: $1"; else bad "not removed: $1"
 assert_no_rm()  { if rmd "$1"; then bad "wrongly removed: $1"; else ok "not removed: $1"; fi; }
 assert_lines()  { local n; n=$(printf '%s\n' "$OUT" | grep -c .); if [ "$n" = "$1" ]; then ok "$1 line(s)"; else bad "$n line(s), want $1"; fi; }
 
-fresh() {  # a Marvin repo named "repo" (P=repo), its worktrees dir, empty fixtures
+CKV=""
+fresh() {  # a Marvin repo named "repo" (P=repo), its worktrees dir, empty fixtures; CKV = its marvin.checkout
   rm -rf "$R" "$FX"; mkdir -p "$FX"; git init -q "$R"; mkdir -p "$R/.marvin" "$WT"
   : > "$FX/calls"; : > "$FX/rmlog"
+  CKV=$(git -C "$R" worktree list --porcelain | sed -n '1s/^worktree //p')   # tidying.md's C line
 }
-ctr() { printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" >> "$FX/containers"; }  # id name state project owner lifetime
-net() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$FX/networks"; }            # id name project owner lifetime
-vol() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$1" "$2" "$3" "$4" >> "$FX/volumes"; }             # name project owner lifetime
-img() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$FX/images"; }              # id tag project owner lifetime
+# the checkout label is the last, optional argument — default: this checkout
+ctr() { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "${7-$CKV}" "$5" "$6" >> "$FX/containers"; }  # id name state project owner lifetime [checkout]
+net() { printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "${6-$CKV}" "$4" "$5" >> "$FX/networks"; }            # id name project owner lifetime [checkout]
+vol() { printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$1" "$2" "${5-$CKV}" "$3" "$4" >> "$FX/volumes"; }             # name project owner lifetime [checkout]
+img() { printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "${6-$CKV}" "$4" "$5" >> "$FX/images"; }              # id tags project owner lifetime [checkout]
 sweep() {  # sweep <script> [args…] — run from the main checkout with the fake docker first on PATH
   local s="$1"; shift
   OUT=$(cd "$R" && PATH="$FAKE:$PATH" DOCKER_FX="$FX" CLAUDE_PROJECT_DIR="$R" "$BASH" "$s" "$@" </dev/null 2>&1); RC=$?
 }
 
 # ── guard fixtures (fx_*) and their silent checks (ck_*), shared with the mutation section ────────
+fx_D0() { fresh; vol v0a repo gone throwaway ""; vol v0b repo gone throwaway /elsewhere/repo; vol v0c repo gone throwaway "$CKV/"; sweep "$1"; }
+ck_D0() { has "kept: volume v0a — D0 another checkout" && has "kept: volume v0b — D0 another checkout" \
+          && has "kept: volume v0c — D0 another checkout" && ! rmd v0a && ! rmd v0b && ! rmd v0c; }
 fx_D1() { fresh; vol v1 repo gone keep; sweep "$1"; }
 ck_D1() { has "kept: volume v1 — D1 lifetime keep" && ! rmd v1; }
 fx_D2() { fresh; vol v2 repo main throwaway; ctr c2 c2name exited repo "" throwaway; sweep "$1"; }
@@ -109,6 +116,8 @@ fx_D6() { fresh; ctr c6 c6busy exited repo gone throwaway; echo c6 > "$FX/rmfail
 ck_D6() { has "kept: container c6busy — D6 docker refused (in use)" && ! rmd c6; }
 fx_PROJ() { fresh; ctr cx cxname exited other gone throwaway; vol vx repo-x gone throwaway; net nx nxname "" gone throwaway; sweep "$1"; }
 ck_PROJ() { ! has cxname && ! has vx && ! has nxname && ! rmd cx && ! rmd vx && ! rmd nx; }
+fx_TAGS() { fresh; img sha256:9999aaaabbbbcccc "m:a,m:b,m:c" repo gone throwaway; sweep "$1"; }
+ck_TAGS() { has 'removed: image "m:a"' && [ "$(awk '{ print $2 }' "$FX/rmlog" | tr '\n' ' ')" = "m:a m:b sha256:9999aaaabbbbcccc " ]; }
 orphans() {  # one orphaned throwaway of each kind (owner worktree gone), listed images-first
   img sha256:aaaabbbbccccdddd1111 "" repo gone throwaway
   img sha256:aaaabbbbccccdddd1111 "" repo gone throwaway   # a second tag row: listed twice, removed once
@@ -117,6 +126,11 @@ orphans() {  # one orphaned throwaway of each kind (owner worktree gone), listed
   net ngone ngname repo gone throwaway
   ctr cgone cgname exited repo gone throwaway
 }
+
+hd "D0 a resource of another checkout with the same directory name is kept (checkout label absent, other, or not byte-equal)"
+if [ "$(fresh; printf '%s' "$CKV")" = "$R" ]; then ok "the checkout label value is the main checkout path"; else bad "checkout label value differs from $R"; fi
+fx_D0 "$SWEEP"; assert_rc 0; assert_out "kept: volume v0a — D0 another checkout"; assert_out "kept: volume v0b — D0 another checkout"
+assert_out "kept: volume v0c — D0 another checkout"; assert_no_rm v0a; assert_no_rm v0b; assert_no_rm v0c
 
 hd "D1 a resource whose lifetime is not throwaway is kept"
 fx_D1 "$SWEEP"; assert_rc 0; assert_out "kept: volume v1 — D1 lifetime keep"; assert_no_rm v1
@@ -154,6 +168,12 @@ if [ "$order" = "container network volume image " ]; then ok "order containers �
 if [ "$(grep -c 'sha256:aaaabbbbccccdddd1111' "$FX/rmlog")" = 1 ]; then ok "duplicate image removed once"; else bad "duplicate image not removed exactly once"; fi
 if grep -Eq '(^| )(-f|--force)( |$)|prune' "$FX/calls"; then bad "a forced or prune call was made"; else ok "never -f, never prune"; fi
 if grep -Fq -- "--filter label=marvin.project=repo" "$FX/calls"; then ok "listing filtered by project label"; else bad "no project label filter"; fi
+
+hd "R3 an image with several tags is untagged tag by tag, then removed by ID — never -f"
+fx_TAGS "$SWEEP"; assert_rc 0; if ck_TAGS; then ok "untagged m:a, m:b, then removed the ID"; else bad "rm sequence: $(tr '\n' ' ' < "$FX/rmlog")"; fi
+if grep -Eq '(^| )(-f|--force)( |$)' "$FX/calls"; then bad "a forced call was made"; else ok "never -f"; fi
+fresh; img sha256:8888aaaabbbbcccc "n:a,n:b" repo gone throwaway; echo n:a > "$FX/rmfail"; sweep "$SWEEP"; assert_rc 0
+assert_out 'kept: image "n:a" — D6 docker refused (in use)'; assert_no_rm sha256:8888aaaabbbbcccc
 
 hd "R2 a name with a space prints encoded"
 fresh; ctr cs "my box" exited repo gone throwaway; sweep "$SWEEP"; assert_out 'removed: container "my box"'
@@ -219,6 +239,7 @@ mutation() {  # mutation <name> <fixture-fn> <check-fn> <exact script line> <rep
   if "$3"; then bad "mutation $1 survived ($2 still passes)"; else ok "mutation $1 caught"; fi
 }
 hd "M mutations"
+mutation D0 fx_D0 ck_D0 '  [ "$ck" = "$CK" ] || { keep "$kind" "$name" "D0 another checkout"; return; }' '  :'
 mutation PROJ fx_PROJ ck_PROJ '  [ "$proj" = "$P" ] || return 0   # not ours, whatever the filter said: never listed, never touched' '  :'
 mutation D1 fx_D1 ck_D1 '  [ "$life" = throwaway ] || { keep "$kind" "$name" "D1 lifetime keep"; return; }' '  :'
 mutation D2 fx_D2 ck_D2 '  [ -z "$owner" ] || [ "$owner" = main ] && { keep "$kind" "$name" "D2 owned by the main checkout"; NMAIN=$((NMAIN + 1)); return; }' '  :'
@@ -228,6 +249,9 @@ mutation D3DOTS fx_D3 ck_D3 '  case "$o" in ""|.|..|*[!ABCDEFGHIJKLMNOPQRSTUVWXY
 mutation D4 fx_D4 ck_D4 '  [ -e "$WT_DIR/$owner" ] || [ -L "$WT_DIR/$owner" ] && { keep "$kind" "$name" "D4 owner worktree still present"; return; }' '  :'
 mutation D4LINK fx_D4L ck_D4L '  [ -e "$WT_DIR/$owner" ] || [ -L "$WT_DIR/$owner" ] && { keep "$kind" "$name" "D4 owner worktree still present"; return; }' \
                               '  [ -e "$WT_DIR/$owner" ] && { keep "$kind" "$name" "D4 owner worktree still present"; return; }'
+mutation D6 fx_D6 ck_D6 '  dk "$kind" rm -- "$id" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }' \
+                        '  dk "$kind" rm -- "$id" >/dev/null 2>&1 || :'
+mutation UNTAG fx_TAGS ck_TAGS '    dk image rm -- "$t" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }' '    :'
 mutation D5 fx_D5 ck_D5 '    case "$state" in exited|created|dead) ;; *) keep "$kind" "$name" "D5 container running"; return ;; esac' '    :'
 
 printf '\n----\ntest-docker-sweep: %d passed, %d failed\n' "$PASSED" "$FAILED"

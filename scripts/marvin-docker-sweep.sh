@@ -4,9 +4,10 @@
 #   marvin-docker-sweep.sh [--check] [--hook] [<repo-dir>]      repo-dir: $CLAUDE_PROJECT_DIR, else $PWD
 #
 # Scope: containers, networks, volumes and images labelled marvin.project=<P> exactly, P being the
-# main checkout's directory name. Listed by label filter, then each one's labels are read again by
-# `docker <kind> inspect` and the project label re-checked before anything is done to it. A
-# resource is KEPT when any guard holds:
+# main checkout's directory name (the first `git worktree list` entry, C). Listed by label filter,
+# then each one's labels are read again by `docker <kind> inspect` and the project label re-checked
+# before anything is done to it. A resource is KEPT when any guard holds:
+#   D0 marvin.checkout is absent or differs from C byte for byte (another checkout with the same name)
 #   D1 marvin.lifetime is not throwaway
 #   D2 marvin.owner is main or empty (the orchestrator removes those when their task closes)
 #   D3 marvin.owner fails ^[A-Za-z0-9._-]+$ or is . / ..
@@ -14,6 +15,7 @@
 #   D5 a container's state is not exited, created or dead
 #   D6 docker refused the removal (in use)
 # Otherwise: docker rm / network rm / volume rm / image rm, in that order — never -f, never prune.
+# An image with several tags is untagged tag by tag (image rm <repo:tag>), then removed by its ID.
 # Rules: .marvin/agents/tidying.md. Names print through q() (git core.quotePath convention).
 # --check reports only. --hook (SessionStart): Marvin projects only, at most two summary lines,
 # otherwise silent, always exit 0. Docker missing or its daemon unreachable: --hook silent, else
@@ -66,7 +68,9 @@ common=$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir 2>/dev
   || die 2 "not a git repository: $(q "$REPO")"
 case "$common" in */.git) ROOT=${common%/.git} ;; *) die 2 "no main checkout (bare repository or separate git dir)" ;; esac
 if [ "$HOOK" = 1 ]; then [ -d "$ROOT/.marvin" ] && [ ! -L "$ROOT/.marvin" ] || exit 0; fi
-P=$(basename "$ROOT")
+CK=$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
+[ -n "$CK" ] || die 2 "no main checkout listed by git worktree list"
+P=$(basename "$CK")
 WT_DIR="$ROOT/.claude/worktrees"
 
 TMO=""; command -v timeout >/dev/null 2>&1 && TMO=8   # bound each call; else the hook timeout bounds us
@@ -82,13 +86,13 @@ owner_ok() {  # owner_ok <owner> — ^[A-Za-z0-9._-]+$ and not . or ..
   return 0
 }
 
-# inspect formats: one tab-separated line — name [state] project owner lifetime
-LBL='{{index .Labels "marvin.project"}}{{"\t"}}{{index .Labels "marvin.owner"}}{{"\t"}}{{index .Labels "marvin.lifetime"}}'
-CLBL='{{index .Config.Labels "marvin.project"}}{{"\t"}}{{index .Config.Labels "marvin.owner"}}{{"\t"}}{{index .Config.Labels "marvin.lifetime"}}'
+# inspect formats: one tab-separated line — name [state] project checkout owner lifetime
+LBL='{{index .Labels "marvin.project"}}{{"\t"}}{{index .Labels "marvin.checkout"}}{{"\t"}}{{index .Labels "marvin.owner"}}{{"\t"}}{{index .Labels "marvin.lifetime"}}'
+CLBL='{{index .Config.Labels "marvin.project"}}{{"\t"}}{{index .Config.Labels "marvin.checkout"}}{{"\t"}}{{index .Config.Labels "marvin.owner"}}{{"\t"}}{{index .Config.Labels "marvin.lifetime"}}'
 F_container='{{.Name}}{{"\t"}}{{.State.Status}}{{"\t"}}'"$CLBL"
 F_network='{{.Name}}{{"\t"}}'"$LBL"
 F_volume='{{.Name}}{{"\t"}}'"$LBL"
-F_image='{{if .RepoTags}}{{index .RepoTags 0}}{{end}}{{"\t"}}'"$CLBL"
+F_image='{{join .RepoTags ","}}{{"\t"}}'"$CLBL"
 
 list() {  # list <kind> — IDs (volume names) carrying the project label, de-duplicated
   local fmt='{{.ID}}'
@@ -101,16 +105,19 @@ list() {  # list <kind> — IDs (volume names) carrying the project label, de-du
 }
 
 consider() {  # consider <kind> <id>
-  local kind="$1" id="$2" fmt out name state="" proj owner life
+  local kind="$1" id="$2" fmt out name state="" proj ck owner life tags="" rest t
   eval "fmt=\$F_$kind"
   out=$(dk "$kind" inspect --format "$fmt" -- "$id" 2>/dev/null) || { keep "$kind" "$id" "labels unreadable"; return; }
   case "$out" in *"$NL"*) keep "$kind" "$id" "labels unreadable"; return ;; esac
   name=${out%%"$TAB"*}; out=${out#*"$TAB"}
   if [ "$kind" = container ]; then state=${out%%"$TAB"*}; out=${out#*"$TAB"}; name=${name#/}; fi
   proj=${out%%"$TAB"*}; out=${out#*"$TAB"}
+  ck=${out%%"$TAB"*}; out=${out#*"$TAB"}
   owner=${out%%"$TAB"*}; life=${out#*"$TAB"}
+  [ "$kind" = image ] && { tags=$name; name=${tags%%,*}; }   # every repo:tag, comma-joined
   [ -n "$name" ] || { name=${id#sha256:}; [ "${#name}" -gt 12 ] && name=${name%"${name#????????????}"}; }   # untagged image: short ID
   [ "$proj" = "$P" ] || return 0   # not ours, whatever the filter said: never listed, never touched
+  [ "$ck" = "$CK" ] || { keep "$kind" "$name" "D0 another checkout"; return; }
   [ "$life" = throwaway ] || { keep "$kind" "$name" "D1 lifetime keep"; return; }
   [ -z "$owner" ] || [ "$owner" = main ] && { keep "$kind" "$name" "D2 owned by the main checkout"; NMAIN=$((NMAIN + 1)); return; }
   owner_ok "$owner" || { keep "$kind" "$name" "D3 owner label invalid"; return; }
@@ -119,6 +126,11 @@ consider() {  # consider <kind> <id>
     case "$state" in exited|created|dead) ;; *) keep "$kind" "$name" "D5 container running"; return ;; esac
   fi
   if [ "$MODE" = check ]; then say "would remove: $kind $(q "$name")"; return 0; fi
+  rest=$tags   # several tags: untag all but the last; removing the ID then drops the image
+  while :; do
+    case "$rest" in *,*) t=${rest%%,*}; rest=${rest#*,} ;; *) break ;; esac
+    dk image rm -- "$t" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }
+  done
   dk "$kind" rm -- "$id" >/dev/null 2>&1 || { keep "$kind" "$name" "D6 docker refused (in use)"; return; }
   say "removed: $kind $(q "$name")"
   NREM=$((NREM + 1)); REMOVED="$REMOVED${REMOVED:+,} $(q "$name")"
