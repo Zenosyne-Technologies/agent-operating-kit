@@ -56,7 +56,7 @@ for f in $(git ls-files templates/); do
 done
 for b in $inv; do
   case "$b" in README.md|BOOTSTRAP.md|CHANGELOG.md) continue;; esac
-  git ls-files output-styles/ | grep -qE "/$b\$" && continue  # plugin-level output styles are factory files, not payload
+  git ls-files --error-unmatch -- "output-styles/$b" >/dev/null 2>&1 && continue  # plugin-level output styles are factory files, not payload
   git ls-files templates/ | grep -qE "/$b\$|^templates/$b\$" || miss_repo="$miss_repo $b"
 done
 [ -z "$miss_inv" ] && [ -z "$miss_repo" ] && pass inventory || fail inventory "not in README:$miss_inv | in README but not tracked:$miss_repo"
