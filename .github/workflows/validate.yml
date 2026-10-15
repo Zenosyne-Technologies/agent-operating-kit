@@ -32,5 +32,7 @@ jobs:
         run: bash scripts/test-subagent-hooks.sh
       - name: Run brief lint tests
         run: bash scripts/test-brief-lint.sh
+      - name: Run Docker lint tests
+        run: bash scripts/test-docker-lint.sh
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
