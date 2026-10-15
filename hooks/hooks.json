@@ -1,5 +1,5 @@
 {
-  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), the finished-agent-worktree sweep and the Docker sweep (throwaway resources of finished agent worktrees); PostToolUse + UserPromptSubmit: the context ladder and budgets; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection and the FINAL MESSAGE contract gate; PreToolUse (Agent): the brief lint; PreToolUse (Bash): the Docker lint (unlabelled resources, compose without -p, throwaway MySQL/MariaDB with binary logging on) — Marvin-installed projects only",
+  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), the finished-agent-worktree sweep and the Docker sweep (throwaway resources of finished agent worktrees); PostToolUse + UserPromptSubmit: the context ladder and budgets; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection and the FINAL MESSAGE contract gate; PreToolUse (Agent): the brief lint; PreToolUse (Bash): the Docker lint (unlabelled resources, compose without -p, throwaway MySQL/MariaDB with binary logging on); PreToolUse (tracker writes: Jira/Linear/GitHub MCP issue tools, Bash gh issue, Write of Local issue files): the ticket lint (required dimensions, registry values, size/severity only in prose; ticket_lint block|advise|off) — Marvin-installed projects only",
   "hooks": {
     "SessionStart": [
       {
@@ -36,7 +36,8 @@
     ],
     "PreToolUse": [
       { "matcher": "Agent|Task", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-brief-lint.sh", "timeout": 10 } ] },
-      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-docker-lint.sh", "timeout": 5 } ] }
+      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-docker-lint.sh", "timeout": 5 } ] },
+      { "matcher": "^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-ticket-lint.sh", "timeout": 10 } ] }
     ]
   }
 }
