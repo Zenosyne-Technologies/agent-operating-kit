@@ -9,11 +9,12 @@
 #            <project_key>-… or numeric (any MCP server: claude.ai connectors carry opaque server ids)
 #   linear — save_issue (Linear's tool name; create when it carries no `id`; a `template`/`templateId`
 #            supplies labels server-side, so C1/C2/C4 only advise)
-#   github — issue_write (method "create" = create) / create_issue / update_issue on an MCP server whose
-#            name contains "github"; Bash `gh issue create|new|edit` with no -R/--repo or one naming the
-#            tracker_coordinates owner/repo (--label/-l repeatable and comma-split, --add-label,
-#            --title/-t, --body/-b; --body-file is unreadable, so its prose goes unchecked; heredoc bodies
-#            are skipped, never read as commands or prose)
+#   github — issue_write on any MCP server (GitHub's own tool name; method "create" = create);
+#            create_issue / update_issue only on a server whose name contains "github"; Bash `gh issue
+#            create|new|edit` with no -R/--repo or one naming the tracker_coordinates owner/repo
+#            (--label/-l repeatable and comma-split, --add-label, --title/-t, --body/-b — a
+#            "$(cat <<'EOF' … EOF)" heredoc value is read as prose; --body-file is unreadable, so its
+#            prose goes unchecked; a top-level heredoc body is never read as commands or prose)
 #   local  — Write of */project-management/issues/*.md (frontmatter `labels:` inline or block list,
 #            `children:` marks an epic); a new file is a create, an existing one an edit carrying labels
 # Labels = every string in any JSON array keyed `labels` (full set) or `addLabels` (additive), at any
@@ -37,8 +38,9 @@
 # Known limits: only the first 64 KiB of a Bash command is parsed; gh run through a variable, alias,
 # bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched;
 # Edit-tool writes to Local issue files are not linted; Linear `patch` ops are not read as prose; Jira
-# ADF passed as a JSON string (not an object) is read as plain prose text; a GitHub MCP server whose name
-# lacks "github" is not linted.
+# ADF passed as a JSON string (not an object) is read as plain prose text; create_issue/update_issue on
+# a GitHub MCP server whose name lacks "github" is not linted; a `"` inside a $( … ) nested in double
+# quotes ends the quoted word early.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; output is
 # constant text, dimension names and label values matching ^[A-Za-z0-9:._-]{1,40}$ (else <label>) —
 # never prose, never a title.
@@ -85,8 +87,11 @@ case "$pm" in
     case "$kind" in
       gh) repo=$(mh_fm_value "$fm" tracker_coordinates | sed -E 's#^.*github\.com[/:]##; s#\.git([^A-Za-z0-9].*)?$##' \
             | grep -oE '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | head -n 1 | tr 'A-Z' 'a-z') ;;
-      mcp) case "$tool" in *__issue_write|*__create_issue|*__update_issue) ;; *) exit 0 ;; esac
-           case "$srv" in *github*) ;; *) exit 0 ;; esac ;;
+      mcp) case "$tool" in
+             *__issue_write) ;;                                        # GitHub's own tool name: any server
+             *__create_issue|*__update_issue) case "$srv" in *github*) ;; *) exit 0 ;; esac ;;
+             *) exit 0 ;;
+           esac ;;
       *) exit 0 ;;
     esac ;;
   local) [ "$kind" = local ] || exit 0 ;;
@@ -160,8 +165,10 @@ END { if (buf != "") ck[++nck] = buf
 AWK
 
 # gh issue create|new|edit — the command split into shell words and simple commands; gh must sit in
-# command position (after VAR=value assignments and env/command/sudo/exec). Heredoc bodies (<<X, <<'X',
-# <<"X", <<-X, also inside a quoted $(cat <<'EOF' …)) are skipped up to their terminator line. One
+# command position (after VAR=value assignments and env/command/sudo/exec). A heredoc (<<X, <<'X', <<"X",
+# <<-X) counts only outside quotes or inside a $( … ) — also one nested in double quotes (cs tracks it);
+# a top-level body is skipped up to its terminator line, a body inside "$(cat <<'EOF' …)" becomes part
+# of that word, so a --body heredoc is read as prose. One
 # record per gh call; a call whose -R/--repo is not the tracker's owner/repo (-v repo) is dropped.
 IFS= read -r -d '' GH_AWK <<'AWK' || true
 function flush() { if (inw) { tok[++nt] = w; w = ""; inw = 0 } }
@@ -177,7 +184,7 @@ function here(i,   j, c, k, d, st) {  # a heredoc operator at i: queue its termi
   if (c == "'" || c == "\"") { k = index(substr($0, j + 1), c); if (!k) return i; d = substr($0, j + 1, k - 1); j += k + 1 }
   else if (match(substr($0, j), /^[^ \t;&|()<>"'`\\]+/)) { d = substr($0, j, RLENGTH); j += RLENGTH }
   if (d == "") return i
-  hd[++nh] = d; hs[nh] = st
+  hd[++nh] = d; hs[nh] = st; hw[nh] = (q == 2)   # inside "$(…)": the body is part of the current word
   return j - 1 }
 function seg(s, e,   k, t, b, op, tag, rv) {
   k = s
@@ -208,13 +215,14 @@ function seg(s, e,   k, t, b, op, tag, rv) {
   if (rv != "") { rv = tolower(rv); sub(/^.*github\.com[\/:]/, "", rv); sub(/\.git$/, "", rv); if (repo == "" || rv != repo) return }
   printf "%s", rb }
 BEGIN { SEP = "\001"; hi = 1 }
-{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; if (hi > nh) { nh = 0; hi = 1 }; next }
+{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; else if (hw[hi]) w = w $0 "\n"; if (hi > nh) { nh = 0; hi = 1 }; next }
   L = length($0)
   for (i = 1; i <= L; i++) { c = substr($0, i, 1)
     if (esc) { esc = 0; w = w c; inw = 1 }
     else if (q == 1) { if (c == "'") q = 0; else w = w c }
-    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<") { if (!q) flush(); i = here(i) }
-    else if (q == 2) { if (c == "\\") esc = 1; else if (c == "\"") q = 0; else w = w c }
+    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<" && (!q || cs)) { if (!q) flush(); i = here(i) }
+    else if (q == 2) { if (c == "\\") esc = 1; else if (c == "\"") { q = 0; cs = 0 }
+      else { if (c == "(" && substr(w, length(w), 1) == "$") cs++; else if (c == ")" && cs) cs--; w = w c } }
     else if (c == "\\") { esc = 1; inw = 1 }
     else if (c == "'") { q = 1; inw = 1 }
     else if (c == "\"") { q = 2; inw = 1 }

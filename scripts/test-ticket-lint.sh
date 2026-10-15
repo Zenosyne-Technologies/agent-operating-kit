@@ -277,7 +277,8 @@ lint "$J" "$(jira '')" "$PLN"; silent "Jira write under pm_tool linear"
 lint "$LN" '{"team":"T","title":"x"}' "$P"; silent "Linear write under pm_tool jira"
 lint mcp__sentry__create_issue '{"title":"x"}'; silent "mcp__sentry__create_issue under pm_tool github"
 lint mcp__sentry__create_issue '{"title":"x"}' "$P"; silent "mcp__sentry__create_issue under pm_tool jira"
-lint mcp__tracker__issue_write '{"method":"create","title":"x"}'; silent "non-github server issue_write"
+lint mcp__fa0230fe-9999__issue_write '{"method":"create","title":"x"}'; denied "C1"
+lint mcp__tracker__update_issue '{"issue_number":3,"labels":["type:feature"]}'; silent "non-github server update_issue"
 lint mcp__linear-server__save_issue '{"team":"T","title":"x"}' "$PLN"; denied "C1"
 ghl 'gh issue create -R someone/upstream -t Crash -b "it crashed"'; silent "gh -R upstream"
 ghl 'gh issue create --repo=someone/upstream -t Crash'; silent "gh --repo= upstream"
@@ -300,9 +301,16 @@ ghl "$(printf 'cat > H.md <<EOF\ngh issue create -t X\nEOF')"; silent "bare term
 ghl "$(printf 'cat > H.md <<"EOF"\ngh issue create -t X\nEOF')"; silent "double-quoted terminator"
 ghl "$(printf 'cat > H.md <<-EOF\ngh issue create -t X\n\tEOF')"; silent "<<- with a tab-indented terminator"
 ghl "$(printf 'cat > H.md <<EOF\ngh issue create -t X\nEOF\ngh issue create -t Real')"; denied "C1"
-ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\nIt has an odd " quote and Size: m\nEOF\n)" -l type:feature,area:ui,origin:roadmap,size:m' "'EOF'")"; silent "labelled create with a heredoc body"
+ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\nIt has an odd " quote and Size: m\nEOF\n)" -l type:feature,area:ui,origin:roadmap,size:m' "'EOF'")"; silent "labelled create, odd quote in a heredoc body (size mid-sentence is not prose-matched)"
 ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\nbody\nEOF\n)" -l type:feature' "'EOF'")"; denied "C2"
 ghl 'cat <<< "gh issue create -t X"'; silent "here-string"
+CPP="$(printf 'gh issue create -t "Fix stream" -b "Repro:\nstd::cout << value;\nprints nothing." -l type:bug,area:docs,origin:agent-qa,size:s,sev3-medium')"
+ghl "$CPP"; silent "<< inside a double-quoted body is not a heredoc"
+ghl "$(printf 'gh issue create -t "Fix" -b "Ruby:\nitems << item\nworks." -l type:feature,area:ui,origin:roadmap,size:m')"; silent "Ruby << in a quoted body"
+ghl "$(printf "gh issue create -t 'a << b' -b 'x' -l type:feature,area:ui,origin:roadmap,size:m")"; silent "<< inside single quotes"
+HB="$(printf 'gh issue create --title Fix --body "$(cat <<%s\nRows drop.\nSize **m**.\nEOF\n)" -l type:feature,area:ui,origin:roadmap' "'EOF'")"
+ghl "$HB"; denied "C5 the size is stated only in the title/description"
+ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\ngh issue create -t inner\nEOF\n)" -l type:feature,area:ui,origin:roadmap,size:m' "'EOF'")"; silent "a gh line inside a --body heredoc is prose, not a command"
 
 hd "T15 code is not prose"
 lint "$J" "$(jira "$V" 'Epic' '```
@@ -422,7 +430,7 @@ mutation scope '        [ -n "$pkey" ] && [ "$k" = "$pkey" ] || exit 0 ;;' '    
 hd "M22 gh -R not compared — T13 upstream must catch it"
 mutation ghrepo '  if (rv != "") { rv = tolower(rv); sub(/^.*github\.com[\/:]/, "", rv); sub(/\.git$/, "", rv); if (repo == "" || rv != repo) return }' '' silent "$PGH" "$(gh_in 'gh issue create -R someone/upstream -t Crash')"
 hd "M23 heredoc bodies read as commands — T14 HOWTO must catch it"
-mutation heredoc '    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<") { if (!q) flush(); i = here(i) }' '    else if (0) i = i' silent "$PGH" "$(gh_in "$(printf 'cat > HOWTO.md <<%s\n## Filing\ngh issue create --title X --body Y\nEOF' "'EOF'")")"
+mutation heredoc '    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<" && (!q || cs)) { if (!q) flush(); i = here(i) }' '    else if (0) i = i' silent "$PGH" "$(gh_in "$(printf 'cat > HOWTO.md <<%s\n## Filing\ngh issue create --title X --body Y\nEOF' "'EOF'")")"
 hd "M24 fences read as prose — T15 must catch it"
 mutation fence '  if (fence) return' '  fence = 0' silent "$P" "$(pre_in "$J" "$(jira "$V" 'Epic' '```
 Size: m
@@ -434,6 +442,13 @@ mutation localedit '         if [ -f "$f" ]; then recs=$(printf '"'R\nOP edit\nS
 labels: [type:feature, area:core, origin:roadmap]
 ---
 x" "$EX/AOS-9.md")"
+
+hd "M27 heredoc detector ignores quote state — T14 C++ body must catch it"
+mutation quotestate '    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<" && (!q || cs)) { if (!q) flush(); i = here(i) }' '    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<") { if (!q) flush(); i = here(i) }' silent "$PGH" "$(gh_in "$CPP")"
+hd "M28 --body heredoc not read as prose — T14 Size **m** body must catch it"
+mutation bodyprose '{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; else if (hw[hi]) w = w $0 "\n"; if (hi > nh) { nh = 0; hi = 1 }; next }' '{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; if (hi > nh) { nh = 0; hi = 1 }; next }' "has:C5" "$PGH" "$(gh_in "$HB")"
+hd "M29 issue_write gated on a github server name — T13 must catch it"
+mutation anyserver '             *__issue_write) ;;                                        # GitHub'"'"'s own tool name: any server' '             *__issue_write) case "$srv" in *github*) ;; *) exit 0 ;; esac ;;' deny "$PGH" "$(pre_in mcp__fa0230fe-9999__issue_write '{"method":"create","title":"x"}')"
 
 printf '\n----\ntest-ticket-lint: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
