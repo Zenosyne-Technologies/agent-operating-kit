@@ -2,6 +2,22 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.38.0] — 2026-10-15
+
+### Added
+- A Marvin output style (`marvin:marvin`); install and upgrade offer it per project, and offer — never silently apply — a per-user disable of plugins that inject a competing style.
+- A user-update check on every message to the user: by default a note rides on your next prompt; `update_gate: block` sends a failing message back once and also advises on the next prompt; `off` disables it.
+- Sub-agent checks: a final message missing a reserved line (`TRACKER:`, `GUARDRAILS:`, or one its brief reserves) or over 25 lines goes back to the agent once; every persona gets a constant rules block; briefs are linted at dispatch.
+- A context ladder: at 70 / 80 / 90 % of the compaction window Marvin plans, winds down, then stops at a clean point and nudges you to `/compact` (or a fresh session at an epic edge).
+
+### Changed
+- The SessionStart rules block prints only when the project's output style is not Marvin's own.
+- The 400k / 700k session budgets now share the ladder's wording; the stricter of the two speaks.
+- Every upgrade re-runs the competing-style scan and offers the Marvin style when the project has none.
+
+### Action needed
+- After `/marvin:upgrade-agent-os`, start a new session so the new hooks, the style and the rules load.
+
 ## [0.37.0] — 2026-10-14
 
 ### Added
