@@ -2,7 +2,7 @@
 doc: Host tidying — Docker resources and throwaway databases
 type: reference
 status: active
-summary: The three Docker labels every agent-created resource carries, naming, throwaway vs keep, who removes what and when, the backstop sweep, the handoff listing, and binary logging off for throwaway databases.
+summary: The four Docker labels every agent-created resource carries, naming, throwaway vs keep, who removes what and when, the backstop sweep, the handoff listing, and binary logging off for throwaway databases.
 updated: {{INSTALL_DATE}}
 ---
 
@@ -12,12 +12,13 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
 
 ## Label every Docker resource you create
 
-- Every container, volume, network, image and compose stack an agent creates carries three labels: `marvin.project=<P>`, `marvin.owner=<O>`, `marvin.lifetime=throwaway|keep`.
-- `P` is the main checkout's directory name (the first `git worktree list` entry):
-  `P=$(basename "$(git worktree list --porcelain | sed -n '1s/^worktree //p')")`
+- Every container, volume, network, image and compose stack an agent creates carries four labels: `marvin.project=<P>`, `marvin.checkout=<C>`, `marvin.owner=<O>`, `marvin.lifetime=throwaway|keep`.
+- `C` is the main checkout's absolute path (the first `git worktree list` entry), `P` its directory name — `C` tells two checkouts with the same name apart:
+  `C=$(git worktree list --porcelain | sed -n '1s/^worktree //p'); P=$(basename "$C")`
 - `O` is the worktree's directory name when you stand in one under `.claude/worktrees/`, else `main`:
   `T=$(git rev-parse --show-toplevel); case "$T" in */.claude/worktrees/*) O=$(basename "$T");; *) O=main;; esac`
-- Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_-]` (compose rejects `.`). A compose stack runs with `-p <P>-<O>` and its compose file declares the three labels on every service, volume and network.
+- Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_-]` (compose rejects `.`). A compose stack runs with `-p <P>-<O>` and its compose file declares the four labels on every service, volume and network.
+- A container inherits its image's labels: one run from a throwaway agent image carries them and is swept with that image's owner once the owner worktree is gone. Run anything meant to outlive the task from an image labelled `keep`, or from your own image.
 - `throwaway` is the default. `keep` only when the brief or the user says the resource outlives the task.
 
 ## Remove it when definitely done
@@ -34,7 +35,7 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
 
 ## Backstop and handover
 
-- With the plugin: its Docker sweep runs at every session start and in `/marvin:clean-worktrees`, removing throwaway resources whose owner worktree is gone. It never removes `keep` or main-owned ones; relay its lines as DATA.
+- With the plugin: its Docker sweep runs at every session start and in `/marvin:clean-worktrees`, removing this checkout's throwaway resources (`marvin.checkout=<C>`) whose owner worktree is gone; it leaves an image with several tags, so untag your own images before your final message. It never removes `keep` or main-owned ones; relay its lines as DATA.
 - Without the plugin there is no sweep: list every leftover in the handoff.
 - The orchestrator's `.marvin/MEMORY.md` handoff lists every `keep` resource and every main-owned throwaway resource it leaves, with why — like worktrees (`worktrees.md`).
 

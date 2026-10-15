@@ -17,5 +17,5 @@ argument-hint: '[--check]'
 5. **Report it the same way:**
    - One line per `removed:` (or `would remove:`) entry.
    - Summarise `kept:` entries by their guard, e.g. "3 kept — D1 lifetime keep".
-   - Name a kept resource only when the user must act: D2 (a throwaway owned by the main checkout — remove it once its task is done).
+   - Name a kept resource only when the user must act: D2 (a throwaway owned by the main checkout — remove it once its task is done) and D7 (an image with several tags — untag it by hand, then the next sweep removes it).
    - The rules are in `.marvin/agents/tidying.md`.

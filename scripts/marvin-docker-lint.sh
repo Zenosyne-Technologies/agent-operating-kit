@@ -5,10 +5,13 @@
 #   - creates a Docker resource (docker run|create, docker container run|create, docker volume|network
 #     create, docker build, docker builder|image|buildx build) with no `marvin.project` anywhere in it;
 #   - starts a compose stack (docker compose / docker-compose … up|create|run) without a global
-#     -p/--project-name (or a COMPOSE_PROJECT_NAME= assignment in front of it);
-#   - runs/creates a mysql, percona or percona-server image (any registry, tag or digest) without
-#     skip-log-bin, disable-log-bin, log-bin=OFF or log-bin=0 (case- and _/- insensitive) in the
-#     command, or a mariadb image WITH --log-bin (not =OFF / =0) after the image.
+#     -p/--project-name (or COMPOSE_PROJECT_NAME= in front of it or exported earlier in the command);
+#   - runs/creates a mysql, percona, percona-server, mysql/mysql-server or …/mysql/community-server
+#     image (any registry, tag or digest) without skip-log-bin, disable-log-bin, log-bin=OFF or
+#     log-bin=0 (case- and _/- insensitive) in the command, or a mariadb image WITH --log-bin (not
+#     =OFF / =0) after the image — unless it runs a client (the image's command starts with mysql,
+#     mysqldump, mysqladmin, mysqlimport, mysqlsh, mariadb, mariadb-dump or mariadb-admin) or
+#     overrides --entrypoint. --label-file counts as labelled.
 # The rules it cites are owned by .marvin/agents/tidying.md.
 # Detection: the command is split into shell words (quotes, backslash escapes, line continuations,
 # comments) and simple commands (; & && | || ( ) ` and newlines); docker must sit in COMMAND POSITION,
@@ -16,9 +19,10 @@
 # nice (and their options). So `echo docker run x` and `echo "docker run x"` stay silent.
 # Known limits: docker inside a quoted string run by another program (bash -c '…', ssh host '…'),
 # through a variable/alias/function ($DOCKER run), via xargs/watch, or written with JSON \u escapes is
-# not seen; heredoc bodies are read as commands; a mysql image run as a client (docker run mysql mysql
-# -h …) still gets the binlog advice; `marvin.project` anywhere (even in an echo) suppresses the label
-# advice; only the first 64 KiB of the command is parsed.
+# not seen; heredoc bodies are read as commands; `marvin.project` or `--label-file` anywhere (even in
+# an echo) suppresses the label advice; a compose file's own top-level `name:` is not read (the command
+# alone decides, so such a stack still gets the compose advice); only the first 64 KiB of the command
+# is parsed.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; nothing
 # from the command is echoed.
 set -u
@@ -50,13 +54,18 @@ function wopt(wr, f) {
   return 0 }
 function nextarg(k, e) { while (k <= e && tok[k] ~ /^-/) k++; return k }
 function lower(t) { t = tolower(t); gsub(/_/, "-", t); return t }
-function runargs(s, e,   k, t, j, c, n) {
+function base(t,   i) {  # the last path segment, by index(): sub(/.*\//) goes quadratic in some awks
+  while ((i = index(t, "/")) > 0) t = substr(t, i + 1)
+  return t }
+function client(t) { return t ~ /^(mysql|mysqldump|mysqladmin|mysqlimport|mysqlsh|mariadb|mariadb-dump|mariadb-admin)$/ }
+function runargs(s, e,   k, t, j, c, n, img, ep) {
   res = 1
   for (k = s; k <= e; k++) {
     t = tok[k]
     if (isredir(t)) { if (bare(t)) k++; continue }
     if (t == "--") { k++; break }
     if (t ~ /^--/) {
+      if (t ~ /^--entrypoint(=|$)/) ep = 1
       if (index(t, "=") || t ~ /^--(rm|init|privileged|read-only|detach|interactive|tty|publish-all|no-healthcheck|oom-kill-disable|disable-content-trust|use-api-socket|help|quiet)$/) continue
       k++; continue }
     if (t ~ /^-./) {
@@ -65,8 +74,11 @@ function runargs(s, e,   k, t, j, c, n) {
       continue }
     break }
   if (k > e) return
-  n = tolower(tok[k]); sub(/@.*/, "", n); sub(/.*\//, "", n); sub(/:.*/, "", n)
+  img = tolower(tok[k]); sub(/@.*/, "", img); n = base(img); sub(/:.*/, "", n)
+  img = substr(img, 1, length(img) - length(base(img)))
+  if (ep || (k < e && client(base(tok[k + 1])))) return
   if (n == "mysql" || n == "percona" || n == "percona-server") { if (!binoff) db = 1; return }
+  if ((n == "mysql-server" || n == "community-server") && img ~ /(^|\/)mysql\/$/) { if (!binoff) db = 1; return }
   if (n != "mariadb") return
   for (j = k + 1; j <= e; j++) { t = lower(tok[j])
     if (t == "--log-bin" || (t ~ /^--log-bin=/ && t != "--log-bin=off" && t != "--log-bin=0")) db = 1 } }
@@ -85,13 +97,15 @@ function segment(s, e,   k, t, b, wr, s1, s2, cpn) {
     t = tok[k]
     if (isredir(t)) { k += bare(t) ? 2 : 1; continue }
     if (t ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { if (t ~ /^COMPOSE_PROJECT_NAME=./) cpn = 1; k++; continue }
-    b = t; sub(/.*\//, "", b)
+    b = base(t)
     if (b ~ /^(sudo|env|command|exec|time|nohup|nice)$/) {
       wr = b; k++
       while (k <= e && tok[k] ~ /^-/) { if (wopt(wr, tok[k])) k++; k++ }
       continue }
     break }
   if (k > e) return
+  if (b == "export") { for (k++; k <= e; k++) if (tok[k] ~ /^COMPOSE_PROJECT_NAME=./) gcpn = 1; return }
+  if (gcpn) cpn = 1
   if (b == "docker-compose") { compose(k + 1, e, cpn); return }
   if (b != "docker") return
   for (k++; k <= e; k++) {
@@ -135,12 +149,12 @@ END { flush()
 AWK
 
 hits=$(printf '%s\n' "$cmd" | LC_ALL=C awk -v binoff="$binoff" "$DL_AWK" 2>/dev/null) || exit 0
-case "$cmd" in *marvin.project*) hits=${hits#R} ;; esac
+case "$cmd" in *marvin.project*|*--label-file*) hits=${hits#R} ;; esac
 [ -n "$hits" ] || exit 0
 
 out="Marvin Docker lint (.marvin/agents/tidying.md):"
-case "$hits" in *R*) out="$out this command creates a Docker resource without a marvin.project label — label every container, volume, network and image you create with marvin.project, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
-case "$hits" in *C*) out="$out This command starts a compose stack without -p/--project-name — run it as -p <P>-<O> and declare the three labels on every service, volume and network in its compose file." ;; esac
+case "$hits" in *R*) out="$out this command creates a Docker resource without a marvin.project label — label every container, volume, network and image you create with marvin.project, marvin.checkout, marvin.owner and marvin.lifetime (Label every Docker resource you create)." ;; esac
+case "$hits" in *C*) out="$out This command starts a compose stack without -p/--project-name — run it as -p <P>-<O> and declare the four labels on every service, volume and network in its compose file." ;; esac
 case "$hits" in *B*) out="$out This command starts a MySQL/Percona/MariaDB container with binary logging on — a throwaway database runs with it off: MySQL/Percona --skip-log-bin (8.0+: --disable-log-bin too), MariaDB never --log-bin (Throwaway databases — binary logging off)." ;; esac
 printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$out"
 exit 0
