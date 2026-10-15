@@ -13,10 +13,10 @@ What changed in each Marvin release, newest first, in fixed categories — Actio
 
 ### Changed
 - Label registry v1.5.0: `size:` on every non-epic item at filing, labels never prose, severity spelled exactly (`sev4-low`).
-- Every upgrade now ends with ONE yes/no on backfilling the items the audit flagged.
+- When the upgrade's label audit flags items on your tracker, it asks ONE yes/no on backfilling them.
 
 ### Fixed
-- Tracker items filed with a size or severity only in prose, or with bare `sev4`, are now flagged and denied instead of passing as labelled.
+- Tracker items filed with a size or severity only in prose, or with bare `sev4`, are now flagged instead of passing as labelled — denied under `ticket_lint: block` when the write can be read with certainty, advised otherwise.
 
 ### Action needed
 - Label your Docker resources per `tidying.md`; resources created before this upgrade carry no labels and are never swept, so remove them by hand.

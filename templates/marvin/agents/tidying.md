@@ -19,7 +19,7 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
   `T=$(git rev-parse --show-toplevel); case "$T" in */.claude/worktrees/*) O=$(basename "$T");; *) O=main;; esac`
 - Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_-]` (compose rejects `.`). A compose stack runs with `-p <P>-<O>` and its compose file declares the four labels on every service, volume and network.
 - A container inherits its image's labels: one run from a throwaway agent image carries them and is swept with that image's owner once the owner worktree is gone. Run anything meant to outlive the task from an image labelled `keep`, or from your own image.
-- `throwaway` is the default. `keep` only when the brief or the user says the resource outlives the task.
+- Set all four labels every time. `throwaway` is the normal value; `keep` only when the brief or the user says the resource outlives the task. The sweep treats a missing lifetime as `keep` and never removes it.
 
 ## Remove it when definitely done
 
@@ -47,5 +47,5 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
   - Loading a throwaway copy into a shared server that logs: `SET SESSION sql_log_bin = 0` in the loading session only — it switches off logging for that one session, never the server's.
   - Other engines: switch off the replication or archive logging the throwaway does not need — PostgreSQL: `wal_level=minimal`, `max_wal_senders=0`, `archive_mode=off`.
 - Re-enable it ONLY for a debug task whose brief names the need, ONLY on that task's own copy, and switch it off again (or remove the copy) when that debug task ends.
-- Never change the logging of the project's real dev, staging or production databases (`guardrails.md`).
+- Never change the logging of the project's real dev, staging or production databases without the user's approval (`guardrails.md`, REQUEST_APPROVAL).
 - The database's container and volume follow the label rules above, `marvin.lifetime=throwaway`.
