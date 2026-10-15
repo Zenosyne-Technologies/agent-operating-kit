@@ -54,6 +54,13 @@ OUT=$(bash "$SCRIPT" a b 2>&1); RC=$?; [ "$RC" = 2 ] && ok "usage exit 2" || bad
 reset; ep "$CFG/settings.json" "\"$EX\":true"; before=$(ls -R "$WORK" | cksum); run; after=$(ls -R "$WORK" | cksum)
 [ "$before" = "$after" ] && ok "nothing written" || bad "the script wrote something"
 
+hd "P11 lib missing — exit 2, one stderr line, empty stdout (never \"none found\")"
+d="$WORK/nolib"; mkdir -p "$d"; cp "$SCRIPT" "$d/s.sh"; reset
+so=$(bash "$d/s.sh" "$P" 2>"$WORK/nolib.err"); RC=$?; se=$(cat "$WORK/nolib.err")
+[ "$RC" = 2 ] && ok "exit 2" || bad "exit $RC"
+[ -z "$so" ] && ok "stdout empty" || bad "stdout '$so'"
+[ -n "$se" ] && ok "stderr non-empty" || bad "stderr empty"
+
 hd "M1 precedence reverted (first source wins) — P3 must catch it"
 d="$WORK/m1"; mkdir -p "$d/lib" "$d/../hooks" 2>/dev/null; cp "$LIB" "$d/lib/"; mkdir -p "$WORK/hooks"; cp "$SCRIPT_DIR/../hooks/style-plugins.txt" "$WORK/hooks/"
 A="merge='{ if (!(\$2 in r) || \$1 >= r[\$2]) { r[\$2] = \$1; v[\$2] = \$3 } } END { for (k in r) print r[k] \"\t\" k \"\t\" v[k] }'" \

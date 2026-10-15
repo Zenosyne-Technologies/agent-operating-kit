@@ -7,10 +7,11 @@
 #   registry: <id>              enabled and listed in hooks/style-plugins.txt (SessionStart style injectors)
 #   forced-style: <id> <style>  enabled and ships an output style with force-for-plugin: true
 #   managed: <id>               a hit that managed settings force on — report it; it cannot be disabled here
-# Exit 0 (also when nothing is found or a settings file is unreadable); 2 on a usage error. Never writes.
+# Exit 0 (also when nothing is found or a settings file is unreadable); 2 on a usage error or when the hook lib
+# fails to load (one stderr line, no stdout — a failure to report, never "none found"). Never writes.
 # MARVIN_MANAGED_SETTINGS overrides the managed-settings path (a test seam).
 set -u
-. "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || exit 0
+. "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || { echo "marvin-style-plugins.sh: cannot load lib/marvin-hook-lib.sh" >&2; exit 2; }
 [ "$#" -le 1 ] || { echo "usage: marvin-style-plugins.sh [<project-root>]" >&2; exit 2; }
 root="${1:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 cfg="${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}"
