@@ -13,7 +13,7 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 ## Rules
 
 - EVERY tracker item an agent creates or edits carries one label per required dimension — epics, stories, tasks, and sub-items alike, not only bugs. This is what makes statistics and reporting possible; an unlabeled item is invisible to reporting.
-- Syntax: `dimension:value`, kebab-case values. Exceptions for continuity: severity is bare (`sev1-critical`..`sev4-low`); virtual milestones are `milestone:<slug>` and virtual releases `release:v<version>` (only where `tracker-config.md` prescribes them).
+- Syntax: `dimension:value`, kebab-case values. Exceptions for continuity: severity has no dimension prefix (`sev1-critical`..`sev4-low`); virtual milestones are `milestone:<slug>` and virtual releases `release:v<version>` (only where `tracker-config.md` prescribes them).
 - **Labels, never prose**: a dimension value lives only in its label (and the native mirror `tracker-config.md` names) — never `Size: m` / `Severity: sev3` in a title or description. An item carrying one only in prose counts as unlabelled for that dimension: move it to the label and delete the prose.
 - Spell every value exactly as the Values column does — severity is `sev4-low`, never bare `sev4` (prose shorthand, never a label).
 - Use only values from this registry. Need a new value or dimension? Bump this file first (version + changelog), then use it.
@@ -27,7 +27,7 @@ Self-contained and versioned: ANY change to this registry bumps the version abov
 | `area:` | every item | {{AREA_1}} · {{AREA_2}} · {{AREA_3}} · infra · docs (project components, e.g. ui, core) |
 | `sev1..sev4` | defects only | sev1-critical · sev2-high · sev3-medium · sev4-low (definitions in `ticket-filing.md`) |
 | `origin:` | every item | user-request (end users) · architect-request (the human managing the agent sessions) · agent-qa (QA sweeps, validators) · agent-dev (found by an agent while building) · roadmap (planned milestone work) |
-| `size:` | every item except epics/milestones — set at filing, re-sized at planning | xs · s · m · l · xl — t-shirt scale for combined effort + complexity; drives the planning-research tier routing (`planning-research.md`); native estimate mapping in `tracker-config.md` |
+| `size:` | every item except epics and milestones — set at filing, re-sized at planning | xs · s · m · l · xl — t-shirt scale for combined effort + complexity; drives the planning-research tier routing (`planning-research.md`); native estimate mapping in `tracker-config.md` |
 | `finding:` | issues raised by a specialised quality validator | visual (design/visual review — `visual-validation.md`) — an ORTHOGONAL axis: the issue still carries its own `area:`/`type:`, and `finding:` marks which cross-cutting quality review surfaced it |
 | `milestone:<slug>` | epics on 3-level trackers | virtual milestone container per `tracker-config.md` |
 | `release:v<version>` | issues in a frozen release scope, ONLY where `tracker-config.md` prescribes it | `release:` + the release's tag name, spelled as `git-strategy.md` spells it (e.g. `release:v1.2.0`); that tag stays canonical |
@@ -50,7 +50,7 @@ When torn between two sizes, take the larger — under-sizing skips the research
 
 | Version | Change |
 |---|---|
-| 1.5.0 | `size:` required on every item except epics/milestones, set at filing (re-sized at planning; was stories/tasks at planning). New rule "Labels, never prose": a size/severity only in a title or description counts as unlabelled. Values spelled exactly as the Values column (`sev4-low`; bare `sev4` is never a label). No value changes. |
+| 1.5.0 | `size:` required on every item except epics and milestones, set at filing (re-sized at planning; was stories/tasks at planning). New rule "Labels, never prose": a size/severity only in a title or description counts as unlabelled. Values spelled exactly as the Values column (`sev4-low`; bare `sev4` is never a label). No value changes. |
 | 1.4.0 | Adds the `finding:` dimension (value `visual`) — a dedicated, ORTHOGONAL reporting axis for issues a specialised quality validator surfaces, so design/visual load is sliceable without colliding with the mandatory single-valued `area:`. Required on validator-raised findings only; grows a value per future cross-cutting validator. |
 | 1.3.0 | Adds `release:v<version>` — a virtual release scope, prescribed ONLY where `tracker-config.md` says the tracker has no native release object (Jira today; GitHub, Linear and Local map natively and must NOT use it). Mirrors the annotated tag, which stays canonical. |
 | 1.2.0 | Adds the sizing rubric (objective xs..xl criteria; round up when torn). No dimension/value changes. |
