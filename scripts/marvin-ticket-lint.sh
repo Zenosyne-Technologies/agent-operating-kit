@@ -3,30 +3,42 @@
 #   ^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$
 # Enforces the PRE-WRITE half of the label check .marvin/agents/ticket-filing.md owns, against the
 # registry .marvin/agents/label-syntax.md (the read-back half stays the writer's — this hook never reads
-# the tracker). Tracker writes it reads:
-#   Atlassian createJiraIssue / editJiraIssue · Linear save_issue (create when it carries no `id`) ·
-#   GitHub create_issue / update_issue / issue_write (method "create" = create) · Bash `gh issue
-#   create|new|edit` (--label/-l repeatable and comma-split, --add-label, --title/-t, --body/-b;
-#   --body-file is unreadable, so its prose goes unchecked) · Write of */project-management/issues/*.md
-#   (Local tracker; frontmatter `labels:` inline or block list, `children:` marks an epic; always a create).
+# the tracker). Only writes to the project's OWN tracker (PROJECT-INFO pm_tool / project_key /
+# tracker_coordinates) are linted; pm_tool none, absent or unknown → silent:
+#   jira   — createJiraIssue whose projectKey is project_key; editJiraIssue whose issueIdOrKey is
+#            <project_key>-… or numeric (any MCP server: claude.ai connectors carry opaque server ids)
+#   linear — save_issue (Linear's tool name; create when it carries no `id`; a `template`/`templateId`
+#            supplies labels server-side, so C1/C2/C4 only advise)
+#   github — issue_write (method "create" = create) / create_issue / update_issue on an MCP server whose
+#            name contains "github"; Bash `gh issue create|new|edit` with no -R/--repo or one naming the
+#            tracker_coordinates owner/repo (--label/-l repeatable and comma-split, --add-label,
+#            --title/-t, --body/-b; --body-file is unreadable, so its prose goes unchecked; heredoc bodies
+#            are skipped, never read as commands or prose)
+#   local  — Write of */project-management/issues/*.md (frontmatter `labels:` inline or block list,
+#            `children:` marks an epic); a new file is a create, an existing one an edit carrying labels
 # Labels = every string in any JSON array keyed `labels` (full set) or `addLabels` (additive), at any
-# depth. Prose = strings under summary/title/description/body at any depth (Jira ADF included).
+# depth. Prose = strings under summary/title/description/body at any depth (Jira ADF objects included),
+# fenced code blocks and inline code skipped.
 # Checks (an edit is checked only when it carries labels or prose; C2/C3 and C5 violations need the
 # FULL label set — a create, or an edit that sets `labels`; additive or label-less edits only advise):
 #   C1 a create with no labels · C2 missing type:/area:/origin: · C3 type:bug without a severity label ·
 #   C4 a create without size: — a violation where the item is known non-epic (Jira issueTypeName not
-#      Epic; Local without children:), an advisory elsewhere ·
-#   C5 a size or severity stated in the title/description (line- or sentence-anchored: `Size: m`,
-#      `**Size:** M`, `T-shirt: L`, `Severity: sev3`, `Sev: 2`) — a violation without the label, an
-#      advisory ("delete the prose") with it ·
+#      Epic; Local without children:), an advisory elsewhere (and on a Local edit) ·
+#   C5 a size stated in the title/description (line- or sentence-anchored: `Size: m`, `**Size:** M`,
+#      `Size — m`, `T-shirt: L`) or a label-like severity line (`Severity: sev3`, `Severity: 3`,
+#      `**Severity:** high`, `Sev: 2` — the whole line) — a violation without the label, an advisory
+#      ("delete the prose") with it ·
 #   C6 a dimension:value label whose value is not in the registry's Dimensions table (bare sevN too) —
 #      a violation; a label with no registry dimension — an advisory. Area placeholders ({{AREA_1}})
 #      unresolved → area values unchecked; registry missing/unparseable → C6 skipped.
-# Mode = ticket_lint in .marvin/PROJECT-INFO.md frontmatter: block (default; absent or invalid too) —
-# violations deny, advisories folded into the reason, advisories alone as additionalContext · advise —
-# everything as additionalContext · off — nothing.
+# Mode = ticket_lint in .marvin/PROJECT-INFO.md frontmatter (case-insensitive): block (default; absent or
+# invalid too) — violations deny, advisories folded into the reason, advisories alone as
+# additionalContext · advise — everything as additionalContext · off — nothing.
 # Known limits: only the first 64 KiB of a Bash command is parsed; gh run through a variable, alias,
-# bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched.
+# bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched;
+# Edit-tool writes to Local issue files are not linted; Linear `patch` ops are not read as prose; Jira
+# ADF passed as a JSON string (not an object) is read as plain prose text; a GitHub MCP server whose name
+# lacks "github" is not linted.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; output is
 # constant text, dimension names and label values matching ^[A-Za-z0-9:._-]{1,40}$ (else <label>) —
 # never prose, never a title.
@@ -48,12 +60,41 @@ case "$tool" in
 esac
 root=$(mh_root); mh_is_marvin "$root" || exit 0
 fm=$(mh_frontmatter "$root") || fm=""
-mode=$(mh_fm_value "$fm" ticket_lint)
+mode=$(mh_fm_value "$fm" ticket_lint | tr 'A-Z' 'a-z')
 case "$mode" in advise|off) ;; *) mode=block ;; esac
 [ "$mode" = off ] && exit 0
 
+# Scope: the project's own tracker only
+pm=$(mh_fm_value "$fm" pm_tool | tr 'A-Z' 'a-z')
+pkey=$(mh_fm_value "$fm" project_key | tr 'a-z' 'A-Z')
+srv=${tool#mcp__}; srv=$(printf '%s' "${srv%__*}" | tr 'A-Z' 'a-z')
+repo=""
+case "$pm" in
+  jira)
+    case "$tool" in
+      *__createJiraIssue)
+        k=$(printf '%s' "$MH_IN" | mh_get tool_input.projectKey | tr 'a-z' 'A-Z') || exit 0
+        [ -n "$pkey" ] && [ "$k" = "$pkey" ] || exit 0 ;;
+      *__editJiraIssue)
+        k=$(printf '%s' "$MH_IN" | mh_get tool_input.issueIdOrKey | tr 'a-z' 'A-Z') || exit 0
+        case "$k" in "") exit 0 ;; *[!0-9]*) [ -n "$pkey" ] || exit 0; case "$k" in "$pkey"-*) ;; *) exit 0 ;; esac ;; esac ;;
+      *) exit 0 ;;
+    esac ;;
+  linear) case "$tool" in *__save_issue) ;; *) exit 0 ;; esac ;;
+  github)
+    case "$kind" in
+      gh) repo=$(mh_fm_value "$fm" tracker_coordinates | sed -E 's#^.*github\.com[/:]##; s#\.git([^A-Za-z0-9].*)?$##' \
+            | grep -oE '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | head -n 1 | tr 'A-Z' 'a-z') ;;
+      mcp) case "$tool" in *__issue_write|*__create_issue|*__update_issue) ;; *) exit 0 ;; esac
+           case "$srv" in *github*) ;; *) exit 0 ;; esac ;;
+      *) exit 0 ;;
+    esac ;;
+  local) [ "$kind" = local ] || exit 0 ;;
+  *) exit 0 ;;
+esac
+
 # The tool_input walker: one pass, an explicit stack, strings decoded. Prints "K key<TAB>value" for the
-# top-level id/method/issueTypeName, "H" when a full `labels` array opens, "L"/"A" per label string
+# top-level id/method/issueTypeName/template/templateId, "H" when a full `labels` array opens, "L"/"A" per label string
 # (labels / addLabels) and "P" per prose line. Malformed input → exit 1 (the hook stays silent).
 IFS= read -r -d '' TW_AWK <<'AWK' || true
 function hx(h,   i, v, d) { v = 0; h = tolower(h)
@@ -107,7 +148,7 @@ END { if (buf != "") ck[++nck] = buf
       if (d && T[d] == "{" && EK[d]) { K[d] = rstr(1); EK[d] = 0; continue }
       inti = d >= 2 && K[1] == "tool_input"
       if (inti && T[d] == "[" && (K[d - 1] == "labels" || K[d - 1] == "addLabels")) { s = rstr(1); gsub(/[\n\t]/, " ", s); print (K[d - 1] == "labels" ? "L " : "A ") s; continue }
-      if (inti && d == 2 && K[2] ~ /^(id|method|issueTypeName)$/) { s = rstr(1); gsub(/[\n\t]/, " ", s); print "K " K[2] "\t" s; continue }
+      if (inti && d == 2 && K[2] ~ /^(id|method|issueTypeName|template|templateId)$/) { s = rstr(1); gsub(/[\n\t]/, " ", s); print "K " K[2] "\t" s; continue }
       if (inti && prose()) { rstr(2); continue }
       rstr(0); continue }
     if (c == "{") { if (++d > 64) exit 1; T[d] = "{"; EK[d] = 1; K[d] = ""; pos++; continue }
@@ -119,23 +160,40 @@ END { if (buf != "") ck[++nck] = buf
 AWK
 
 # gh issue create|new|edit — the command split into shell words and simple commands; gh must sit in
-# command position (after VAR=value assignments and env/command/sudo/exec). One record per gh call.
+# command position (after VAR=value assignments and env/command/sudo/exec). Heredoc bodies (<<X, <<'X',
+# <<"X", <<-X, also inside a quoted $(cat <<'EOF' …)) are skipped up to their terminator line. One
+# record per gh call; a call whose -R/--repo is not the tracker's owner/repo (-v repo) is dropped.
 IFS= read -r -d '' GH_AWK <<'AWK' || true
 function flush() { if (inw) { tok[++nt] = w; w = ""; inw = 0 } }
 function brk() { flush(); if (nt && tok[nt] != SEP) tok[++nt] = SEP }
-function lab(v, tag,   p, q, j) { gsub(/[\n\t\r]/, " ", v); q = split(v, p, ","); for (j = 1; j <= q; j++) { gsub(/^[ \t]+|[ \t]+$/, "", p[j]); if (p[j] != "") print tag " " p[j] } }
-function pr(v) { gsub(/\r/, "", v); gsub(/\n/, "\nP ", v); print "P " v }
-function seg(s, e,   k, t, b, op, tag) {
+function out(x) { rb = rb x "\n" }
+function lab(v, tag,   p, q, j) { gsub(/[\n\t\r]/, " ", v); q = split(v, p, ","); for (j = 1; j <= q; j++) { gsub(/^[ \t]+|[ \t]+$/, "", p[j]); if (p[j] != "") out(tag " " p[j]) } }
+function pr(v) { gsub(/\r/, "", v); gsub(/\n/, "\nP ", v); out("P " v) }
+function here(i,   j, c, k, d, st) {  # a heredoc operator at i: queue its terminator, return the index to resume after
+  j = i + 2; st = 0
+  if (substr($0, j, 1) == "-") { st = 1; j++ }
+  while (substr($0, j, 1) == " " || substr($0, j, 1) == "\t") j++
+  c = substr($0, j, 1)
+  if (c == "'" || c == "\"") { k = index(substr($0, j + 1), c); if (!k) return i; d = substr($0, j + 1, k - 1); j += k + 1 }
+  else if (match(substr($0, j), /^[^ \t;&|()<>"'`\\]+/)) { d = substr($0, j, RLENGTH); j += RLENGTH }
+  if (d == "") return i
+  hd[++nh] = d; hs[nh] = st
+  return j - 1 }
+function seg(s, e,   k, t, b, op, tag, rv) {
   k = s
   while (k <= e && (tok[k] ~ /^[A-Za-z_][A-Za-z0-9_]*=/ || tok[k] ~ /^(env|command|sudo|exec)$/)) k++
   if (k > e) return
   b = tok[k]; sub(/.*\//, "", b); if (b != "gh") return
   k++; if (k > e || tok[k] != "issue") return
-  for (k++; k <= e && tok[k] ~ /^-/; k++) if (tok[k] == "-R" || tok[k] == "--repo") k++
+  rv = ""
+  for (k++; k <= e && tok[k] ~ /^-/; k++) {
+    if (tok[k] == "-R" || tok[k] == "--repo") { rv = tok[k + 1]; k++ }
+    else if (tok[k] ~ /^--repo=/) rv = substr(tok[k], 8)
+    else if (tok[k] ~ /^-R./) rv = substr(tok[k], 3) }
   if (k > e) return
   if (tok[k] == "create" || tok[k] == "new") op = "create"; else if (tok[k] == "edit") op = "edit"; else return
-  tag = op == "create" ? "L" : "A"
-  print "R"; print "OP " op; print "E unknown"; if (op == "create") print "H"
+  tag = op == "create" ? "L" : "A"; rb = ""
+  out("R"); out("OP " op); out("E unknown"); if (op == "create") out("H")
   for (k++; k <= e; k++) { t = tok[k]
     if (t == "--label" || t == "-l" || t == "--add-label") { if (k < e) lab(tok[++k], tag); continue }
     if (t ~ /^--(add-)?label=/) { lab(substr(t, index(t, "=") + 1), tag); continue }
@@ -143,12 +201,19 @@ function seg(s, e,   k, t, b, op, tag) {
     if (t == "--title" || t == "-t" || t == "--body" || t == "-b") { if (k < e) pr(tok[++k]); continue }
     if (t ~ /^--(title|body)=/) { pr(substr(t, index(t, "=") + 1)); continue }
     if (t ~ /^-[tb]./) { pr(substr(t, 3)); continue }
-    if (t ~ /^(-a|--assignee|-m|--milestone|-p|--project|-R|--repo|-T|--template|--recover|--remove-label|--add-assignee|--remove-assignee|--add-project|--remove-project|-F|--body-file)$/) k++ } }
-BEGIN { SEP = "\001" }
-{ L = length($0); cmt = 0
+    if (t == "-R" || t == "--repo") { if (k < e) rv = tok[++k]; continue }
+    if (t ~ /^--repo=/) { rv = substr(t, 8); continue }
+    if (t ~ /^-R./) { rv = substr(t, 3); continue }
+    if (t ~ /^(-a|--assignee|-m|--milestone|-p|--project|-T|--template|--recover|--remove-label|--add-assignee|--remove-assignee|--add-project|--remove-project|-F|--body-file)$/) k++ }
+  if (rv != "") { rv = tolower(rv); sub(/^.*github\.com[\/:]/, "", rv); sub(/\.git$/, "", rv); if (repo == "" || rv != repo) return }
+  printf "%s", rb }
+BEGIN { SEP = "\001"; hi = 1 }
+{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; if (hi > nh) { nh = 0; hi = 1 }; next }
+  L = length($0)
   for (i = 1; i <= L; i++) { c = substr($0, i, 1)
     if (esc) { esc = 0; w = w c; inw = 1 }
     else if (q == 1) { if (c == "'") q = 0; else w = w c }
+    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<") { if (!q) flush(); i = here(i) }
     else if (q == 2) { if (c == "\\") esc = 1; else if (c == "\"") q = 0; else w = w c }
     else if (c == "\\") { esc = 1; inw = 1 }
     else if (c == "'") { q = 1; inw = 1 }
@@ -174,7 +239,7 @@ fmo && $0 == "---" { fmo = 0; body = 1; next }
 fmo {
   if (bl && $0 ~ /^[ \t]+-/) { s = $0; sub(/^[ \t]+-[ \t]*/, "", s); sub(/[ \t]+#.*$/, "", s); if (bl == 1) item(s); else ep = 1; next }
   bl = 0
-  if ($0 ~ /^labels:/) { v = val($0); if (v == "") { bl = 1; next }
+  if ($0 ~ /^labels:/) { print "H"; v = val($0); if (v == "") { bl = 1; next }
     gsub(/^\[|\][ \t]*$/, "", v); q = split(v, p, ","); for (j = 1; j <= q; j++) item(p[j]); next }
   if ($0 ~ /^children:/) { v = val($0); if (v == "") bl = 2; else if (v !~ /^\[[ \t]*\]$/) ep = 1; next }
   if ($0 ~ /^title:/) print "P " val($0)
@@ -204,10 +269,14 @@ IFS= read -r -d '' CK_AWK <<'AWK' || true
 function sv(x) { return (length(x) <= 40 && x ~ /^[A-Za-z0-9:._-]+$/) ? x : "<label>" }
 function note(t, s) { if (!((t, s) in seen)) { seen[t, s] = 1; msg[++nm] = t "\t" s } }
 function norm(f) { f = tolower(f); gsub(/\*\*|__|`/, "", f); sub(/^[ \t>*+#_-]+/, "", f); sub(/^[0-9]+[.)][ \t]*/, "", f); return f }
-function prose(l,   q, p, j, f) { q = split(l, p, /[.;!?][ \t]+/)
+function prose(l,   q, p, j, f) {
+  if (l ~ /^[ \t>]*(```|~~~)/) { fence = !fence; return }
+  if (fence) return
+  gsub(/`[^`]*`/, "", l)
+  if (norm(l) ~ /^(severity|sev)[ \t]*[:=][ \t]*(sev[1-4](-[a-z]+)?|[1-4]|critical|high|medium|low)[ \t.]*$/) psv = 1
+  q = split(l, p, /[.;!?][ \t]+/)
   for (j = 1; j <= q; j++) { f = norm(p[j])
-    if (f ~ /^(t-shirt size|t-shirt|size)([ \t]*[:=-][ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1
-    if (f ~ /^(severity|sev)([ \t]*[:=-][ \t]*|[ \t]+)(sev[1-4][a-z-]*|[1-4]|critical|high|medium|low)([^a-z0-9]|$)/) psv = 1 } }
+    if (f ~ /^(t-shirt size|t-shirt|size)([ \t]*([:=-]|\342\200\224|\342\200\223)[ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1 } }
 function fin(   i, x, dm, v, full, miss, n6, c6) {
   if (!rec) return
   full = (op == "create" || hf)
@@ -221,14 +290,15 @@ function fin(   i, x, dm, v, full, miss, n6, c6) {
     if (dm == "release") { if (v !~ /^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/) c6[++n6] = "V\tC6 label " sv(x) " is not a valid release:v<semver>"; continue }
     if ((dm in UNK) || ((dm, (dm == "sev" ? x : v)) in OK)) continue
     c6[++n6] = "V\tC6 label " sv(x) " is not a registry value of " (dm == "sev" ? "severity (sev1-critical..sev4-low)" : dm ":") }
-  if (op == "create" && nl == 0) note("V", "C1 a create with no labels — add one label per required dimension")
+  if (op == "create" && nl == 0) note(tm ? "A" : "V", "C1 a create with no labels — add one label per required dimension")
   else {
     if (full) { miss = ""
       if (!has["type"]) miss = miss " type:"; if (!has["area"]) miss = miss " area:"; if (!has["origin"]) miss = miss " origin:"
-      if (miss != "") note("V", "C2 missing required dimension(s):" miss)
+      if (miss != "") note(tm ? "A" : "V", "C2 missing required dimension(s):" miss)
       if (bug && !has["sev"]) note("V", "C3 type:bug without a severity label (sev1-critical..sev4-low)") }
-    if (op == "create" && !has["size"]) {
-      if (ep == "no") note("V", "C4 a non-epic create without a size: label (xs..xl, set at filing)")
+    if ((op == "create" || (le && hf)) && !has["size"]) {
+      if (ep == "no" && !le && !tm) note("V", "C4 a non-epic create without a size: label (xs..xl, set at filing)")
+      else if (ep == "no") note("A", "C4 no size: label — every item except epics and milestones carries one, set at filing")
       else if (ep != "yes") note("A", "C4 no size: label — every item except epics and milestones carries one, set at filing") } }
   if (psz) note((full && !has["size"]) ? "V" : "A", (full && !has["size"]) ? "C5 the size is stated only in the title/description — move it to a size: label and delete the prose" : "C5 the title/description states the size — keep it only in the size: label and delete the prose")
   if (psv) note((full && !has["sev"]) ? "V" : "A", (full && !has["sev"]) ? "C5 the severity is stated only in the title/description — move it to a severity label and delete the prose" : "C5 the title/description states the severity — keep it only in the severity label and delete the prose")
@@ -238,7 +308,9 @@ BEGIN { q = split(reg, R, "|")
   for (i = 1; i <= q; i++) { c = index(R[i], ":"); if (!c) continue; dm = substr(R[i], 1, c - 1); v = substr(R[i], c + 1); DIM[dm] = 1
     if (v == "?") UNK[dm] = 1; else { r = split(v, W, ","); for (j = 1; j <= r; j++) OK[dm, W[j]] = 1 } }
   regok = ("type" in DIM) }
-$0 == "R" { fin(); rec = 1; op = ""; ep = "unknown"; hf = 0; nl = 0; bug = 0; psz = 0; psv = 0; split("", has); split("", lseen); next }
+$0 == "R" { fin(); rec = 1; op = ""; ep = "unknown"; hf = 0; nl = 0; bug = 0; psz = 0; psv = 0; fence = 0; tm = 0; le = 0; split("", has); split("", lseen); next }
+$0 == "T" { tm = 1; next }
+$0 == "S" { le = 1; next }
 /^OP / { op = substr($0, 4); next }
 /^E / { ep = substr($0, 3); next }
 $0 == "H" { hf = 1; next }
@@ -257,14 +329,17 @@ case "$kind" in
       *__save_issue) printf '%s\n' "$w" | grep -q '^K id	' || op=create ;;
       *__issue_write) [ "$(kv method)" = create ] && op=create ;;
     esac
+    tm=""; printf '%s\n' "$w" | grep -q '^K template' && tm=T
     case "$tool" in *__createJiraIssue)
       case "$(kv issueTypeName | tr 'A-Z' 'a-z')" in epic) ep=yes ;; *) ep=no ;; esac ;;
     esac
-    recs=$(printf 'R\nOP %s\nE %s\n%s\n' "$op" "$ep" "$w") ;;
-  gh) recs=$(printf '%s\n' "$src" | LC_ALL=C awk "$GH_AWK" 2>/dev/null) || exit 0 ;;
+    recs=$(printf 'R\nOP %s\nE %s\n%s\n%s\n' "$op" "$ep" "$tm" "$w") ;;
+  gh) recs=$(printf '%s\n' "$src" | LC_ALL=C awk -v repo="$repo" "$GH_AWK" 2>/dev/null) || exit 0 ;;
   local) lo=$(printf '%s\n' "$src" | LC_ALL=C awk "$LO_AWK" 2>/dev/null) || exit 0
          case "$lo" in *"E "*) ;; *) exit 0 ;; esac
-         recs=$(printf 'R\nOP create\nH\n%s\n' "$lo") ;;
+         f=$fp; case "$f" in /*) ;; *) f="$root/$f" ;; esac
+         if [ -f "$f" ]; then recs=$(printf 'R\nOP edit\nS\n%s\n' "$lo")   # an existing item: an edit carrying its labels
+         else recs=$(printf 'R\nOP create\nH\n%s\n' "$lo"); fi ;;
 esac
 [ -n "$recs" ] || exit 0
 

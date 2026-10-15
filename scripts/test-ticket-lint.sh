@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-ticket-lint.sh — behavioural tests for scripts/marvin-ticket-lint.sh (PreToolUse, v0.39.0).
-# Pins: every payload shape (Jira create/edit, Linear save_issue, GitHub create_issue/update_issue/
+# Pins: scope to the project's own tracker (pm_tool / project_key / tracker_coordinates); every payload shape (Jira create/edit, Linear save_issue, GitHub create_issue/update_issue/
 # issue_write, gh issue create|edit, Local Write) × C1–C6; Jira Epic and Local children: exempt from C4;
 # label-less edits never denied; C5 prose positives and ordinary-prose negatives; registry parse
 # (resolved areas vs placeholders, sev4 vs sev4-low, milestone/release patterns, registry absent); modes
@@ -40,34 +40,40 @@ jstr() {  # JSON string literal of $1 (no python): escapes \ " tab, joins lines 
     END { printf "\"" }'
 }
 REGSRC="$ROOT/templates/marvin/agents/label-syntax.md"
-mk_project() {  # mk_project <dir> <frontmatter-line|""> <registry: resolved|placeholder|absent>
+mk_project() {  # mk_project <dir> <frontmatter-line|""> <registry: resolved|placeholder|absent> [pm_tool, default jira|- for none] [coordinates]
   rm -rf "$1"; mkdir -p "$1/.marvin/agents"
-  { printf -- '---\nkit_version: 0.39.0\n'; [ -n "$2" ] && printf '%s\n' "$2"; printf -- '---\nFacts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
+  { printf -- '---\nkit_version: 0.39.0\n'; [ "${4:-jira}" != - ] && printf 'pm_tool: %s\n' "${4:-jira}"
+    printf 'project_key: AOS\ntracker_coordinates: %s\n' "${5:-https://example.atlassian.net AOS}"
+    [ -n "$2" ] && printf '%s\n' "$2"; printf -- '---\nFacts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
   case "$3" in
     resolved) sed 's/{{AREA_1}} · {{AREA_2}} · {{AREA_3}}/ui · core · api/' "$REGSRC" > "$1/.marvin/agents/label-syntax.md" ;;
     placeholder) cp "$REGSRC" "$1/.marvin/agents/label-syntax.md" ;;
   esac
 }
-P="$WORK/p"; mk_project "$P" "" resolved
+P="$WORK/p"; mk_project "$P" "" resolved                                   # Jira, key AOS
+PLN="$WORK/pln"; mk_project "$PLN" "" resolved linear
+PGH="$WORK/pgh"; mk_project "$PGH" "" resolved github 'https://github.com/O/R.git'
+PLO="$WORK/plo"; mk_project "$PLO" "" resolved local '.docs/project-management/ AOS'
+pfor() { case "$1" in *JiraIssue) printf '%s' "$P" ;; *save_issue) printf '%s' "$PLN" ;; Write) printf '%s' "$PLO" ;; *) printf '%s' "$PGH" ;; esac; }
 pre_in() {  # pre_in <tool> <tool_input-json> [prefix-fields]
   printf '{"session_id":"s"%s,"transcript_path":"%s/t.jsonl","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":%s}' \
     "${3:-}" "$WORK" "$P" "$1" "$2"
 }
 run() { OUT=$(printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash "$HOOK" 2>&1); RC=$?; }
-J=mcp__atl__createJiraIssue; JE=mcp__atl__editJiraIssue; LN=mcp__lin__save_issue
-GW=mcp__gh__issue_write; GC=mcp__gh__create_issue; GU=mcp__gh__update_issue
+J=mcp__f7d513a3-2df9-4ad9-9dff-08df9965a541__createJiraIssue; JE=mcp__atl__editJiraIssue; LN=mcp__fa0230fe-2401__save_issue
+GW=mcp__github__issue_write; GC=mcp__plugin_github_github__create_issue; GU=mcp__GitHub__update_issue
 DENY='"permissionDecision":"deny"'; CTX='"additionalContext"'
 GOODL='"type:feature","area:ui","origin:roadmap","size:m"'
 jira() {  # jira <labels-json-inner> [summary] [description] [issueType] — a Jira create
   printf '{"cloudId":"c","projectKey":"AOS","issueTypeName":"%s","summary":%s,"description":%s,"additional_fields":{"labels":[%s]}}' \
     "${4:-Task}" "$(jstr "${2:-Fix the cache}")" "$(jstr "${3:-Rows drop.}")" "$1"
 }
-lint() { run "${3:-$P}" "$(pre_in "$1" "$2")"; }
+lint() { run "${3:-$(pfor "$1")}" "$(pre_in "$1" "$2")"; }
 gh_in() { pre_in Bash "{\"command\":$(jstr "$1"),\"description\":\"d\"}"; }
-ghl() { run "${2:-$P}" "$(gh_in "$1")"; }
+ghl() { run "${2:-$PGH}" "$(gh_in "$1")"; }
 loc_in() {  # loc_in <content> [path] — braces built in a variable: bash 3.2 brace-expands "{…,…}" nested in $(…)
   local ti; ti="{\"file_path\":\"${2:-/r/.docs/project-management/issues/AOS-1.md}\",\"content\":$(jstr "$1")}"; pre_in Write "$ti"; }
-loc() { run "${3:-$P}" "$(loc_in "$1" "${2:-}")"; }
+loc() { run "${3:-$PLO}" "$(loc_in "$1" "${2:-}")"; }
 denied()  { if printf '%s\n' "$OUT" | grep -Fq "$DENY" && printf '%s\n' "$OUT" | grep -Fq -- "$1"; then ok "deny [$1]"; else bad "no deny [$1]: $(printf '%s' "$OUT" | head -c 200)"; fi; [ "$RC" = 0 ] || bad "exit $RC"; }
 advised() { if printf '%s\n' "$OUT" | grep -Fq "$CTX" && ! printf '%s\n' "$OUT" | grep -Fq "$DENY" && printf '%s\n' "$OUT" | grep -Fq -- "$1"; then ok "advise [$1]"; else bad "no advice-only [$1]: $(printf '%s' "$OUT" | head -c 200)"; fi; [ "$RC" = 0 ] || bad "exit $RC"; }
 lacks()   { if printf '%s\n' "$OUT" | grep -Fq -- "$1"; then bad "has [$1]"; else ok "free of [$1]"; fi; }
@@ -80,7 +86,7 @@ ghl 'gh issue list -l bug'; silent "gh issue list"
 ghl 'gh pr create -l foo'; silent "gh pr create"
 ghl 'echo gh issue create -t x'; silent "gh not in command position"
 ghl '# gh issue create'; silent "commented out"
-run "$P" "$(pre_in Write '{"file_path":"/r/src/issue.md","content":"x"}')"; silent "Write outside issues/"
+run "$PLO" "$(pre_in Write '{"file_path":"/r/src/issue.md","content":"x"}')"; silent "Write outside issues/"
 run "$P" "$(pre_in Read '{"file_path":"/r/.docs/project-management/issues/AOS-1.md"}')"; silent "other tool"
 run "$P" "$(pre_in mcp__atl__getJiraIssue '{"issueIdOrKey":"AOS-1"}')"; silent "read-only MCP tool"
 lint "$JE" '{"cloudId":"c","issueIdOrKey":"AOS-1","fields":{"assignee":"x"}}'; silent "edit with neither labels nor prose"
@@ -202,11 +208,11 @@ x" "/r/notes/issues/AOS-1.md"; silent "not a project-management path"
 
 hd "T8 C5 prose: positives fire, ordinary prose stays quiet"
 L3='"type:feature","area:ui","origin:roadmap"'
-for t in 'Size **m**' 'Size: m' '**Size:** M' 'T-shirt: L' 'T-shirt size: xl' 'size = s' '- Size: XS' '> **Size**: l' 'Done. Size: m.' '1. size: m'; do
+for t in 'Size **m**' 'Size: m' '**Size:** M' 'Size — m' 'Size – m' 'T-shirt: L' 'T-shirt size: xl' 'size = s' '- Size: XS' '> **Size**: l' 'Done. Size: m.' '1. size: m'; do
   lint "$J" "$(jira "$L3" 'Fix' "$t")"; if printf '%s' "$OUT" | grep -Fq "C5 the size"; then ok "size prose: $t"; else bad "missed size prose: $t"; fi; done
-for t in 'Severity: sev3' 'Sev: 2' 'severity: high' '**Severity:** sev1-critical' 'Repro first; sev 1 today'; do
+for t in 'Severity: sev3' 'Sev: 2' 'severity: high' '**Severity:** sev1-critical' 'Severity: 3' '**Severity:** high' '- Sev: 2'; do
   lint "$J" "$(jira "$L3,\"size:m\"" 'Fix' "$t")"; if printf '%s' "$OUT" | grep -Fq "C5 the severity"; then ok "sev prose: $t"; else bad "missed sev prose: $t"; fi; done
-for t in 'the size of the buffer' 'image size: 2 MB' 'Size matters here' 'Size: small' 'Sizes vary' 'the severity of this is unclear' 'Sev1 outage last week' 'resize: m' 'The page size: m is ignored' 'set size:m later'; do
+for t in 'the size of the buffer' 'image size: 2 MB' 'Size matters here' 'Size: small' 'Sizes vary' 'the severity of this is unclear' 'Sev1 outage last week' 'Sev 1 outage last week showed we need retries.' 'Severity: high memory use is the motivation.' 'Repro first; sev 1 today' '`Size: m` is the old format' 'Severity: sev3 and more text' 'resize: m' 'The page size: m is ignored' 'set size:m later'; do
   lint "$J" "$(jira "$L3,\"size:m\"" 'Fix' "$t")"; if printf '%s' "$OUT" | grep -Fq "C5"; then bad "false positive: $t"; else ok "ordinary prose: $t"; fi; done
 
 hd "T9 registry parse"
@@ -226,8 +232,8 @@ lint "$J" "$(jira '"type:feature","area:ui","origin:roadmap","size:m","area-repo
 PA="$WORK/pa"; mk_project "$PA" "" absent
 lint "$J" "$(jira '"type:feature","area:bogus","origin:roadmap","size:huge"')" "$PA"; silent "registry absent → C6 skipped"
 lint "$J" "$(jira '"type:feature","size:m"')" "$PA"; denied "C2 missing required dimension(s): area: origin:"
-PG="$WORK/pg"; mk_project "$PG" "" absent; printf 'not a registry\n' > "$PG/.marvin/agents/label-syntax.md"
-lint "$J" "$(jira '"type:feature","area:ui","origin:roadmap","size:huge","x"')" "$PG"; silent "registry unparseable → C6 skipped"
+PU="$WORK/pu"; mk_project "$PU" "" absent; printf 'not a registry\n' > "$PU/.marvin/agents/label-syntax.md"
+lint "$J" "$(jira '"type:feature","area:ui","origin:roadmap","size:huge","x"')" "$PU"; silent "registry unparseable → C6 skipped"
 
 hd "T10 modes"
 V='"type:feature","area:ui","origin:roadmap"'
@@ -255,6 +261,89 @@ ZQXLOCAL Severity: sev2"; assert_json; assert_no "ZQX"
 run "$P" "$(pre_in "$J" "$(jira '')" ',"agent_id":"a1","agent_type":"marvin:ponytail"')"; denied "C1"
 assert_no "updatedInput"
 
+hd "T13 scope: only the project's own tracker"
+PN="$WORK/pn"; mk_project "$PN" "" resolved -
+lint "$J" "$(jira '')" "$PN"; silent "pm_tool absent"
+PN2="$WORK/pn2"; mk_project "$PN2" "" resolved none
+lint "$J" "$(jira '')" "$PN2"; silent "pm_tool none"
+PN3="$WORK/pn3"; mk_project "$PN3" "" resolved youtrack
+lint "$J" "$(jira '')" "$PN3"; silent "pm_tool unknown"
+lint "$J" '{"cloudId":"c","projectKey":"OTHER","issueTypeName":"Task","summary":"x"}'; silent "Jira create in another project"
+lint "$J" '{"cloudId":"c","projectKey":"aos","issueTypeName":"Task","summary":"x"}'; denied "C1"
+lint "$JE" '{"cloudId":"c","issueIdOrKey":"OTHER-4","fields":{"labels":["type:feature"]}}'; silent "Jira edit in another project"
+lint "$JE" '{"cloudId":"c","issueIdOrKey":"AOSX-4","fields":{"labels":["type:feature"]}}'; silent "Jira key prefix is not the project key"
+lint "$JE" '{"cloudId":"c","issueIdOrKey":"10001","fields":{"labels":["type:feature"]}}'; denied "C2"
+lint "$J" "$(jira '')" "$PLN"; silent "Jira write under pm_tool linear"
+lint "$LN" '{"team":"T","title":"x"}' "$P"; silent "Linear write under pm_tool jira"
+lint mcp__sentry__create_issue '{"title":"x"}'; silent "mcp__sentry__create_issue under pm_tool github"
+lint mcp__sentry__create_issue '{"title":"x"}' "$P"; silent "mcp__sentry__create_issue under pm_tool jira"
+lint mcp__tracker__issue_write '{"method":"create","title":"x"}'; silent "non-github server issue_write"
+lint mcp__linear-server__save_issue '{"team":"T","title":"x"}' "$PLN"; denied "C1"
+ghl 'gh issue create -R someone/upstream -t Crash -b "it crashed"'; silent "gh -R upstream"
+ghl 'gh issue create --repo=someone/upstream -t Crash'; silent "gh --repo= upstream"
+ghl 'gh issue -R someone/upstream create -t Crash'; silent "gh issue -R before the subcommand"
+ghl 'gh issue create -R o/r -t Crash'; denied "C1"
+ghl 'gh issue create --repo github.com/O/R -t Crash'; denied "C1"
+ghl 'gh issue create -t Crash' "$P"; silent "gh under pm_tool jira"
+PGN="$WORK/pgn"; mk_project "$PGN" "" resolved github 'n/a'
+ghl 'gh issue create -R o/r -t Crash' "$PGN"; silent "-R with unreadable coordinates"
+ghl 'gh issue create -t Crash' "$PGN"; denied "C1"
+loc "---
+key: AOS-1
+labels: []
+---
+x" "" "$PGH"; silent "Local Write under pm_tool github"
+
+hd "T14 heredoc bodies are not commands"
+ghl "$(printf 'cat > HOWTO.md <<%s\n## Filing\ngh issue create --title X --body Y\nEOF' "'EOF'")"; silent "HOWTO heredoc"
+ghl "$(printf 'cat > H.md <<EOF\ngh issue create -t X\nEOF')"; silent "bare terminator"
+ghl "$(printf 'cat > H.md <<"EOF"\ngh issue create -t X\nEOF')"; silent "double-quoted terminator"
+ghl "$(printf 'cat > H.md <<-EOF\ngh issue create -t X\n\tEOF')"; silent "<<- with a tab-indented terminator"
+ghl "$(printf 'cat > H.md <<EOF\ngh issue create -t X\nEOF\ngh issue create -t Real')"; denied "C1"
+ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\nIt has an odd " quote and Size: m\nEOF\n)" -l type:feature,area:ui,origin:roadmap,size:m' "'EOF'")"; silent "labelled create with a heredoc body"
+ghl "$(printf 'gh issue create --title Fix --body "$(cat <<%s\nbody\nEOF\n)" -l type:feature' "'EOF'")"; denied "C2"
+ghl 'cat <<< "gh issue create -t X"'; silent "here-string"
+
+hd "T15 code is not prose"
+lint "$J" "$(jira "$V" 'Epic' '```
+size = s.length
+Size: m
+```' Epic)"; silent "fenced code"
+lint "$J" "$(jira "$GOODL" 'Fix' '~~~
+Severity: sev3
+~~~')"; silent "tilde fence"
+lint "$J" "$(jira "$V" 'Fix' 'Use `Size: m` in the label' Epic)"; silent "inline code"
+lint "$J" "$(jira "$V" 'Fix' '```
+x
+```
+Size: m')"; denied "C5 the size is stated only"
+
+hd "T16 Linear templates and Local edits"
+lint "$LN" '{"team":"T","title":"x","template":"Bug report"}'; advised "C1 a create with no labels"
+lint "$LN" '{"team":"T","title":"x","templateId":"t1","labels":["type:feature"]}'; advised "C2 missing"
+lint "$LN" '{"team":"T","title":"x","template":"Bug report","labels":["size:huge"]}'; denied "C6 label size:huge"
+EX="$WORK/r/.docs/project-management/issues"; mkdir -p "$EX"; printf -- '---\nkey: AOS-9\n---\nold\n' > "$EX/AOS-9.md"
+loc "$FM
+labels: [type:feature, area:core, origin:roadmap]
+---
+x" "$EX/AOS-9.md"; advised "C4 no size: label"
+loc "$FM
+labels: [type:feature, origin:roadmap, size:m]
+---
+x" "$EX/AOS-9.md"; denied "C2 missing required dimension(s): area:"; lacks "C4"
+loc "$FM
+status: done
+---
+x" "$EX/AOS-9.md"; silent "legacy item rewritten without labels"
+loc "$FM
+---
+Size: m" "$EX/AOS-9.md"; advised "C5 the title/description states the size"
+loc "$FM
+labels: [type:feature, area:core, origin:roadmap]
+children: [AOS-2]
+---
+x" "$EX/AOS-9.md"; silent "existing epic"
+
 hd "T12 never writes"
 before=$(ls -laR "$WORK" | cksum); lint "$J" "$(jira '"type:bug"' 'x' 'Size: m')"
 after=$(ls -laR "$WORK" | cksum); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
@@ -280,7 +369,7 @@ mutation() {  # mutation <name> <exact line> <replacement> <expect> <project> <s
   if check "$4"; then bad "mutation $1 survived ($4 still holds)"; else ok "mutation $1 caught"; fi
 }
 hd "M1 C1 removed — T2 no-label create must catch it"
-mutation c1 '  if (op == "create" && nl == 0) note("V", "C1 a create with no labels — add one label per required dimension")' '  if (0) note("V", "x")' "has:C1 a create" "$P" "$(pre_in "$J" "$(jira '')")"
+mutation c1 '  if (op == "create" && nl == 0) note(tm ? "A" : "V", "C1 a create with no labels — add one label per required dimension")' '  if (0) note("V", "x")' "has:C1 a create" "$P" "$(pre_in "$J" "$(jira '')")"
 hd "M2 C2 origin: not required — T2 must catch it"
 mutation c2 '      if (!has["type"]) miss = miss " type:"; if (!has["area"]) miss = miss " area:"; if (!has["origin"]) miss = miss " origin:"' '      if (!has["type"]) miss = miss " type:"; if (!has["area"]) miss = miss " area:"' "has:C2" "$P" "$(pre_in "$J" "$(jira '"type:feature","area:ui","size:m"')")"
 hd "M3 C3 removed — T2 bug without severity must catch it"
@@ -288,15 +377,15 @@ mutation c3 '      if (bug && !has["sev"]) note("V", "C3 type:bug without a seve
 hd "M4 Jira Epic not exempt — T2 Epic must catch it"
 mutation epic '      case "$(kv issueTypeName | tr '"'A-Z' 'a-z'"')" in epic) ep=yes ;; *) ep=no ;; esac ;;' '      ep=no ;;' silent "$P" "$(pre_in "$J" "$(jira "$V" 'E' 'x' Epic)")"
 hd "M5 C4 never denies — T2 non-epic without size must catch it"
-mutation c4 '      if (ep == "no") note("V", "C4 a non-epic create without a size: label (xs..xl, set at filing)")' '      if (0) note("V", "x")' deny "$P" "$(pre_in "$J" "$(jira "$V")")"
+mutation c4 '      if (ep == "no" && !le && !tm) note("V", "C4 a non-epic create without a size: label (xs..xl, set at filing)")' '      if (0) note("V", "x")' deny "$P" "$(pre_in "$J" "$(jira "$V")")"
 hd "M6 Local children: not read — T7 epic must catch it"
-mutation children '  if ($0 ~ /^children:/) { v = val($0); if (v == "") bl = 2; else if (v !~ /^\[[ \t]*\]$/) ep = 1; next }' '  if ($0 ~ /^children:/) next' silent "$P" "$(loc_in "$FM
+mutation children '  if ($0 ~ /^children:/) { v = val($0); if (v == "") bl = 2; else if (v !~ /^\[[ \t]*\]$/) ep = 1; next }' '  if ($0 ~ /^children:/) next' silent "$PLO" "$(loc_in "$FM
 labels: [type:feature, area:core, origin:roadmap]
 children: [AOS-2]
 ---
 x")"
 hd "M7 C5 size prose not anchored — T8 'the size of the buffer'-style prose must catch it"
-mutation anchor '    if (f ~ /^(t-shirt size|t-shirt|size)([ \t]*[:=-][ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1' '    if (f ~ /(t-shirt size|t-shirt|size)([ \t]*[:=-][ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1' silent "$P" "$(pre_in "$J" "$(jira "$GOODL" 'Fix' 'The page size: m is ignored')")"
+mutation anchor '    if (f ~ /^(t-shirt size|t-shirt|size)([ \t]*([:=-]|\342\200\224|\342\200\223)[ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1 } }' '    if (f ~ /(t-shirt size|t-shirt|size)([ \t]*([:=-]|\342\200\224|\342\200\223)[ \t]*|[ \t]+)(xs|s|m|l|xl)([^a-z0-9]|$)/) psz = 1 } }' silent "$P" "$(pre_in "$J" "$(jira "$GOODL" 'Fix' 'The page size: m is ignored')")"
 hd "M8 bold not stripped — T8 **Size:** M must catch it"
 mutation bold 'function norm(f) { f = tolower(f); gsub(/\*\*|__|`/, "", f); sub(/^[ \t>*+#_-]+/, "", f); sub(/^[0-9]+[.)][ \t]*/, "", f); return f }' 'function norm(f) { f = tolower(f); return f }' "has:C5" "$P" "$(pre_in "$J" "$(jira "$V" 'Fix' '**Size:** M')")"
 hd "M9 C6 value check removed — T9 size:huge must catch it"
@@ -311,9 +400,40 @@ mutation full '  full = (op == "create" || hf)' '  full = 1' nodeny "$P" "$(pre_
 hd "M13 label sanitiser removed — T11 must catch it"
 mutation sv 'function sv(x) { return (length(x) <= 40 && x ~ /^[A-Za-z0-9:._-]+$/) ? x : "<label>" }' 'function sv(x) { return x }' "no:ZQX" "$P" "$(pre_in "$J" "$(jira "$GOODL,\"ZQX<b>\"")")"
 hd "M14 Linear id not read (every save_issue a create) — T4 edit must catch it"
-mutation linid '      *__save_issue) printf '"'%s\n'"' "$w" | grep -q '"'^K id	'"' || op=create ;;' '      *__save_issue) op=create ;;' silent "$P" "$(pre_in "$LN" '{"id":"LIN-1","addLabels":["size:s"]}')"
+mutation linid '      *__save_issue) printf '"'%s\n'"' "$w" | grep -q '"'^K id	'"' || op=create ;;' '      *__save_issue) op=create ;;' silent "$PLN" "$(pre_in "$LN" '{"id":"LIN-1","addLabels":["size:s"]}')"
 hd "M15 sub-agent calls skipped — T11 must catch it"
 mutation subagent 'MH_IN=$RAW' 'MH_IN=$RAW; mh_is_subagent_call && exit 0' deny "$P" "$(pre_in "$J" "$(jira '')" ',"agent_id":"a1"')"
+
+hd "M16 severity prose widened — T8 'Sev 1 outage …' must catch it"
+mutation sevre '  if (norm(l) ~ /^(severity|sev)[ \t]*[:=][ \t]*(sev[1-4](-[a-z]+)?|[1-4]|critical|high|medium|low)[ \t.]*$/) psv = 1' '  if (norm(l) ~ /^(severity|sev)([ \t]*[:=-][ \t]*|[ \t]+)(sev[1-4][a-z-]*|[1-4]|critical|high|medium|low)([^a-z0-9]|$)/) psv = 1' silent "$P" "$(pre_in "$J" "$(jira "$GOODL" 'Fix' 'Sev 1 outage last week showed we need retries.')")"
+hd "M17 gh command position dropped — T1 echo must catch it"
+mutation ghpos '  b = tok[k]; sub(/.*\//, "", b); if (b != "gh") return' '  for (k = s; k <= e && tok[k] != "gh"; k++); if (k > e) return' silent "$PGH" "$(gh_in 'echo gh issue create -t x')"
+hd "M18 issue_write method ignored (every call a create) — T5 update must catch it"
+mutation method '      *__issue_write) [ "$(kv method)" = create ] && op=create ;;' '      *__issue_write) op=create ;;' silent "$PGH" "$(pre_in "$GW" '{"method":"update","owner":"o","repo":"r","issue_number":3,"state":"closed"}')"
+hd "M19 Local path filter widened — T7 notes/issues must catch it"
+mutation pathfilter '         case "$fp" in */project-management/issues/*.md|project-management/issues/*.md) kind=local ;; *) exit 0 ;; esac' '         case "$fp" in *.md) kind=local ;; *) exit 0 ;; esac' silent "$PLO" "$(loc_in "$FM
+labels: [type:feature]
+---
+x" /r/notes/issues/AOS-1.md)"
+hd "M20 fast path narrowed to gh — T2 Jira create must catch it"
+mutation fastpath 'case "$RAW" in *ssue*) ;; *) exit 0 ;; esac' 'case "$RAW" in *gh*issue*) ;; *) exit 0 ;; esac' deny "$P" "$(pre_in "$J" '{"cloudId":"c","projectKey":"AOS","issueTypeName":"Task","summary":"x"}')"
+hd "M21 tracker scope dropped (any Jira project) — T13 must catch it"
+mutation scope '        [ -n "$pkey" ] && [ "$k" = "$pkey" ] || exit 0 ;;' '        : ;;' silent "$P" "$(pre_in "$J" '{"cloudId":"c","projectKey":"OTHER","issueTypeName":"Task","summary":"x"}')"
+hd "M22 gh -R not compared — T13 upstream must catch it"
+mutation ghrepo '  if (rv != "") { rv = tolower(rv); sub(/^.*github\.com[\/:]/, "", rv); sub(/\.git$/, "", rv); if (repo == "" || rv != repo) return }' '' silent "$PGH" "$(gh_in 'gh issue create -R someone/upstream -t Crash')"
+hd "M23 heredoc bodies read as commands — T14 HOWTO must catch it"
+mutation heredoc '    else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<") { if (!q) flush(); i = here(i) }' '    else if (0) i = i' silent "$PGH" "$(gh_in "$(printf 'cat > HOWTO.md <<%s\n## Filing\ngh issue create --title X --body Y\nEOF' "'EOF'")")"
+hd "M24 fences read as prose — T15 must catch it"
+mutation fence '  if (fence) return' '  fence = 0' silent "$P" "$(pre_in "$J" "$(jira "$V" 'Epic' '```
+Size: m
+```' Epic)")"
+hd "M25 Linear template not honoured — T16 must catch it"
+mutation template '    tm=""; printf '"'%s\n'"' "$w" | grep -q '"'^K template'"' && tm=T' '    tm=""' nodeny "$PLN" "$(pre_in "$LN" '{"team":"T","title":"x","template":"Bug report"}')"
+hd "M26 existing Local file treated as a create — T16 must catch it"
+mutation localedit '         if [ -f "$f" ]; then recs=$(printf '"'R\nOP edit\nS\n%s\n'"' "$lo")   # an existing item: an edit carrying its labels' '         if false; then :' nodeny "$PLO" "$(loc_in "$FM
+labels: [type:feature, area:core, origin:roadmap]
+---
+x" "$EX/AOS-9.md")"
 
 printf '\n----\ntest-ticket-lint: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
