@@ -257,6 +257,13 @@ PY
 hr=$(python3 -c "$HR_PY" 2>&1)
 [ -z "$hr" ] && pass hooks-registered || fail hooks-registered "$(echo $hr)"
 
+# ── 19. profile-window: the hook lib's default context window is the model profile's orchestrator window
+pw=$(awk -F'|' '/^\| orchestrator \|/ { gsub(/ /, "", $4); print $4; exit }' "$MP")
+case "$pw" in *M) pw=$(( ${pw%M} * 1000 )) ;; *K|*k) pw=${pw%[Kk]} ;; *) pw="" ;; esac
+lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-lib.sh)
+if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
+else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
