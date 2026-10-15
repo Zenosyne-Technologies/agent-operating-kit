@@ -352,6 +352,18 @@ children: [AOS-2]
 ---
 x" "$EX/AOS-9.md"; silent "existing epic"
 
+hd "T17 a gh parse denies only when certain"
+UNC="could not be parsed with certainty"
+SUBQ='gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui,origin:agent-qa,size:s,sev3-medium'
+ghl "$SUBQ"; lacks "$DENY"; lacks "C1"
+ghl 'gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui'; advised "C2 missing"; advised "$UNC"
+ghl 'gh issue create -t x -b y'; denied "C1 a create with no labels"; lacks "$UNC"
+ghl 'gh issue create -t x -b "$(date)" -l type:feature'; denied "C2 missing"; lacks "$UNC"
+ghl "$(printf 'gh issue create -t x <<EOF\nbody without a terminator')"; advised "C1 a create with no labels"; advised "$UNC"
+ghl 'gh issue create -t "x -b y'; advised "C1"; advised "$UNC"
+ghl 'gh issue create -t `echo "x"` -b y'; advised "C1"; advised "$UNC"
+ghl 'X=$(echo "a") gh issue create -t x'; advised "C1"; advised "$UNC"
+
 hd "T12 never writes"
 before=$(ls -laR "$WORK" | cksum); lint "$J" "$(jira '"type:bug"' 'x' 'Size: m')"
 after=$(ls -laR "$WORK" | cksum); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
@@ -449,6 +461,9 @@ hd "M28 --body heredoc not read as prose — T14 Size **m** body must catch it"
 mutation bodyprose '{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; else if (hw[hi]) w = w $0 "\n"; if (hi > nh) { nh = 0; hi = 1 }; next }' '{ if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; if (hi > nh) { nh = 0; hi = 1 }; next }' "has:C5" "$PGH" "$(gh_in "$HB")"
 hd "M29 issue_write gated on a github server name — T13 must catch it"
 mutation anyserver '             *__issue_write) ;;                                        # GitHub'"'"'s own tool name: any server' '             *__issue_write) case "$srv" in *github*) ;; *) exit 0 ;; esac ;;' deny "$PGH" "$(pre_in mcp__fa0230fe-9999__issue_write '{"method":"create","title":"x"}')"
+
+hd "M30 certainty flag dropped — T17 quote-in-substitution must catch it"
+mutation certain '  if (unc) out("U")' '  :' nodeny "$PGH" "$(gh_in 'gh issue create -t x -b "$(printf "%s" x)" -l type:bug,area:ui')"
 
 printf '\n----\ntest-ticket-lint: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

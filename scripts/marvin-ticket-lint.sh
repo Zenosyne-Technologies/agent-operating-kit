@@ -39,8 +39,9 @@
 # bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched;
 # Edit-tool writes to Local issue files are not linted; Linear `patch` ops are not read as prose; Jira
 # ADF passed as a JSON string (not an object) is read as plain prose text; create_issue/update_issue on
-# a GitHub MCP server whose name lacks "github" is not linted; a `"` inside a $( … ) nested in double
-# quotes ends the quoted word early.
+# a GitHub MCP server whose name lacks "github" is not linted. A gh command parse is heuristic: it
+# denies only when certain (quotes balanced, heredocs terminated, no quote inside a substitution
+# outside a heredoc body); otherwise its violations only advise.
 # Contract: Marvin projects only; fires for sub-agent calls too; never writes; always exits 0; output is
 # constant text, dimension names and label values matching ^[A-Za-z0-9:._-]{1,40}$ (else <label>) —
 # never prose, never a title.
@@ -169,7 +170,9 @@ AWK
 # <<-X) counts only outside quotes or inside a $( … ) — also one nested in double quotes (cs tracks it);
 # a top-level body is skipped up to its terminator line, a body inside "$(cat <<'EOF' …)" becomes part
 # of that word, so a --body heredoc is read as prose. One
-# record per gh call; a call whose -R/--repo is not the tracker's owner/repo (-v repo) is dropped.
+# record per gh call; a call whose -R/--repo is not the tracker's owner/repo (-v repo) is dropped. The parse
+# is heuristic: unbalanced quotes or substitutions, an unterminated heredoc, or a quote inside a $( … ) /
+# backtick substitution (outside a heredoc body) mark every record "U" — its violations only advise.
 IFS= read -r -d '' GH_AWK <<'AWK' || true
 function flush() { if (inw) { tok[++nt] = w; w = ""; inw = 0 } }
 function brk() { flush(); if (nt && tok[nt] != SEP) tok[++nt] = SEP }
@@ -201,6 +204,7 @@ function seg(s, e,   k, t, b, op, tag, rv) {
   if (tok[k] == "create" || tok[k] == "new") op = "create"; else if (tok[k] == "edit") op = "edit"; else return
   tag = op == "create" ? "L" : "A"; rb = ""
   out("R"); out("OP " op); out("E unknown"); if (op == "create") out("H")
+  if (unc) out("U")
   for (k++; k <= e; k++) { t = tok[k]
     if (t == "--label" || t == "-l" || t == "--add-label") { if (k < e) lab(tok[++k], tag); continue }
     if (t ~ /^--(add-)?label=/) { lab(substr(t, index(t, "=") + 1), tag); continue }
@@ -218,22 +222,23 @@ BEGIN { SEP = "\001"; hi = 1 }
 { if (hi <= nh) { l = $0; if (hs[hi]) sub(/^\t+/, "", l); if (l == hd[hi]) hi++; else if (hw[hi]) w = w $0 "\n"; if (hi > nh) { nh = 0; hi = 1 }; next }
   L = length($0)
   for (i = 1; i <= L; i++) { c = substr($0, i, 1)
+    if (!esc && (c == "'" || c == "\"") && (cs || ts || bt || cb)) unc = 1   # a quote inside a substitution: not certain
     if (esc) { esc = 0; w = w c; inw = 1 }
     else if (q == 1) { if (c == "'") q = 0; else w = w c }
     else if (c == "<" && substr($0, i, 2) == "<<" && substr($0, i + 2, 1) != "<" && (!q || cs)) { if (!q) flush(); i = here(i) }
-    else if (q == 2) { if (c == "\\") esc = 1; else if (c == "\"") { q = 0; cs = 0 }
-      else { if (c == "(" && substr(w, length(w), 1) == "$") cs++; else if (c == ")" && cs) cs--; w = w c } }
+    else if (q == 2) { if (c == "\\") esc = 1; else if (c == "\"") { q = 0; cs = 0; cb = 0 }
+      else { if (c == "(" && substr(w, length(w), 1) == "$") cs++; else if (c == ")" && cs) cs--; else if (c == "`") cb = !cb; w = w c } }
     else if (c == "\\") { esc = 1; inw = 1 }
     else if (c == "'") { q = 1; inw = 1 }
     else if (c == "\"") { q = 2; inw = 1 }
     else if (c == " " || c == "\t" || c == "\r") flush()
     else if (c == "#" && !inw) break
-    else if (index(";&|()`", c)) brk()
+    else if (index(";&|()`", c)) { if (c == "(" && inw && substr(w, length(w), 1) == "$") ts++; else if (c == ")" && ts) ts--; else if (c == "`") bt = !bt; brk() }
     else { w = w c; inw = 1 } }
   if (esc) { esc = 0; if (w == "") inw = 0 }
   else if (q) w = w "\n"
   else brk() }
-END { flush()
+END { flush(); if (q || esc || ts || bt || hi <= nh) unc = 1   # unbalanced quotes or substitutions, an unterminated heredoc
   for (i = 1; i <= nt; i = j + 1) { for (j = i; j <= nt && tok[j] != SEP; j++); if (j > i) seg(i, j - 1) } }
 AWK
 
@@ -275,7 +280,8 @@ AWK
 # The checker: records ("R" … ) → "V<TAB>text" violations and "A<TAB>text" advisories, deduplicated
 IFS= read -r -d '' CK_AWK <<'AWK' || true
 function sv(x) { return (length(x) <= 40 && x ~ /^[A-Za-z0-9:._-]+$/) ? x : "<label>" }
-function note(t, s) { if (!((t, s) in seen)) { seen[t, s] = 1; msg[++nm] = t "\t" s } }
+function note(t, s) { if (t == "V" && un) { t = "A"; uh = 1 }   # an uncertain gh parse never denies
+  if (!((t, s) in seen)) { seen[t, s] = 1; msg[++nm] = t "\t" s } }
 function norm(f) { f = tolower(f); gsub(/\*\*|__|`/, "", f); sub(/^[ \t>*+#_-]+/, "", f); sub(/^[0-9]+[.)][ \t]*/, "", f); return f }
 function prose(l,   q, p, j, f) {
   if (l ~ /^[ \t>]*(```|~~~)/) { fence = !fence; return }
@@ -311,13 +317,15 @@ function fin(   i, x, dm, v, full, miss, n6, c6) {
   if (psz) note((full && !has["size"]) ? "V" : "A", (full && !has["size"]) ? "C5 the size is stated only in the title/description — move it to a size: label and delete the prose" : "C5 the title/description states the size — keep it only in the size: label and delete the prose")
   if (psv) note((full && !has["sev"]) ? "V" : "A", (full && !has["sev"]) ? "C5 the severity is stated only in the title/description — move it to a severity label and delete the prose" : "C5 the title/description states the severity — keep it only in the severity label and delete the prose")
   for (i = 1; i <= n6; i++) note(substr(c6[i], 1, 1), substr(c6[i], 3))
+  if (uh) note("A", "the gh command could not be parsed with certainty (unbalanced quotes, an unterminated heredoc or a quote inside a substitution), so these findings only advise — check its labels yourself")
   rec = 0 }
 BEGIN { q = split(reg, R, "|")
   for (i = 1; i <= q; i++) { c = index(R[i], ":"); if (!c) continue; dm = substr(R[i], 1, c - 1); v = substr(R[i], c + 1); DIM[dm] = 1
     if (v == "?") UNK[dm] = 1; else { r = split(v, W, ","); for (j = 1; j <= r; j++) OK[dm, W[j]] = 1 } }
   regok = ("type" in DIM) }
-$0 == "R" { fin(); rec = 1; op = ""; ep = "unknown"; hf = 0; nl = 0; bug = 0; psz = 0; psv = 0; fence = 0; tm = 0; le = 0; split("", has); split("", lseen); next }
+$0 == "R" { fin(); rec = 1; op = ""; ep = "unknown"; hf = 0; nl = 0; bug = 0; psz = 0; psv = 0; fence = 0; tm = 0; le = 0; un = 0; uh = 0; split("", has); split("", lseen); next }
 $0 == "T" { tm = 1; next }
+$0 == "U" { un = 1; next }
 $0 == "S" { le = 1; next }
 /^OP / { op = substr($0, 4); next }
 /^E / { ep = substr($0, 3); next }
