@@ -20,21 +20,39 @@ ok()  { PASSED=$((PASSED+1)); printf '   ok    %s\n' "$1"; }
 bad() { FAILED=$((FAILED+1)); printf '   FAIL  [%s] %s\n' "$CURRENT" "$1"; }
 assert_rc()  { if [ "$RC" = "$1" ]; then ok "exit $1"; else bad "exit $RC, want $1"; fi; }
 assert_eq()  { if [ "$OUT" = "$1" ]; then ok "out is: $1"; else bad "out is '$OUT', want '$1'"; fi; }
-assert_lines() { local n; n=$(printf '%s\n' "$OUT" | wc -l | tr -d ' '); if [ "$n" = "$1" ]; then ok "$1 line(s) of stdout"; else bad "$n lines of stdout, want $1: $OUT"; fi; }
+# count_lines <file> — REAL lines of a captured stdout: "ready\n\n" is 2, "ready" (no newline) is 1, "" is 0
+count_lines() { awk 'END { print NR }' "$1"; }
+assert_lines() { local n; n=$(count_lines "$WORK/stdout"); if [ "$n" = "$1" ]; then ok "$1 line(s) of stdout"; else bad "$n lines of stdout, want $1: $OUT"; fi; }
+assert_prefix() { case "$OUT" in "$1"*) ok "out starts with: $1";; *) bad "out is '$OUT', want prefix '$1'";; esac; }
+assert_argv_pair() { if awk -v a="$1" -v b="$2" 'p == a && $0 == b { f = 1 } { p = $0 } END { exit !f }' "$WORK/argv" 2>/dev/null; then ok "companion argv has: $1 $2"; else bad "companion argv lacks '$1 $2' (argv: $(tr '\n' ' ' < "$WORK/argv" 2>/dev/null))"; fi; }
+assert_argv_empty() { if [ -s "$WORK/argv" ]; then bad "the companion was called: $(tr '\n' ' ' < "$WORK/argv")"; else ok "the companion was never called"; fi; }
+assert_argv_lacks_text() { if grep -Fq -- "$1" "$WORK/argv" 2>/dev/null; then bad "companion argv contains the text '$1'"; else ok "companion argv never contains: $1"; fi; }
 assert_argv_has() { if grep -Fxq -- "$1" "$WORK/argv" 2>/dev/null; then ok "companion argv has: $1"; else bad "companion argv lacks '$1' (argv: $(tr '\n' ' ' < "$WORK/argv" 2>/dev/null))"; fi; }
 assert_argv_not() { if grep -Fxq -- "$1" "$WORK/argv" 2>/dev/null; then bad "companion argv must not have: $1"; else ok "companion argv free of: $1"; fi; }
 
 # --- tool PATH: symlinks to the basics only, so "no node" is real and the real node is unreachable ---------
 TOOLS="$WORK/tools"; BIN="$WORK/bin"; mkdir -p "$TOOLS" "$BIN"
-for t in awk sed grep cat head tail tr sort dirname basename ls cut wc mktemp rm git uname expr readlink env sh bash; do
+for t in awk sed grep cat head tail tr sort dirname basename ls cut wc mktemp rm git uname expr readlink env sh bash sleep mkdir; do
   p=$(command -v "$t" 2>/dev/null) && [ -n "$p" ] && ln -s "$p" "$TOOLS/$t"
 done
 cat > "$BIN/node" <<'SH'
 #!/bin/sh
-# fake node: logs argv, answers with the fixture named by FAKE_SETUP (and its optional .rc)
+# fake node: logs argv, answers the companion subcommand ($2) with a fixture — setup: FAKE_SETUP, task:
+# FAKE_TASK, status: FAKE_STATUS, result: FAKE_RESULT. Optional siblings: <fx>.err (to stderr), <fx>.rc
+# (exit code), <fx>.sleep (hang: exec sleep N, so the watchdog's kill reaches the sleeper itself).
 printf '%s\n' "$@" >> "$FAKE_WORK/argv"
-fx="$FAKE_WORK/fx/$FAKE_SETUP"
+case "$2" in
+  setup)  fx=${FAKE_SETUP:-ready} ;;
+  task)   fx=${FAKE_TASK:-task} ;;
+  status) fx=${FAKE_STATUS:-status-completed} ;;
+  result) fx=${FAKE_RESULT:-result-ok} ;;
+  *)      fx=unknown-subcommand ;;
+esac
+fx="$FAKE_WORK/fx/$fx"
+if [ -f "$fx.stubborn" ]; then trap "" TERM; exec sleep "$(cat "$fx.stubborn")"; fi   # ignores TERM: only KILL ends it
+if [ -f "$fx.sleep" ]; then exec sleep "$(cat "$fx.sleep")"; fi
 cat "$fx"
+if [ -f "$fx.err" ]; then cat "$fx.err" >&2; fi
 if [ -f "$fx.rc" ]; then exit "$(cat "$fx.rc")"; fi
 exit 0
 SH
@@ -101,7 +119,7 @@ mkcomp "$WORK/inst/user"; mkcomp "$WORK/inst/proj"; mkcomp "$WORK/inst/other"
 P="$WORK/repo"; mkdir -p "$P/sub"; git -C "$P" init -q 2>/dev/null
 ln -s "$P" "$WORK/repo-link"
 NG="$WORK/notgit"; mkdir -p "$NG"
-mkdir -p "$WORK/home"
+mkdir -p "$WORK/fakehome"
 
 plugins_json() {  # plugins_json <file> <codex-entries-json-or-""> [other-plugin-extra]
   { printf '{\n  "version": 2,\n  "plugins": {\n'
@@ -112,12 +130,24 @@ plugins_json() {  # plugins_json <file> <codex-entries-json-or-""> [other-plugin
 user_entry()    { printf '{\n        "scope": "user",\n        "installPath": "%s",\n        "version": "1.0.6"\n      }' "$1"; }
 project_entry() { printf '{\n        "scope": "project",\n        "projectPath": "%s",\n        "installPath": "%s",\n        "version": "1.0.5"\n      }' "$1" "$2"; }
 
-# run_check <cwd> <setup-fixture> <plugins-json> <cache-dir> [check args...]  — PATH = fake node + basics
+# sut <cwd> [VAR=val ...] -- <args...> — run the script from <cwd> in a clean env (PATH = fake node + basics).
+# Stdout lands in $WORK/stdout (OUT holds it, trailing newlines stripped), stderr in $WORK/stderr, RC the exit.
+# Base env: the user-scope plugins file p1.json, an empty cache, poll interval 0; later VAR=val win (env(1)
+# applies them in order), and VAR= (empty) means "unset" to the script's ${VAR:-default} reads.
+sut() {
+  local cwd="$1"; shift; local envs=()
+  while [ $# -gt 0 ] && [ "$1" != -- ]; do envs+=("$1"); shift; done
+  [ $# -gt 0 ] && shift
+  : > "$WORK/argv"
+  ( cd "$cwd" && env -i HOME="$WORK/fakehome" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" \
+      MARVIN_CODEX_PLUGINS_JSON="$WORK/p1.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" MARVIN_CODEX_POLL=0 \
+      ${envs[@]+"${envs[@]}"} bash "$SUT" "$@" ) > "$WORK/stdout" 2> "$WORK/stderr"; RC=$?
+  OUT=$(cat "$WORK/stdout")
+}
+# run_check <cwd> <setup-fixture> <plugins-json> <cache-dir> [check args...]
 run_check() {
   local cwd="$1" fx="$2" pj="$3" cache="$4"; shift 4
-  : > "$WORK/argv"
-  OUT=$(cd "$cwd" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP="$fx" \
-        MARVIN_CODEX_PLUGINS_JSON="$pj" MARVIN_CODEX_CACHE="$cache" bash "$SUT" check "$@" 2>/dev/null); RC=$?
+  sut "$cwd" FAKE_SETUP="$fx" MARVIN_CODEX_PLUGINS_JSON="$pj" MARVIN_CODEX_CACHE="$cache" -- check "$@"
 }
 EMPTY_CACHE="$WORK/emptycache"; mkdir -p "$EMPTY_CACHE"
 
@@ -195,19 +225,16 @@ run_check "$P" ready "$WORK/p8.json" "$EMPTY_CACHE"
 assert_eq ready; assert_argv_has "$WORK/inst/user/scripts/codex-companion.mjs"
 
 hd "check: default seams read \$HOME/.claude/plugins/... (no env seam set)"
-mkdir -p "$WORK/home/.claude/plugins"; cp "$WORK/p1.json" "$WORK/home/.claude/plugins/installed_plugins.json"
-: > "$WORK/argv"
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP=ready bash "$SUT" check 2>/dev/null); RC=$?
+mkdir -p "$WORK/fakehome/.claude/plugins"; cp "$WORK/p1.json" "$WORK/fakehome/.claude/plugins/installed_plugins.json"
+sut "$P" MARVIN_CODEX_PLUGINS_JSON= MARVIN_CODEX_CACHE= -- check
 assert_eq ready; assert_rc 0; assert_argv_has "$WORK/inst/user/scripts/codex-companion.mjs"
-rm -f "$WORK/home/.claude/plugins/installed_plugins.json"
-mkdir -p "$WORK/home/.claude/plugins/cache/openai-codex/codex"; mkcomp "$WORK/home/.claude/plugins/cache/openai-codex/codex/1.2.3"
-: > "$WORK/argv"
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP=ready bash "$SUT" check 2>/dev/null); RC=$?
-assert_eq ready; assert_argv_has "$WORK/home/.claude/plugins/cache/openai-codex/codex/1.2.3/scripts/codex-companion.mjs"
+rm -f "$WORK/fakehome/.claude/plugins/installed_plugins.json"
+mkdir -p "$WORK/fakehome/.claude/plugins/cache/openai-codex/codex"; mkcomp "$WORK/fakehome/.claude/plugins/cache/openai-codex/codex/1.2.3"
+sut "$P" MARVIN_CODEX_PLUGINS_JSON= MARVIN_CODEX_CACHE= -- check
+assert_eq ready; assert_argv_has "$WORK/fakehome/.claude/plugins/cache/openai-codex/codex/1.2.3/scripts/codex-companion.mjs"
 
 hd "check: no-node (node absent from PATH — the companion is never called)"
-: > "$WORK/argv"
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP=ready MARVIN_CODEX_PLUGINS_JSON="$WORK/p1.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" bash "$SUT" check 2>/dev/null); RC=$?
+sut "$P" PATH="$TOOLS" -- check
 assert_eq no-node; assert_rc 4; assert_lines 1
 
 hd "check: no-node when setup reports node.available false"
@@ -270,19 +297,419 @@ if [ "$OUT" = "$(cat "$WORK/fx/logged-out")" ]; then ok "stdout equals the fixtu
 assert_rc 4
 
 hd "check --json: byte-exact (trailing newline kept)"
-: > "$WORK/argv"
-( cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP=ready MARVIN_CODEX_PLUGINS_JSON="$WORK/p1.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" bash "$SUT" check --json > "$WORK/bytes.out" 2>/dev/null )
+sut "$P" -- check --json; cp "$WORK/stdout" "$WORK/bytes.out"
 if cmp -s "$WORK/bytes.out" "$WORK/fx/ready"; then ok "bytes identical"; else bad "bytes differ"; fi
 
 hd "check --json: no companion → status line on stderr only, stdout empty, rc 4"
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" FAKE_SETUP=ready MARVIN_CODEX_PLUGINS_JSON="$WORK/p2.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" bash "$SUT" check --json 2>"$WORK/err"); RC=$?
+sut "$P" MARVIN_CODEX_PLUGINS_JSON="$WORK/p2.json" -- check --json; cp "$WORK/stderr" "$WORK/err"
 assert_eq ""; assert_rc 4
 if grep -Fxq not-installed "$WORK/err"; then ok "stderr says not-installed"; else bad "stderr: $(cat "$WORK/err")"; fi
 
 hd "usage errors exit 2"
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" bash "$SUT" check --bogus 2>/dev/null); RC=$?; assert_rc 2
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" bash "$SUT" 2>/dev/null); RC=$?; assert_rc 2
-OUT=$(cd "$P" && env -i HOME="$WORK/home" PATH="$BIN:$TOOLS" bash "$SUT" frobnicate 2>/dev/null); RC=$?; assert_rc 2
+sut "$P" -- check --bogus; assert_rc 2
+sut "$P" --; assert_rc 2
+sut "$P" -- frobnicate; assert_rc 2
+
+
+# ============================================================================================================
+# check hardening (AOS-233 review fold-ins)
+hd "check: the real crash shape — stack trace on STDERR, empty stdout, rc 1 → error companion exit 1: <first line>"
+: > "$WORK/fx/crash"; echo 1 > "$WORK/fx/crash.rc"
+printf 'file:///x/codex-companion.mjs:12\nTypeError: Cannot read properties of undefined\n    at main (file:///x/codex-companion.mjs:1:1)\n' > "$WORK/fx/crash.err"
+run_check "$P" crash "$WORK/p1.json" "$EMPTY_CACHE"
+assert_rc 4; assert_lines 1; assert_prefix "error companion exit 1: "
+if [ "${#OUT}" -le 80 ]; then ok "line is ${#OUT} chars (<= 80)"; else bad "line is ${#OUT} chars: $OUT"; fi
+case "$OUT" in *"    at "*) bad "stack text leaked: $OUT";; *) ok "no stack frames";; esac
+
+hd "check: rc 0 with EMPTY stdout → 'error setup output is not JSON (empty output)', no dangling ': '"
+: > "$WORK/fx/empty0"
+run_check "$P" empty0 "$WORK/p1.json" "$EMPTY_CACHE"
+assert_eq "error setup output is not JSON (empty output)"; assert_rc 4; assert_lines 1
+
+hd "check: rc 1 with no output at all → 'error companion exit 1 (no output)'"
+: > "$WORK/fx/silent1"; echo 1 > "$WORK/fx/silent1.rc"
+run_check "$P" silent1 "$WORK/p1.json" "$EMPTY_CACHE"
+assert_eq "error companion exit 1 (no output)"; assert_rc 4
+
+hd "check: a hanging companion is killed by the watchdog → error companion timed out"
+: > "$WORK/fx/hang"; echo 9 > "$WORK/fx/hang.sleep"
+t0=$SECONDS
+sut "$P" FAKE_SETUP=hang MARVIN_CODEX_CALL_TIMEOUT=1 -- check
+assert_eq "error companion timed out"; assert_rc 4; assert_lines 1
+if [ $((SECONDS - t0)) -le 5 ]; then ok "returned within the watchdog budget"; else bad "took $((SECONDS - t0)) s"; fi
+
+hd "check: project scope matches from a linked worktree (entry's projectPath = the MAIN checkout)"
+git -C "$P" -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m init 2>/dev/null
+git -C "$P" worktree add -q --detach "$WORK/wt" 2>/dev/null
+if [ -d "$WORK/wt" ]; then
+  run_check "$WORK/wt" ready "$WORK/p5.json" "$EMPTY_CACHE"
+  assert_eq ready; assert_argv_has "$WORK/inst/proj/scripts/codex-companion.mjs"; assert_argv_not "$WORK/inst/user/scripts/codex-companion.mjs"
+  plugins_json "$WORK/pwt.json" "[ $(project_entry "$P" "$WORK/inst/proj"), $(project_entry "$WORK/wt" "$WORK/inst/other") ]"
+  run_check "$WORK/wt" ready "$WORK/pwt.json" "$EMPTY_CACHE"
+  assert_argv_has "$WORK/inst/other/scripts/codex-companion.mjs"   # an exact worktree entry beats the main-checkout entry
+else bad "could not create a linked worktree fixture"; fi
+
+hd "harness: count_lines counts real lines ('ready\\n\\n' is 2, not 1)"
+printf 'ready\n\n' > "$WORK/cl"; if [ "$(count_lines "$WORK/cl")" = 2 ]; then ok "2"; else bad "$(count_lines "$WORK/cl")"; fi
+printf 'ready' > "$WORK/cl"; if [ "$(count_lines "$WORK/cl")" = 1 ]; then ok "1 (no newline)"; else bad "$(count_lines "$WORK/cl")"; fi
+
+# ============================================================================================================
+# run / result — fixtures mirror the live probe (scratchpad codex-probe.md §1): pretty-printed, nested `job`,
+# `storedJob.result.rawOutput`; a failed job's summary carries escaped \"status\":400 BEFORE job.status.
+J=task-mvb2mu1q-ofobwc
+cat > "$WORK/fx/task" <<EOF
+{
+  "jobId": "$J",
+  "status": "queued",
+  "title": "Codex Task",
+  "summary": "Review the diff",
+  "logFile": "/x/state/jobs/$J.log"
+}
+EOF
+gen_status() {  # gen_status <file> <status> <phase> <summary-json-string-body> [<decoy status of an older job>]
+  local decoy=""
+  [ -n "${5:-}" ] && decoy=$(printf '  "latestFinished": {\n    "id": "task-old-job",\n    "status": "%s"\n  },\n' "$5")
+  cat > "$1" <<EOF
+{
+  "workspaceRoot": "$P",
+${decoy}
+  "job": {
+    "id": "$J",
+    "kind": "task",
+    "summary": "$4",
+    "status": "$2",
+    "phase": "$3",
+    "write": false,
+    "request": {
+      "cwd": "$P",
+      "model": "m",
+      "effort": "high",
+      "write": false
+    },
+    "progressPreview": [],
+    "elapsed": "4s"
+  }
+}
+EOF
+}
+gen_status "$WORK/fx/status-running"   running   running  'decoy: {\"status\":\"completed\"}'   completed
+gen_status "$WORK/fx/status-queued"    queued    starting 'Review the diff'    completed
+gen_status "$WORK/fx/status-completed" completed done     'Review the diff'
+gen_status "$WORK/fx/status-cancelled" cancelled done     'Review the diff'
+gen_status "$WORK/fx/status-weird"     exploded  done     'Review the diff'
+gen_status "$WORK/fx/status-failed"    failed    failed   '{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The model is not supported when using Codex with a ChatGPT account.\"}}'
+printf 'No job found for "%s". Run /codex:status to list known jobs.\n' "$J" > "$WORK/fx/status-nojob"; echo 1 > "$WORK/fx/status-nojob.rc"
+: > "$WORK/fx/status-hang"; echo 9 > "$WORK/fx/status-hang.sleep"
+gen_result() {  # gen_result <file> <status> <rawOutput-json-string-body> <result.status>
+  cat > "$1" <<EOF
+{
+  "job": {
+    "id": "$J",
+    "kind": "task",
+    "status": "$2",
+    "phase": "done"
+  },
+  "storedJob": {
+    "id": "$J",
+    "status": "$2",
+    "result": {
+      "status": $4,
+      "threadId": "thr_1",
+      "rawOutput": "$3",
+      "touchedFiles": [],
+      "reasoningSummary": []
+    },
+    "rendered": "$3\n"
+  }
+}
+EOF
+}
+gen_result "$WORK/fx/result-ok"     completed 'OK \"quoted\" findings: none' 0
+gen_result "$WORK/fx/result-empty"  completed '' 0
+gen_result "$WORK/fx/result-blank"  completed '  \n ' 0
+gen_result "$WORK/fx/result-failed" failed    '' 1
+printf 'Error: something broke\n' > "$WORK/fx/result-garbage"
+printf 'Error: spawn failed\n' > "$WORK/fx/task-garbage"; echo 1 > "$WORK/fx/task-garbage.rc"
+printf '{\n  "status": "queued",\n  "title": "Codex Task"\n}\n' > "$WORK/fx/task-noid"
+printf '{\n  "jobId": "--write",\n  "status": "queued"\n}\n' > "$WORK/fx/task-badid"
+: > "$WORK/fx/task-hang"; echo 9 > "$WORK/fx/task-hang.sleep"
+
+mkdir -p "$P/.marvin"
+set_handover() {  # set_handover <value> | ABSENT (key missing) | NOFILE (no PROJECT-INFO.md)
+  case "$1" in
+    NOFILE) rm -f "$P/.marvin/PROJECT-INFO.md" ;;
+    ABSENT) printf -- '---\nproject_name: demo\nkit_version: 0.39.0\n---\n\n# Demo\n' > "$P/.marvin/PROJECT-INFO.md" ;;
+    *)      printf -- '---\nproject_name: demo\ncodex_handover: %s\nkit_version: 0.39.0\n---\n\n# Demo\ncodex_handover: auto\n' "$1" > "$P/.marvin/PROJECT-INFO.md" ;;
+  esac
+}
+PF="$WORK/prompt.md"
+printf -- '--write --model gpt-6-astra\nSECRET-PROMPT-TEXT-42 review this diff\n' > "$PF"
+RUN_ENV="FAKE_STATUS=status-completed"
+
+hd "run: profile defaults — review → gpt-5.6-sol high, read-only, payload passed through unchanged"
+set_handover auto
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0
+if cmp -s "$WORK/stdout" "$WORK/fx/result-ok"; then ok "stdout is the result --json payload, byte for byte"; else bad "stdout differs from the result payload: $OUT"; fi
+assert_argv_has task; assert_argv_has --background; assert_argv_has --json
+assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort high; assert_argv_not --write
+assert_argv_pair --prompt-file "$PF"; assert_argv_pair status "$J"; assert_argv_pair result "$J"
+if awk -v p="$P" 'prev == "--cwd" && $0 != p { b = 1 } $0 == "--cwd" { n++ } { prev = $0 } END { exit (b || n != 3) }' "$WORK/argv"; then ok "task, status and result all pass --cwd <git toplevel>"; else bad "--cwd not the toplevel on every call: $(tr '\n' ' ' < "$WORK/argv")"; fi
+
+hd "run: review never gets --write, even when the prompt file says --write; the prompt text never reaches argv"
+assert_argv_lacks_text SECRET-PROMPT-TEXT-42; assert_argv_not gpt-6-astra
+
+hd "run: relative prompt path from a subdirectory → absolute --prompt-file, --cwd still the toplevel"
+cp "$PF" "$P/sub/p.md"
+sut "$P/sub" -- run review --prompt-file p.md
+assert_rc 0; assert_argv_pair --prompt-file "$P/sub/p.md"; assert_argv_pair --cwd "$P"
+
+hd "run: build adds --write (gpt-5.6-sol medium)"
+sut "$P" -- run build --prompt-file "$PF"
+assert_rc 0; assert_argv_has --write; assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort medium
+
+hd "run: build-micro → gpt-5.6-luna high, --write"
+sut "$P" -- run build-micro --prompt-file "$PF"
+assert_rc 0; assert_argv_pair --model gpt-5.6-luna; assert_argv_pair --effort high; assert_argv_has --write
+
+hd "run: the read-only lanes take their profile row and never --write"
+for le in plan:high security:high design:medium diagnose:xhigh; do
+  sut "$P" -- run "${le%%:*}" --prompt-file "$PF"
+  if [ "$RC" = 0 ]; then ok "${le%%:*}: exit 0"; else bad "${le%%:*}: exit $RC ($OUT)"; fi
+  assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort "${le##*:}"; assert_argv_not --write
+done
+
+hd "run: --write-evidence adds --write to a read-only lane"
+sut "$P" -- run review --prompt-file "$PF" --write-evidence
+assert_rc 0; assert_argv_has --write
+
+hd "run: --model / --effort override the profile"
+sut "$P" -- run review --prompt-file "$PF" --model gpt-5.6-terra --effort LOW
+assert_rc 0; assert_argv_pair --model gpt-5.6-terra; assert_argv_pair --effort low
+
+hd "run: handover off refuses — the companion is never called"
+set_handover off
+sut "$P" -- run review --prompt-file "$PF"
+assert_eq "refused: codex_handover is off"; assert_rc 3; assert_lines 1; assert_argv_empty
+
+hd "run: handover off + --architect runs"
+sut "$P" -- run review --prompt-file "$PF" --architect
+assert_rc 0; assert_argv_pair --model gpt-5.6-sol
+
+hd "run: handover key missing = off; PROJECT-INFO missing = off; outside git and Marvin = off"
+set_handover ABSENT
+sut "$P" -- run review --prompt-file "$PF"
+assert_eq "refused: codex_handover is off"; assert_rc 3; assert_argv_empty
+set_handover NOFILE
+sut "$P" -- run review --prompt-file "$PF"
+assert_eq "refused: codex_handover is off"; assert_rc 3; assert_argv_empty
+sut "$NG" -- run review --prompt-file "$PF"
+assert_eq "refused: codex_handover is off"; assert_rc 3; assert_argv_empty
+
+hd "run: handover 'Auto  # note' = auto; 'ASK' = ask (both run); unknown value 'yes' fails closed"
+set_handover 'Auto  # note'
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0
+set_handover ASK
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0
+set_handover '"auto"'
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0
+set_handover yes
+sut "$P" -- run review --prompt-file "$PF"
+assert_eq "refused: codex_handover is off"; assert_rc 3; assert_argv_empty
+
+set_handover auto
+hd "run: astra refused without --astra — via --model, via lane astra, via any case of the name"
+sut "$P" -- run review --prompt-file "$PF" --model gpt-6-astra
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_lines 1; assert_argv_empty
+sut "$P" -- run astra --prompt-file "$PF"
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+sut "$P" -- run plan --prompt-file "$PF" --model GPT-6-Astra
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+
+hd "run: astra with --astra runs — the astra row's model and effort, still read-only"
+sut "$P" -- run review --prompt-file "$PF" --astra
+assert_rc 0; assert_argv_pair --model gpt-6-astra; assert_argv_pair --effort high; assert_argv_not --write
+sut "$P" -- run astra --prompt-file "$PF" --astra --effort xhigh
+assert_rc 0; assert_argv_pair --model gpt-6-astra; assert_argv_pair --effort xhigh; assert_argv_not --write
+
+hd "run: --astra with a different --model is a usage error (never silently pick one)"
+sut "$P" -- run review --prompt-file "$PF" --astra --model gpt-5.6-sol
+assert_rc 2; assert_argv_empty
+
+hd "run: effort max / ultra refused; unknown effort refused; xhigh allowed"
+sut "$P" -- run review --prompt-file "$PF" --effort max
+assert_eq "refused: effort above xhigh"; assert_rc 3; assert_lines 1; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --effort ultra
+assert_eq "refused: effort above xhigh"; assert_rc 3; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --effort turbo
+assert_eq "refused: unknown effort"; assert_rc 3; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --effort --write
+assert_eq "refused: unknown effort"; assert_rc 3; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --effort xhigh
+assert_rc 0; assert_argv_pair --effort xhigh
+
+hd "run: guard order — handover, then astra, then effort, then the prompt file"
+set_handover off
+sut "$P" -- run review --prompt-file "$WORK/nope.md" --model gpt-6-astra --effort max
+assert_eq "refused: codex_handover is off"; assert_rc 3
+set_handover auto
+sut "$P" -- run review --prompt-file "$WORK/nope.md" --model gpt-6-astra --effort max
+assert_eq "refused: astra needs --astra"; assert_rc 3
+sut "$P" -- run review --prompt-file "$WORK/nope.md" --effort max
+assert_eq "refused: effort above xhigh"; assert_rc 3
+
+hd "run: prompt file missing / unreadable / not given → exit 2, the companion is never called"
+sut "$P" -- run review --prompt-file "$WORK/nope.md"
+assert_rc 2; assert_argv_empty
+sut "$P" -- run review
+assert_rc 2; assert_argv_empty
+cp "$PF" "$WORK/locked.md"; chmod 000 "$WORK/locked.md"
+if [ -r "$WORK/locked.md" ]; then ok "skipped: running as a user who reads mode-000 files"; else
+  sut "$P" -- run review --prompt-file "$WORK/locked.md"; assert_rc 2; assert_argv_empty; fi
+chmod 600 "$WORK/locked.md"
+
+hd "run: argv injection through option values is a usage error (a model starting with '-', spaces)"
+sut "$P" -- run review --prompt-file "$PF" --model --write
+assert_rc 2; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --model 'gpt 5'
+assert_rc 2; assert_argv_empty
+
+hd "run: usage errors — unknown lane, unknown option, bad --wait-max, missing values"
+sut "$P" -- run frobnicate --prompt-file "$PF"; assert_rc 2; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --bogus; assert_rc 2; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --wait-max soon; assert_rc 2; assert_argv_empty
+sut "$P" -- run review --prompt-file; assert_rc 2; assert_argv_empty
+sut "$P" -- run; assert_rc 2; assert_argv_empty
+
+hd "run: not ready → exit 4 unavailable: not-logged-in, no task submitted"
+sut "$P" FAKE_SETUP=logged-out -- run review --prompt-file "$PF"
+assert_eq "unavailable: not-logged-in"; assert_rc 4; assert_lines 1; assert_argv_has setup; assert_argv_not task
+
+hd "run: not installed → exit 4 unavailable: not-installed"
+sut "$P" MARVIN_CODEX_PLUGINS_JSON="$WORK/p2.json" -- run review --prompt-file "$PF"
+assert_eq "unavailable: not-installed"; assert_rc 4; assert_argv_empty
+
+hd "run: still running at --wait-max → exit 5 pending <id> (status read by path, not the decoy in summary)"
+sut "$P" FAKE_STATUS=status-running -- run review --prompt-file "$PF" --wait-max 1
+assert_eq "pending $J"; assert_rc 5; assert_lines 1; assert_argv_not result
+
+hd "result <id>: the job finished meanwhile → exit 0 with the payload"
+sut "$P" -- result "$J"
+assert_rc 0
+if cmp -s "$WORK/stdout" "$WORK/fx/result-ok"; then ok "stdout is the result payload"; else bad "stdout: $OUT"; fi
+assert_argv_pair status "$J"; assert_argv_pair result "$J"; assert_argv_pair --cwd "$P"; assert_argv_not task; assert_argv_not setup
+
+hd "result <id> --wait-max 0 while queued → exit 5 pending <id>"
+sut "$P" FAKE_STATUS=status-queued -- result "$J" --wait-max 0
+assert_eq "pending $J"; assert_rc 5
+
+hd "result: a bad or missing job id is a usage error (never reaches the companion)"
+sut "$P" -- result --write; assert_rc 2; assert_argv_empty
+sut "$P" -- result; assert_rc 2; assert_argv_empty
+sut "$P" -- result "$J" --wait-max x; assert_rc 2; assert_argv_empty
+
+hd "run: completed with an empty rawOutput → exit 4 unavailable: empty"
+sut "$P" FAKE_RESULT=result-empty -- run review --prompt-file "$PF"
+assert_eq "unavailable: empty"; assert_rc 4; assert_lines 1
+sut "$P" FAKE_RESULT=result-blank -- run review --prompt-file "$PF"
+assert_eq "unavailable: empty"; assert_rc 4
+
+hd "run: non-JSON result → exit 4 unavailable: error"
+sut "$P" FAKE_RESULT=result-garbage -- run review --prompt-file "$PF"
+assert_prefix "unavailable: error"; assert_rc 4; assert_lines 1
+
+hd "run: result payload says failed although status said completed → exit 4 unavailable: error"
+sut "$P" FAKE_RESULT=result-failed -- run review --prompt-file "$PF"
+assert_prefix "unavailable: error"; assert_rc 4
+
+hd "run: failed job (the probe's model-unsupported shape) → exit 4 unavailable: error, short reason"
+sut "$P" FAKE_STATUS=status-failed -- run review --prompt-file "$PF"
+assert_prefix "unavailable: error"; assert_rc 4; assert_lines 1; assert_argv_not result
+if [ "${#OUT}" -le 93 ]; then ok "line is ${#OUT} chars"; else bad "line is ${#OUT} chars: $OUT"; fi
+case "$OUT" in *"not supported"*) ok "reason names the companion's message";; *) bad "reason lacks the message: $OUT";; esac
+
+hd "run: cancelled job, unknown job status, 'No job found' → exit 4 unavailable: error"
+sut "$P" FAKE_STATUS=status-cancelled -- run review --prompt-file "$PF"
+assert_prefix "unavailable: error"; assert_rc 4
+sut "$P" FAKE_STATUS=status-weird -- run review --prompt-file "$PF"
+assert_prefix "unavailable: error"; assert_rc 4
+sut "$P" FAKE_STATUS=status-nojob -- result "$J"
+assert_prefix "unavailable: error"; assert_rc 4; assert_lines 1
+
+hd "run: task submission fails (rc 1 / no jobId / malformed jobId) → exit 4 unavailable: error, no status poll"
+for t in task-garbage task-noid task-badid; do
+  sut "$P" FAKE_TASK="$t" -- run review --prompt-file "$PF"
+  assert_prefix "unavailable: error"; assert_rc 4; assert_argv_not status
+done
+
+hd "run: a hanging task / status call → exit 4 unavailable: timeout"
+sut "$P" FAKE_TASK=task-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- run review --prompt-file "$PF"
+assert_eq "unavailable: timeout"; assert_rc 4; assert_lines 1
+sut "$P" FAKE_STATUS=status-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- result "$J"
+assert_eq "unavailable: timeout"; assert_rc 4
+if grep -qi terminated "$WORK/stderr"; then bad "job-control noise: $(cat "$WORK/stderr")"; else ok "no Terminated noise"; fi
+
+hd "watchdog: a companion that ignores TERM is KILLed after the grace period"
+: > "$WORK/fx/stubborn"; echo 8 > "$WORK/fx/stubborn.stubborn"
+t0=$SECONDS
+sut "$P" FAKE_SETUP=stubborn MARVIN_CODEX_CALL_TIMEOUT=1 -- check
+assert_eq "error companion timed out"; assert_rc 4
+if [ $((SECONDS - t0)) -le 6 ]; then ok "returned after TERM + grace + KILL"; else bad "took $((SECONDS - t0)) s"; fi
+
+hd "watchdog: no stray sleepers or companions left behind"
+sut "$P" MARVIN_CODEX_CALL_TIMEOUT=47 -- run review --prompt-file "$PF"
+assert_rc 0
+if command -v ps >/dev/null 2>&1; then
+  sleep 1
+  if ps -A -o args= 2>/dev/null | grep -Eq '(^|/)sleep (47|9|8)$'; then bad "stray sleeper: $(ps -A -o args= | grep -E '(^|/)sleep (47|9|8)$' | tr '\n' ' ')"; else ok "no 'sleep 47' watchdog or 'sleep 9' fake companion survives"; fi
+else ok "skipped: no ps here"; fi
+if grep -q . "$WORK/stderr"; then bad "stderr noise: $(head -c 200 "$WORK/stderr")"; else ok "no job-control noise on stderr"; fi
+
+hd "run: the project's model-profile.md wins over the kit template (only the Codex profile section is read)"
+mkdir -p "$P/.marvin/agents"
+cat > "$P/.marvin/agents/model-profile.md" <<'EOF'
+# Model profile
+
+| Lane | Tier | Model | Effort | Why |
+|---|---|---|---|---|
+| review | decoy | decoy-before | low | a table above the section must not be read |
+
+## Codex profile
+
+| Lane | Tier | Model | Effort | Why |
+|---|---|---|---|---|
+| `review` | codex workhorse | `gpt-5.6-terra` | `medium` | project override |
+| astra | codex frontier | gpt-6-astra | high | x |
+
+### a sub-heading does not end the section
+
+## Something else
+
+| review | decoy | decoy-after | low | |
+EOF
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0; assert_argv_pair --model gpt-5.6-terra; assert_argv_pair --effort medium
+
+hd "run: a lane missing from the project copy falls back to the kit template"
+sut "$P" -- run diagnose --prompt-file "$PF"
+assert_rc 0; assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort xhigh
+
+hd "run: the project copy routes a lane to the astra model → still refused without --astra"
+sed 's/`gpt-5.6-terra`/gpt-6-astra/' "$P/.marvin/agents/model-profile.md" > "$WORK/mp" && cp "$WORK/mp" "$P/.marvin/agents/model-profile.md"
+sut "$P" -- run review --prompt-file "$PF"
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+rm -rf "$P/.marvin/agents"
+
+hd "mc_profile: sourced, reads lane model/effort from the template; unknown lane → rc 1; bad field → rc 2"
+mp() { ( cd "$P" && env -i HOME="$WORK/fakehome" PATH="$TOOLS" bash -c '. "$1"; shift; mc_profile "$@"' _ "$SUT" "$@" ); }
+OUT=$(mp review model); RC=$?; assert_eq gpt-5.6-sol; assert_rc 0
+OUT=$(mp build-micro effort); RC=$?; assert_eq high; assert_rc 0
+OUT=$(mp astra model); RC=$?; assert_eq gpt-6-astra
+OUT=$(mp nosuchlane model); RC=$?; assert_eq ""; assert_rc 1
+OUT=$(mp review tier 2>/dev/null); RC=$?; assert_rc 2
 
 hd "the script is executable and parses under bash -n"
 if [ -x "$SUT" ]; then ok "executable"; else bad "not executable"; fi
