@@ -14,7 +14,7 @@
 
 | 🧰 **Ready to ship** | 🧪 **Built under pressure** |
 |---|---|
-| **7 skills + 2 commands** cover setup, upgrades, reporting, docs, stress testing and kit validation. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
+| **12 skills + 2 commands** cover setup, upgrades, reporting, docs, stress testing, kit validation, clean-up and the Codex handover. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
 
 <p align="center"><sub>✦ Self-hosting: Marvin is built and operated under the same rules it installs. ✦</sub></p>
 
@@ -223,10 +223,13 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 | `plan-docs` | Handbooks are missing or stale. The orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic carrying those findings, and dispatches documentation agents against it. |
 | `stress-test` | Verifying the project holds past demo scale — every growth dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. |
 | `validate-kit` | Releasing a new kit version. Runs the static gate plus five agentic scratch-repo scenarios: fresh install, legacy upgrade, current-layout upgrade, no-op re-run, symlink refusal + crawl closure. |
+| `codex <lane> [issue\|--base <ref>]` | You want OpenAI's Codex on one lane — `plan`, `review`, `security`, `design`, `diagnose` or `build` — for an issue or a diff. A reader gathers the DATA, the `marvin:codex` forwarder runs the lane and its verdict is relayed as given; `build` climbs the Codex build ladder, every round validated by Claude validators. |
+| `codex-astra <lane> [target] [--effort E]` | The same on the frontier Codex tier (Astra) — the only path to it, never routed automatically; effort capped at `xhigh`, checked before dispatch. |
+| `codex-setup` | Codex is not ready. Runs the readiness check and walks the setup runbook one confirmed step at a time (plugin, CLI); the login is yours to run (`!codex login`). |
 
 | Command | What it does |
 |---|---|
-| `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, and whether the companion plugin is present. Never modifies anything. |
+| `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, whether the companion plugin is present, and Codex readiness plus its four handover settings. Never modifies anything. |
 | `/marvin:play <scenario>` | Runs one bounded, self-terminating play scenario — a declared GOAL, numeric LIMITS, a POSITIVE and a NEGATIVE exit set before any dispatch, and a periodic report between rounds so the orchestrator can close a looping or overrunning run gracefully at its current state. Bare `/marvin:play` lists the available scenarios instead of guessing one. Runs in sub-agent mode today, re-dispatching fresh `marvin:*` personas each round; agent-teams behaviour is a dormant seam that only activates once Milestone E's execution-mode setting exists. |
 | `/marvin:whats-new [from] [to]` | Explains what changed between this project's Marvin version and the plugin's (or any two versions), from the per-release briefs in `CHANGELOG.md`, Action needed first. |
 | `/marvin:clean-worktrees [--check]` | Removes finished agent worktrees under `.claude/worktrees/` (locked, in-use, recently active, dirty or unmerged ones are kept, each with its reason) and their local branches when origin has a copy, then the throwaway Docker resources those finished worktrees left; the SessionStart hook runs the same sweeps. |
