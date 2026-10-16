@@ -366,6 +366,7 @@ templates/
     validation-agent.md            BA + security validator personas, E2E hook
     visual-validation.md           visual/design validator persona — surface resolution, capture + degradation ladder, generic design checklist, severity, reporting
     codex.md                       Codex handover — consent switch, validation strategies and lanes, four-eye verdict merge, auto-debug tollgates, the Codex build ladder, fallback
+    codex/                         the six Codex lane briefs, each a self-contained Codex prompt ending in its pinned JSON output: plan.md review.md security.md design.md diagnose.md build.md
     documentation-agent.md         post-task documentation scope
     ticket-filing.md               tracker filing rules (defers to the in-tracker guide)
     ponytail.md                    small-model micro-task profile
