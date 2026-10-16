@@ -40,7 +40,7 @@ cat > "$BIN/node" <<'SH'
 # fake node: logs argv, answers the companion subcommand ($2) with a fixture — setup: FAKE_SETUP, task:
 # FAKE_TASK, status: FAKE_STATUS, result: FAKE_RESULT. Optional siblings: <fx>.err (to stderr), <fx>.rc
 # (exit code), <fx>.sleep (hang: exec sleep N, so the watchdog's kill reaches the sleeper itself), <fx>.delay
-# (a slow call: sleep N, then answer normally).
+# (a slow call: sleep N, then answer normally; a TERM also ends the sleeper, so no orphan outlives the kill).
 printf '%s\n' "$@" >> "$FAKE_WORK/argv"
 case "$2" in
   setup)  fx=${FAKE_SETUP:-ready} ;;
@@ -52,7 +52,10 @@ esac
 fx="$FAKE_WORK/fx/$fx"
 if [ -f "$fx.stubborn" ]; then trap "" TERM; exec sleep "$(cat "$fx.stubborn")"; fi   # ignores TERM: only KILL ends it
 if [ -f "$fx.sleep" ]; then exec sleep "$(cat "$fx.sleep")"; fi
-if [ -f "$fx.delay" ]; then sleep "$(cat "$fx.delay")"; fi
+if [ -f "$fx.delay" ]; then
+  dp=""; trap '[ -z "$dp" ] || kill "$dp" 2>/dev/null; exit 143' TERM
+  sleep "$(cat "$fx.delay")" & dp=$!; wait "$dp"; trap - TERM
+fi
 cat "$fx"
 if [ -f "$fx.err" ]; then cat "$fx.err" >&2; fi
 if [ -f "$fx.rc" ]; then exit "$(cat "$fx.rc")"; fi
@@ -134,7 +137,7 @@ project_entry() { printf '{\n        "scope": "project",\n        "projectPath":
 
 # sut <cwd> [VAR=val ...] -- <args...> — run the script from <cwd> in a clean env (PATH = fake node + basics).
 # Stdout lands in $WORK/stdout (OUT holds it, trailing newlines stripped), stderr in $WORK/stderr, RC the exit.
-# Base env: the user-scope plugins file p1.json, an empty cache, poll interval 0; later VAR=val win (env(1)
+# Base env: the user-scope plugins file p1.json, an empty cache, poll interval 0.2 s; later VAR=val win (env(1)
 # applies them in order), and VAR= (empty) means "unset" to the script's ${VAR:-default} reads.
 sut() {
   local cwd="$1"; shift; local envs=()
@@ -142,7 +145,7 @@ sut() {
   [ $# -gt 0 ] && shift
   : > "$WORK/argv"
   ( cd "$cwd" && env -i HOME="$WORK/fakehome" PATH="$BIN:$TOOLS" FAKE_WORK="$WORK" \
-      MARVIN_CODEX_PLUGINS_JSON="$WORK/p1.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" MARVIN_CODEX_POLL=0 \
+      MARVIN_CODEX_PLUGINS_JSON="$WORK/p1.json" MARVIN_CODEX_CACHE="$EMPTY_CACHE" MARVIN_CODEX_POLL=0.2 \
       ${envs[@]+"${envs[@]}"} bash "$SUT" "$@" ) > "$WORK/stdout" 2> "$WORK/stderr"; RC=$?
   OUT=$(cat "$WORK/stdout")
 }
@@ -334,7 +337,7 @@ run_check "$P" silent1 "$WORK/p1.json" "$EMPTY_CACHE"
 assert_eq "error companion exit 1 (no output)"; assert_rc 4
 
 hd "check: a hanging companion is killed by the watchdog → error companion timed out"
-: > "$WORK/fx/hang"; echo 9 > "$WORK/fx/hang.sleep"
+: > "$WORK/fx/hang"; echo 97 > "$WORK/fx/hang.sleep"
 t0=$SECONDS
 sut "$P" FAKE_SETUP=hang MARVIN_CODEX_CALL_TIMEOUT=1 -- check
 assert_eq "error companion timed out"; assert_rc 4; assert_lines 1
@@ -401,7 +404,7 @@ gen_status "$WORK/fx/status-cancelled" cancelled done     'Review the diff'
 gen_status "$WORK/fx/status-weird"     exploded  done     'Review the diff'
 gen_status "$WORK/fx/status-failed"    failed    failed   '{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The model is not supported when using Codex with a ChatGPT account.\"}}'
 printf 'No job found for "%s". Run /codex:status to list known jobs.\n' "$J" > "$WORK/fx/status-nojob"; echo 1 > "$WORK/fx/status-nojob.rc"
-: > "$WORK/fx/status-hang"; echo 9 > "$WORK/fx/status-hang.sleep"
+: > "$WORK/fx/status-hang"; echo 97 > "$WORK/fx/status-hang.sleep"
 gen_result() {  # gen_result <file> <status> <rawOutput-json-string-body> <result.status>
   cat > "$1" <<EOF
 {
@@ -434,7 +437,7 @@ printf 'Error: something broke\n' > "$WORK/fx/result-garbage"
 printf 'Error: spawn failed\n' > "$WORK/fx/task-garbage"; echo 1 > "$WORK/fx/task-garbage.rc"
 printf '{\n  "status": "queued",\n  "title": "Codex Task"\n}\n' > "$WORK/fx/task-noid"
 printf '{\n  "jobId": "--write",\n  "status": "queued"\n}\n' > "$WORK/fx/task-badid"
-: > "$WORK/fx/task-hang"; echo 9 > "$WORK/fx/task-hang.sleep"
+: > "$WORK/fx/task-hang"; echo 97 > "$WORK/fx/task-hang.sleep"
 
 mkdir -p "$P/.marvin"
 set_handover() {  # set_handover <value> | ABSENT (key missing) | NOFILE (no PROJECT-INFO.md)
@@ -597,7 +600,7 @@ sut "$P" MARVIN_CODEX_PLUGINS_JSON="$WORK/p2.json" -- run review --prompt-file "
 assert_eq "unavailable: not-installed"; assert_rc 4; assert_argv_empty
 
 hd "run: still running at --wait-max → exit 5 pending <id> (status read by path, not the decoy in summary)"
-sut "$P" FAKE_STATUS=status-running -- run review --prompt-file "$PF" --wait-max 1
+sut "$P" FAKE_STATUS=status-running -- run review --prompt-file "$PF" --wait-max 3
 assert_eq "pending $J"; assert_rc 5; assert_lines 1; assert_argv_not result
 
 hd "result <id>: the job finished meanwhile → exit 0 with the payload"
@@ -650,25 +653,25 @@ for t in task-garbage task-noid task-badid; do
 done
 
 hd "run: a hanging task / status call → exit 4 unavailable: timeout"
-sut "$P" FAKE_TASK=task-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- run review --prompt-file "$PF"
+sut "$P" FAKE_TASK=task-hang MARVIN_CODEX_CALL_TIMEOUT=2 -- run review --prompt-file "$PF"
 assert_eq "unavailable: timeout (job may be queued; check status)"; assert_rc 4; assert_lines 1
 sut "$P" FAKE_STATUS=status-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- result "$J"
 assert_eq "unavailable: timeout"; assert_rc 4
 if grep -qi terminated "$WORK/stderr"; then bad "job-control noise: $(cat "$WORK/stderr")"; else ok "no Terminated noise"; fi
 
 hd "watchdog: a companion that ignores TERM is KILLed after the grace period"
-: > "$WORK/fx/stubborn"; echo 8 > "$WORK/fx/stubborn.stubborn"
+: > "$WORK/fx/stubborn"; echo 89 > "$WORK/fx/stubborn.stubborn"
 t0=$SECONDS
 sut "$P" FAKE_SETUP=stubborn MARVIN_CODEX_CALL_TIMEOUT=1 -- check
 assert_eq "error companion timed out"; assert_rc 4
 if [ $((SECONDS - t0)) -le 6 ]; then ok "returned after TERM + grace + KILL"; else bad "took $((SECONDS - t0)) s"; fi
 
 hd "watchdog: no stray sleepers or companions left behind"
-sut "$P" MARVIN_CODEX_CALL_TIMEOUT=47 -- run review --prompt-file "$PF"
+sut "$P" MARVIN_CODEX_CALL_TIMEOUT=473 -- run review --prompt-file "$PF"
 assert_rc 0
 if command -v ps >/dev/null 2>&1; then
-  sleep 1
-  if ps -A -o args= 2>/dev/null | grep -Eq '(^|/)sleep (47|9|8)$'; then bad "stray sleeper: $(ps -A -o args= | grep -E '(^|/)sleep (47|9|8)$' | tr '\n' ' ')"; else ok "no 'sleep 47' watchdog or 'sleep 9' fake companion survives"; fi
+  sleep 0.5
+  if ps -A -o args= 2>/dev/null | grep -Eq '(^|/)sleep (473|97|89)$'; then bad "stray sleeper: $(ps -A -o args= | grep -E '(^|/)sleep (473|97|89)$' | tr '\n' ' ')"; else ok "no 'sleep 473' watchdog or '97'/'89' fake companion survives"; fi
 else ok "skipped: no ps here"; fi
 if grep -v "^submitted task-" "$WORK/stderr" | grep -q .; then bad "stderr noise: $(head -c 200 "$WORK/stderr")"; else ok "no job-control noise on stderr (only the submitted line)"; fi
 
@@ -710,30 +713,36 @@ rm -rf "$P/.marvin/agents"
 
 # ============================================================================================================
 # fix round 1 — the --wait-max wall-clock budget (Review Focus 4), the job id on submission, the astra guard
-cp "$WORK/fx/status-running" "$WORK/fx/status-slow"; echo 4 > "$WORK/fx/status-slow.delay"
-cp "$WORK/fx/ready" "$WORK/fx/setup-slow"; echo 2 > "$WORK/fx/setup-slow.delay"
-cp "$WORK/fx/task" "$WORK/fx/task-slow"; echo 5 > "$WORK/fx/task-slow.delay"
-cp "$WORK/fx/result-ok" "$WORK/fx/result-slow"; echo 5 > "$WORK/fx/result-slow.delay"
+cp "$WORK/fx/status-running" "$WORK/fx/status-slow"; echo 37 > "$WORK/fx/status-slow.delay"
+cp "$WORK/fx/task" "$WORK/fx/task-slow"; echo 37 > "$WORK/fx/task-slow.delay"
+cp "$WORK/fx/result-ok" "$WORK/fx/result-slow"; echo 37 > "$WORK/fx/result-slow.delay"
 cp "$WORK/fx/task" "$WORK/fx/task-rc1"; echo 1 > "$WORK/fx/task-rc1.rc"
-within() {  # within <t0> <budget> — the run returned within budget + 2 s ($SECONDS rounding, process start)
+# Timing: every "slow" fake call takes 37 s, far past each budget (2-3 s; a run's fast path — setup, task,
+# one status — needs slack under load, so no run case budgets below 3 s), so the asserted outcome cannot be
+# reached by a call finishing on its own, and an uncapped call would take 37 s. Outcome (stdout, exit) is
+# asserted first; elapsed second, with a load margin (budget + 3 s) that still sits far below the 37 s.
+# Sleep durations here (37, 97, 89, the 473 s watchdog limit, below the 540 s default budget that would otherwise cap it)
+# are deliberately odd: the stray-process checks
+# scan the whole host, where another session's `sleep 30` loop is common.
+within() {  # within <t0> <budget> — the run returned within budget + 3 s ($SECONDS rounding, scheduler load)
   local took=$((SECONDS - $1))
-  if [ "$took" -le $(($2 + 2)) ]; then ok "returned in ${took} s (budget $2 s + 2)"; else bad "took ${took} s, budget $2 s + 2"; fi
+  if [ "$took" -le $(($2 + 3)) ]; then ok "returned in ${took} s (budget $2 s + 3)"; else bad "took ${took} s, budget $2 s + 3"; fi
 }
 
-hd "budget: slow status calls would cross --wait-max → the last call is capped, exit 5 pending <id> in time"
+hd "budget: a status call slower than --wait-max is capped by the budget → exit 5 pending <id> in time"
 t0=$SECONDS
-sut "$P" FAKE_STATUS=status-slow -- run review --prompt-file "$PF" --wait-max 5
-assert_eq "pending $J"; assert_rc 5; assert_lines 1; within "$t0" 5
+sut "$P" FAKE_STATUS=status-slow -- run review --prompt-file "$PF" --wait-max 3
+assert_eq "pending $J"; assert_rc 5; assert_lines 1; within "$t0" 3
 
-hd "budget: the 60 s per-call timeout never outlasts the budget (setup + task slow, --wait-max 3)"
+hd "budget: the 60 s per-call timeout never outlasts the budget (a 37 s task, --wait-max 3)"
 t0=$SECONDS
-sut "$P" FAKE_SETUP=setup-slow FAKE_TASK=task-slow -- run review --prompt-file "$PF" --wait-max 3
+sut "$P" FAKE_TASK=task-slow -- run review --prompt-file "$PF" --wait-max 3
 assert_eq "unavailable: timeout (job may be queued; check status)"; assert_rc 4; within "$t0" 3
 
 hd "budget: completed, but the result fetch would cross the budget → exit 5 pending <id> (resume with result)"
 t0=$SECONDS
-sut "$P" FAKE_RESULT=result-slow -- run review --prompt-file "$PF" --wait-max 2
-assert_eq "pending $J"; assert_rc 5; within "$t0" 2
+sut "$P" FAKE_RESULT=result-slow -- run review --prompt-file "$PF" --wait-max 3
+assert_eq "pending $J"; assert_rc 5; within "$t0" 3
 sut "$P" -- result "$J"
 assert_rc 0
 
@@ -744,8 +753,14 @@ assert_eq "pending $J"; assert_rc 5; within "$t0" 3
 
 hd "budget: result <id> obeys the same budget"
 t0=$SECONDS
-sut "$P" FAKE_STATUS=status-slow -- result "$J" --wait-max 1
-assert_eq "pending $J"; assert_rc 5; within "$t0" 1
+sut "$P" FAKE_STATUS=status-slow -- result "$J" --wait-max 2
+assert_eq "pending $J"; assert_rc 5; within "$t0" 2
+
+hd "budget: the capped slow calls leave no 37 s sleeper behind"
+if command -v ps >/dev/null 2>&1; then
+  sleep 0.5
+  if ps -A -o args= 2>/dev/null | grep -Eq '(^|/)sleep 37$'; then bad "stray sleeper: $(ps -A -o args= | grep -E '(^|/)sleep 37$' | tr '\n' ' ')"; else ok "no 'sleep 37' survives a capped call"; fi
+else ok "skipped: no ps here"; fi
 
 hd "budget: --wait-max 0 or absurdly large is a usage error"
 sut "$P" -- run review --prompt-file "$PF" --wait-max 0; assert_rc 2; assert_argv_empty
