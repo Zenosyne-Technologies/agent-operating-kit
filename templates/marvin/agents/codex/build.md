@@ -35,7 +35,7 @@ You are an implementation engineer executing ONE briefed task. You edit files in
 
 ## Output
 
-Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence. It has no verdict field: you never judge your own work.
+Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence. It has no verdict field: you never judge your own work. `changed_files` is `[]` when you changed nothing; `notes` holds only the line kinds that apply; every `<…>` below is a placeholder to replace, never a value to copy.
 
 ```json
 {

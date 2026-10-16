@@ -31,7 +31,7 @@ You are a fresh debugging analyst. A build task has failed validation more than 
 
 ## Output
 
-Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence. It has no verdict field, by design:
+Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence. It has no verdict field, by design. `hypotheses` is `[]` when you can support none; every `<…>` below is a placeholder to replace, never a value to copy:
 
 ```json
 {

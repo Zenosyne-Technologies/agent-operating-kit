@@ -30,18 +30,18 @@ You are a fresh design reviewer. Another agent built this UI change. Review its 
 ## Severity — the advisory stance
 
 - `critical` = the UI is broken or unusable (a hidden control, illegible primary contrast, layout collapse at a supported breakpoint, clipped or inaccessible content); `high` = a major hierarchy or consistency break on a primary flow; `medium` and `low` = polish.
-- This review is advisory: at task level its findings never block the task, and only `critical` and `high` ever gate, at a release. Grade by the definitions above alone: never inflate a finding so it counts, never deflate one because the stage is advisory.
-- Grade mapping: `critical` or `high` = must-fix; `medium` or `low` = note. A finding that falsifies a DoD statement is must-fix whatever its severity, so set `dod_item` to that statement copied verbatim from `### DoD`, else `none`.
+- This review is advisory: at task level its findings never block the task, and only `critical` and `high` ever gate, at a release. Grade by the definitions above alone: never inflate a finding so it counts, never deflate one because the stage is advisory. A `needs-attention` verdict here is advisory at task level too: it reports, it never blocks.
+- Grade mapping, by severity alone: `critical` or `high` = must-fix; `medium` or `low` = note. A DoD contradiction never lifts a `medium` or `low`: `dod_item` is always `none` in this lane, and a finding that contradicts a DoD statement quotes it in `body` instead.
 
 ## Tags and fields
 
-- `tag`, against `### Findings so far`: matches a `this-stage` entry → `dup (F<id>)`; an `open` one → `recurring (F<id>)`; a `closed` one → `regression (of F<id>)`; otherwise `new`. One ID, copied from the list; never invent one.
+- `tag`, against `### Findings so far`: matches a `this-stage` entry → `dup (F<id>)`; otherwise `new`. This review is never a round, so it never tags `recurring` or `regression`. One ID, copied from the list; never invent one.
 - `file`: the repo-relative source file the fix must change (component, stylesheet), or the screenshot path when you cannot tell; `mech`: `<file>#<anchor>`, that file and its component, function or selector, copied verbatim. `line_start` and `line_end` are integers of at least 1; `confidence` runs from 0 to 1.
 - `verdict`: `needs-attention` when any finding is must-fix, else `approve`.
 
 ## Output
 
-Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence:
+Your final message is exactly one JSON object of this shape, with nothing before or after it and no code fence. `findings` and `next_steps` are `[]` when there is nothing to report; never copy a placeholder below as a value:
 
 ```json
 {
@@ -50,8 +50,8 @@ Your final message is exactly one JSON object of this shape, with nothing before
   "findings": [
     { "severity": "critical | high | medium | low", "title": "<one line>", "body": "<surface, breakpoint, screenshot path: what is wrong>",
       "file": "<repo-relative path>", "line_start": 1, "line_end": 1, "confidence": 0.0, "recommendation": "<the concrete fix>",
-      "dod_item": "<DoD statement verbatim> | none", "tag": "new | recurring (F<id>) | regression (of F<id>) | dup (F<id>)", "mech": "<file>#<anchor>" }
+      "dod_item": "none", "tag": "new | dup (F<id>)", "mech": "<file>#<anchor>" }
   ],
-  "next_steps": ["codex-evidence-fallback (<capability>)", "UNRELATED: <surface or file:line> — <words>"]
+  "next_steps": []
 }
 ```
