@@ -36,7 +36,23 @@ This version is validated ONLY for the set above. Running the orchestrator or an
 
 - **Detecting a mismatch**: compare the model your own session context names (the host states it, e.g. "You are powered by the model named …") with the orchestrator row above. If they differ, say so ONCE per session as an issue callout per `user-updates.md` (⚠️, **Needs you?**: no — it never blocks work). If your context names no model, raise nothing and never guess.
 - **A customised copy is unsupported.** This file is kit-owned and belongs to the version: an upgrade re-renders it and replaces a customised copy, keeping the old one in the upgrade's backup folder. To run a different set, wait for a version that declares it.
+- **Adding a profile (future versions)**: a later version that supports another set adds it here as a second named profile — its own table, rules and validation date — and the install skill asks which to install. Tier names elsewhere never change.
 
-## Adding a profile (future versions)
+## Codex profile
 
-A later version that supports another set adds it here as a second named profile — its own table, rules and validation date — and the install skill asks which profile to install. Tier names elsewhere never change.
+Templates name only the tiers `codex fast`, `codex workhorse` and `codex frontier` and cite this table; `scripts/marvin-codex.sh` reads it for each lane's default model and effort.
+
+| Lane | Tier | Model | Effort | Why |
+|---|---|---|---|---|
+| build-micro | codex fast | gpt-5.6-luna | high | mechanical, fully specified work (`xs`); Luna's top effort still costs pennies |
+| build | codex workhorse | gpt-5.6-sol | medium | the Codex default; about 73% DeepSWE at `medium` |
+| plan | codex workhorse | gpt-5.6-sol | high | falsifying a plan needs depth |
+| review | codex workhorse | gpt-5.6-sol | high | adversarial falsification; `high` is the measured gain over `medium` |
+| security | codex workhorse | gpt-5.6-sol | high | same as review |
+| design | codex workhorse | gpt-5.6-sol | medium | checklist judgement, not deep search |
+| diagnose | codex workhorse | gpt-5.6-sol | xhigh | recommended for tangled debugging; the companion cap |
+| astra | codex frontier | gpt-6-astra | high | about 5x Sol per token; architect command only, effort the architect's pick up to `xhigh` |
+
+4. **Astra is never routed by a rule.** No ladder, tollgate or strategy reaches `astra`; only the architect's `/marvin:codex-astra` does, passing `--astra`.
+5. **The Codex effort ceiling is `xhigh`.** The models accept `max`, but the Codex companion rejects anything above `xhigh`, so no row or flag goes higher.
+6. **Validated set.** The Codex models above were checked live on 2026-10-16 against a ChatGPT login; the `astra` row is unverified.
