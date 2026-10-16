@@ -16,7 +16,7 @@ Every other file names tiers (orchestrator, heavy worker, small worker, micro, f
 |---|---|---|---|---|---|
 | orchestrator | Opus 5.5 | 1M | `medium`; raise to `high` when the task needs it | `ESCALATION_MODEL` | the main session |
 | heavy worker | Opus 5.5 | 1M | `medium` (pinned — the ladder's base rung) | `ESCALATION_MODEL` | `marvin:developer`, `marvin:researcher`, the three validators; the ladder's `escalation-high/-xhigh/-max` rungs raise effort on this model |
-| small worker | Sonnet 5.5 | 1M | `high` (pinned) | `WORKER_MODEL` | `marvin:developer-small`, `marvin:documenter`; the ladder's `escalation-small-xhigh` rung raises it to `xhigh` |
+| small worker | Sonnet 5.5 | 1M | `high` (pinned) | `WORKER_MODEL` | `marvin:developer-small`, `marvin:documenter`, `marvin:codex` (the Codex forwarder); the ladder's `escalation-small-xhigh` rung raises it to `xhigh` |
 | micro | Haiku 5.5 | 1M | `high` (pinned — rule 2) | `MICRO_MODEL` | `marvin:ponytail`, `marvin:developer-micro` |
 | frontier | Fable 5.1 | 1M | inherits the session's (opt-in only) | `FRONTIER_MODEL` | `marvin:escalation-frontier`, reached only through the max gate |
 

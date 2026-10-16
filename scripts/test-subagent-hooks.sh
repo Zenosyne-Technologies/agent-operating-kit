@@ -84,6 +84,15 @@ hd "S10 nothing from the message or brief is echoed"
 brief "ZQX-BRIEF-MARK WORKTREE:"
 run "$GATE" "$P" "$(stop_in marvin:developer "ZQX-MSG-MARK \" \\")"; assert_json; assert_no "ZQX-MSG-MARK"; assert_no "ZQX-BRIEF-MARK"
 
+hd "S11 marvin:codex (the Codex forwarder) is gated like every persona — the ^marvin: matcher covers it"
+brief "Lane review. FINAL MESSAGE: CODEX verdict line, TRACKER:, GUARDRAILS:. Run report: .marvin/runs/AOS-1/x-codex.md"
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: FAIL (review)
+src/a.ts:3 — token not verified [FAIL] new mech: src/a.ts#verify
+TRACKER: none
+GUARDRAILS: NONE")"; assert_rc0; assert_empty
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: unavailable not-logged-in")"; assert_json; assert_out '"decision":"block"'; assert_out "TRACKER:"; assert_out "GUARDRAILS:"
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: unavailable not-logged-in" true)"; assert_empty
+
 hd "R1 SubagentStart injects the rules for a marvin persona"
 run "$RULES" "$P" "$(start_in marvin:developer-small "$P")"; assert_rc0; assert_json
 assert_out '"hookEventName":"SubagentStart"'; assert_out "Marvin sub-agent rules"; assert_out "TRACKER:"; assert_out "never create, move or delete a git tag"
