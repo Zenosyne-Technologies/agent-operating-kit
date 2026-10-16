@@ -24,8 +24,8 @@
 #     with exit 3 and one stdout line:
 #       1. codex_handover (PROJECT-INFO.md frontmatter, lower-cased, `# comment` stripped; missing key/file or
 #          any value but ask|auto counts as off) is off and --architect is absent -> refused: codex_handover is off
-#       2. the resolved model is the astra row's model (case-insensitive), or the lane is astra, and --astra is
-#          absent -> refused: astra needs --astra
+#       2. the lane is astra, or the resolved model names astra (any case, any dated alias) or equals the astra
+#          row of the project copy OR the template, and --astra is absent -> refused: astra needs --astra
 #       3. effort max|ultra -> refused: effort above xhigh · not none|minimal|low|medium|high|xhigh ->
 #          refused: unknown effort
 #       4. --prompt-file not given, missing, empty or unreadable -> exit 2
@@ -34,7 +34,9 @@
 #     --model <M> --effort <E> [--write]. --model is ALWAYS passed (the user's Codex default may be the costly
 #     frontier model); the prompt text never enters argv; --write only for build|build-micro or with
 #     --write-evidence. The job id (`jobId`) is polled with `status <id> --json --cwd <toplevel>` every
-#     MARVIN_CODEX_POLL seconds until it ends or --wait-max elapses, then `result <id> --json --cwd <toplevel>`.
+#     MARVIN_CODEX_POLL seconds until it ends or the budget is spent, then `result <id> --json --cwd <toplevel>`.
+#     As soon as the id is known, `submitted <id>` goes to STDERR. A submission that times out prints
+#     `unavailable: timeout (job may be queued; check status)`: the job may exist, its id is unknowable.
 #
 #   marvin-codex.sh result <job-id> [--wait-max S]
 #     Resume waiting on a job `run` left pending; run it from the same project (jobs are stored per --cwd).
@@ -42,11 +44,17 @@
 #   run / result stdout and exit: 0 the job completed with a non-empty storedJob.result.rawOutput — stdout is
 #     the companion's `result --json` payload, unchanged · 4 one line `unavailable: <status|timeout|empty|
 #     error <reason>>` (job failed or cancelled, garbage or non-JSON output, unknown job) · 5 one line
-#     `pending <job-id>` (still queued/running at --wait-max; resume with `result`) · 3 refused · 2 usage.
-#     The default --wait-max of 540 s keeps one call under a 10-minute tool limit.
+#     `pending <job-id>` (the budget ran out with the job unfinished or its result unfetched; resume with
+#     `result`) · 3 refused · 2 usage.
+#     --wait-max (whole seconds, 1..999999, default 540) is the TOTAL wall-clock budget, measured from script
+#     start: every companion call (setup, task, status, result) is capped at the seconds left, no call starts
+#     with under 1 s left, and no poll sleeps into the last second, so a call returns within about --wait-max
+#     + 3 s (TERM grace) — the default keeps it under a 10-minute tool limit.
 #
 # Every companion call runs under a watchdog (MARVIN_CODEX_CALL_TIMEOUT seconds, default 60): a call past it
-# is killed (TERM, then KILL) and counts as a timeout; no watchdog or sleeper outlives the call.
+# is killed (TERM, then KILL 2 s later) and counts as a timeout; no watchdog or sleeper outlives the call. Under
+# run/result the limit is also capped by the --wait-max budget (above); a status or result call it cut short
+# means pending.
 #
 # Locating the companion (mc_locate prints its absolute path or returns 1), first hit wins:
 #   1. a `scope: project` entry of any `codex@*` key in the plugins file whose projectPath is the git toplevel
@@ -73,7 +81,8 @@ MC_US=$(printf '\037')
 MC_COMPANION=scripts/codex-companion.mjs
 MC_JOB_RE='^task-[a-z0-9]+-[a-z0-9]+$'
 MC_MODEL_RE='^[A-Za-z0-9][A-Za-z0-9._:-]*$'
-MC_TMP=""; MC_COMP=""; MC_STATUS=""; MC_HAVE_JSON=0
+MC_TMP=""; MC_COMP=""; MC_STATUS=""; MC_HAVE_JSON=0; MC_CAPPED=0
+MC_T0=$SECONDS; MC_DEADLINE=""   # run/result: the wall-clock budget, measured from script start
 
 # mc_entries — stdin: installed_plugins.json. One line per entry under any `codex@*` key:
 #   <scope> US <projectPath> US <installPath>   (entries without an installPath are dropped)
@@ -195,10 +204,19 @@ mc_scratch() {
 # <tag>.err, under a watchdog of MARVIN_CODEX_CALL_TIMEOUT seconds. Returns the companion's rc, or 124 when the
 # watchdog fired. The watchdog's own sleeper is killed by its TERM trap; the trap is armed (stop flag first)
 # before the sleeper exists, so a TERM at any point leaves no sleeper behind.
+#   Under a wall-clock budget (MC_DEADLINE, a $SECONDS value; run/result set it to script start + --wait-max)
+# the limit is min(per-call timeout, seconds left), and MC_CAPPED=1 says the budget, not the per-call timeout,
+# set it; with under 1 s left the call is not started at all (rc 124, MC_CAPPED=1).
 mc_call() {
-  local tag=$1 lim=${MARVIN_CODEX_CALL_TIMEOUT:-60} pid wd rc; shift
+  local tag=$1 lim=${MARVIN_CODEX_CALL_TIMEOUT:-60} pid wd rc left; shift
   case "$lim" in ''|*[!0-9]*) lim=60 ;; esac
   [ "$lim" -gt 0 ] || lim=60
+  MC_CAPPED=0
+  if [ -n "$MC_DEADLINE" ]; then
+    left=$((MC_DEADLINE - SECONDS))
+    if [ "$left" -lt 1 ]; then MC_CAPPED=1; return 124; fi
+    if [ "$left" -lt "$lim" ]; then lim=$left; MC_CAPPED=1; fi
+  fi
   rm -f "$MC_TMP/$tag.to"
   node "$MC_COMP" "$@" > "$MC_TMP/$tag.out" 2> "$MC_TMP/$tag.err" < /dev/null &
   pid=$!
@@ -304,13 +322,30 @@ mc_profile() {
   case "${2:-}" in model) col=4 ;; effort) col=5 ;; *) mc_err "mc_profile: field is model or effort"; return 2 ;; esac
   top=${3:-$(mc_top)}
   for f in "$top/.marvin/agents/model-profile.md" "$MC_HERE/../templates/marvin/agents/model-profile.md"; do
-    [ -f "$f" ] && [ -r "$f" ] || continue
-    awk -F'|' -v lane="$lane" -v col="$col" '
-      function trim(s) { gsub(/^[ \t`]+/, "", s); gsub(/[ \t`]+$/, "", s); return s }
-      { sub(/\r$/, "") }
-      /^## / { insec = ($0 ~ /^## Codex profile[ \t]*$/); next }
-      insec && /^[ \t]*\|/ && trim($2) == lane { v = trim($col); if (v != "") { print v; found = 1; exit } }
-      END { exit !found }' "$f" && return 0
+    mc_profile_in "$f" "$lane" "$col" && return 0
+  done
+  return 1
+}
+# mc_profile_in <file> <lane> <column> — one profile file's cell (see mc_profile); rc 1 when absent
+mc_profile_in() {
+  [ -f "$1" ] && [ -r "$1" ] || return 1
+  awk -F'|' -v lane="$2" -v col="$3" '
+    function trim(s) { gsub(/^[ \t`]+/, "", s); gsub(/[ \t`]+$/, "", s); return s }
+    { sub(/\r$/, "") }
+    /^## / { insec = ($0 ~ /^## Codex profile[ \t]*$/); next }
+    insec && /^[ \t]*\|/ && trim($2) == lane { v = trim($col); if (v != "") { print v; found = 1; exit } }
+    END { exit !found }' "$1"
+}
+
+# mc_is_astra <model> <top> — the model is the frontier model: it names astra (any case, any dated alias), or
+# equals the astra row of the project copy OR of the kit template (a project edit cannot launder it)
+mc_is_astra() {
+  local m f a
+  m=$(mc_lc "$1")
+  case "$m" in *astra*) return 0 ;; esac
+  for f in "$2/.marvin/agents/model-profile.md" "$MC_HERE/../templates/marvin/agents/model-profile.md"; do
+    a=$(mc_profile_in "$f" astra 4) || continue
+    [ "$m" = "$(mc_lc "$a")" ] && return 0
   done
   return 1
 }
@@ -328,13 +363,19 @@ mc_job_why() {
   [ -z "$m" ] || printf ': %s' "$m"
 }
 
-# mc_wait <job> <wait-max> <top> — poll until the job ends or wait-max elapses; print per the run/result contract
+# mc_wait <job> <top> — poll until the job ends or the budget (MC_DEADLINE) is spent; print per the run/result
+# contract. Every call is capped by the budget; a call the budget cut short, or a poll whose sleep would leave
+# under 1 s for the next status call, ends in `pending <job>`.
 mc_wait() {
-  local job=$1 wmax=$2 top=$3 poll=${MARVIN_CODEX_POLL:-5} start=$SECONDS rc st sst raw
+  local job=$1 top=$2 poll=${MARVIN_CODEX_POLL:-5} pint rc st sst raw
   [[ $poll =~ ^[0-9]+(\.[0-9]+)?$ ]] || poll=5
+  pint=${poll%%.*}; [ "$pint" = "$poll" ] || pint=$((pint + 1))   # the poll interval rounded up
   while :; do
     mc_call status status "$job" --json --cwd "$top"; rc=$?
-    if [ "$rc" -eq 124 ]; then mc_unavail timeout; return 4; fi
+    if [ "$rc" -eq 124 ]; then
+      if [ "$MC_CAPPED" = 1 ]; then printf 'pending %s\n' "$job"; return 5; fi
+      mc_unavail timeout; return 4
+    fi
     if [ "$rc" -ne 0 ] || ! mc_is_json status; then mc_unavail "error $(mc_reason status "$rc")"; return 4; fi
     st=$(mh_json get job.status < "$MC_TMP/status.out") || st=""
     case "$st" in
@@ -343,11 +384,14 @@ mc_wait() {
       failed|cancelled) mc_unavail "error job $st$(mc_job_why)"; return 4 ;;
       *) mc_unavail "error unknown job status${st:+ $st}"; return 4 ;;
     esac
-    if [ $((SECONDS - start)) -ge "$wmax" ]; then printf 'pending %s\n' "$job"; return 5; fi
+    if [ $((MC_DEADLINE - SECONDS - pint)) -lt 1 ]; then printf 'pending %s\n' "$job"; return 5; fi
     sleep "$poll"
   done
   mc_call result result "$job" --json --cwd "$top"; rc=$?
-  if [ "$rc" -eq 124 ]; then mc_unavail timeout; return 4; fi
+  if [ "$rc" -eq 124 ]; then
+    if [ "$MC_CAPPED" = 1 ]; then printf 'pending %s\n' "$job"; return 5; fi
+    mc_unavail timeout; return 4
+  fi
   if [ "$rc" -ne 0 ] || ! mc_is_json result; then mc_unavail "error $(mc_reason result "$rc")"; return 4; fi
   st=$(mh_json get job.status < "$MC_TMP/result.out") || st=""
   sst=$(mh_json get storedJob.status < "$MC_TMP/result.out") || sst=""
@@ -360,7 +404,7 @@ mc_wait() {
   return 0
 }
 
-mc_waitmax_ok() { [[ $1 =~ ^[0-9]+$ ]]; }
+mc_waitmax_ok() { [[ $1 =~ ^[0-9]{1,6}$ ]] && [ "$((10#$1))" -ge 1 ]; }
 
 # mc_run <lane> [options] — see the header
 mc_run() {
@@ -386,7 +430,8 @@ mc_run() {
       *) mc_err "unknown option: $1"; mc_usage; return 2 ;;
     esac
   done
-  mc_waitmax_ok "$wmax" || { mc_err "--wait-max takes whole seconds"; return 2; }
+  mc_waitmax_ok "$wmax" || { mc_err "--wait-max takes whole seconds, at least 1"; return 2; }
+  MC_DEADLINE=$((MC_T0 + 10#$wmax))
   if [ -n "$model" ] && ! [[ $model =~ $MC_MODEL_RE ]]; then mc_err "not a model name: $model"; return 2; fi
   top=$(mc_top)
 
@@ -406,7 +451,7 @@ mc_run() {
   [[ $rmodel =~ $MC_MODEL_RE ]] || { mc_err "the Codex profile's model is not a model name: $rmodel"; return 2; }
 
   # guard 2 — the frontier model only on the architect's explicit --astra
-  if [ "$astra" = 0 ] && { [ "$lane" = astra ] || [ "$(mc_lc "$rmodel")" = "$(mc_lc "$amodel")" ]; }; then
+  if [ "$astra" = 0 ] && { [ "$lane" = astra ] || mc_is_astra "$rmodel" "$top"; }; then
     echo "refused: astra needs --astra"; return 3
   fi
 
@@ -435,11 +480,18 @@ mc_run() {
   else
     mc_call task task --background --json --cwd "$top" --prompt-file "$pf" --model "$rmodel" --effort "$reffort"; rc=$?
   fi
-  if [ "$rc" -eq 124 ]; then mc_unavail timeout; return 4; fi
-  if [ "$rc" -ne 0 ] || ! mc_is_json task; then mc_unavail "error $(mc_reason task "$rc")"; return 4; fi
-  job=$(mh_json get jobId < "$MC_TMP/task.out") || job=""
-  [[ $job =~ $MC_JOB_RE ]] || { mc_unavail "error task output has no job id"; return 4; }
-  mc_wait "$job" "$wmax" "$top"
+  # A submission that timed out may still have queued the job; the id is unknowable here, so say so. A job id
+  # in parseable output is trusted even when rc != 0 (the job exists; status decides), and is announced on
+  # stderr at once so a caller can resume with `result <id>` whatever happens next.
+  if [ "$rc" -eq 124 ]; then mc_unavail "timeout (job may be queued; check status)"; return 4; fi
+  job=""
+  if mc_is_json task; then job=$(mh_json get jobId < "$MC_TMP/task.out") || job=""; fi
+  if ! [[ $job =~ $MC_JOB_RE ]]; then
+    if [ "$rc" -ne 0 ] || ! mc_is_json task; then mc_unavail "error $(mc_reason task "$rc")"; else mc_unavail "error task output has no job id"; fi
+    return 4
+  fi
+  printf 'submitted %s\n' "$job" >&2
+  mc_wait "$job" "$top"
 }
 
 # mc_result <job-id> [--wait-max S]
@@ -454,11 +506,12 @@ mc_result() {
       *) mc_err "unknown option: $1"; mc_usage; return 2 ;;
     esac
   done
-  mc_waitmax_ok "$wmax" || { mc_err "--wait-max takes whole seconds"; return 2; }
+  mc_waitmax_ok "$wmax" || { mc_err "--wait-max takes whole seconds, at least 1"; return 2; }
+  MC_DEADLINE=$((MC_T0 + 10#$wmax))
   mc_scratch || { mc_unavail "error cannot create scratch dir"; return 4; }
   if ! command -v node > /dev/null 2>&1; then mc_unavail no-node; return 4; fi
   MC_COMP=$(mc_locate) || { mc_unavail not-installed; return 4; }
-  mc_wait "$job" "$wmax" "$(mc_top)"
+  mc_wait "$job" "$(mc_top)"
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then

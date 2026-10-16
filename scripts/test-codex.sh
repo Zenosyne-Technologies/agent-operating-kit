@@ -39,7 +39,8 @@ cat > "$BIN/node" <<'SH'
 #!/bin/sh
 # fake node: logs argv, answers the companion subcommand ($2) with a fixture — setup: FAKE_SETUP, task:
 # FAKE_TASK, status: FAKE_STATUS, result: FAKE_RESULT. Optional siblings: <fx>.err (to stderr), <fx>.rc
-# (exit code), <fx>.sleep (hang: exec sleep N, so the watchdog's kill reaches the sleeper itself).
+# (exit code), <fx>.sleep (hang: exec sleep N, so the watchdog's kill reaches the sleeper itself), <fx>.delay
+# (a slow call: sleep N, then answer normally).
 printf '%s\n' "$@" >> "$FAKE_WORK/argv"
 case "$2" in
   setup)  fx=${FAKE_SETUP:-ready} ;;
@@ -51,6 +52,7 @@ esac
 fx="$FAKE_WORK/fx/$fx"
 if [ -f "$fx.stubborn" ]; then trap "" TERM; exec sleep "$(cat "$fx.stubborn")"; fi   # ignores TERM: only KILL ends it
 if [ -f "$fx.sleep" ]; then exec sleep "$(cat "$fx.sleep")"; fi
+if [ -f "$fx.delay" ]; then sleep "$(cat "$fx.delay")"; fi
 cat "$fx"
 if [ -f "$fx.err" ]; then cat "$fx.err" >&2; fi
 if [ -f "$fx.rc" ]; then exit "$(cat "$fx.rc")"; fi
@@ -457,6 +459,8 @@ assert_argv_pair --prompt-file "$PF"; assert_argv_pair status "$J"; assert_argv_
 if awk -v p="$P" 'prev == "--cwd" && $0 != p { b = 1 } $0 == "--cwd" { n++ } { prev = $0 } END { exit (b || n != 3) }' "$WORK/argv"; then ok "task, status and result all pass --cwd <git toplevel>"; else bad "--cwd not the toplevel on every call: $(tr '\n' ' ' < "$WORK/argv")"; fi
 
 hd "run: review never gets --write, even when the prompt file says --write; the prompt text never reaches argv"
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0; assert_argv_has task; assert_argv_not --write; assert_argv_pair --model gpt-5.6-sol
 assert_argv_lacks_text SECRET-PROMPT-TEXT-42; assert_argv_not gpt-6-astra
 
 hd "run: relative prompt path from a subdirectory → absolute --prompt-file, --cwd still the toplevel"
@@ -602,8 +606,8 @@ assert_rc 0
 if cmp -s "$WORK/stdout" "$WORK/fx/result-ok"; then ok "stdout is the result payload"; else bad "stdout: $OUT"; fi
 assert_argv_pair status "$J"; assert_argv_pair result "$J"; assert_argv_pair --cwd "$P"; assert_argv_not task; assert_argv_not setup
 
-hd "result <id> --wait-max 0 while queued → exit 5 pending <id>"
-sut "$P" FAKE_STATUS=status-queued -- result "$J" --wait-max 0
+hd "result <id> --wait-max 1 while queued → exit 5 pending <id>"
+sut "$P" FAKE_STATUS=status-queued -- result "$J" --wait-max 1
 assert_eq "pending $J"; assert_rc 5
 
 hd "result: a bad or missing job id is a usage error (never reaches the companion)"
@@ -647,7 +651,7 @@ done
 
 hd "run: a hanging task / status call → exit 4 unavailable: timeout"
 sut "$P" FAKE_TASK=task-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- run review --prompt-file "$PF"
-assert_eq "unavailable: timeout"; assert_rc 4; assert_lines 1
+assert_eq "unavailable: timeout (job may be queued; check status)"; assert_rc 4; assert_lines 1
 sut "$P" FAKE_STATUS=status-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- result "$J"
 assert_eq "unavailable: timeout"; assert_rc 4
 if grep -qi terminated "$WORK/stderr"; then bad "job-control noise: $(cat "$WORK/stderr")"; else ok "no Terminated noise"; fi
@@ -666,7 +670,7 @@ if command -v ps >/dev/null 2>&1; then
   sleep 1
   if ps -A -o args= 2>/dev/null | grep -Eq '(^|/)sleep (47|9|8)$'; then bad "stray sleeper: $(ps -A -o args= | grep -E '(^|/)sleep (47|9|8)$' | tr '\n' ' ')"; else ok "no 'sleep 47' watchdog or 'sleep 9' fake companion survives"; fi
 else ok "skipped: no ps here"; fi
-if grep -q . "$WORK/stderr"; then bad "stderr noise: $(head -c 200 "$WORK/stderr")"; else ok "no job-control noise on stderr"; fi
+if grep -v "^submitted task-" "$WORK/stderr" | grep -q .; then bad "stderr noise: $(head -c 200 "$WORK/stderr")"; else ok "no job-control noise on stderr (only the submitted line)"; fi
 
 hd "run: the project's model-profile.md wins over the kit template (only the Codex profile section is read)"
 mkdir -p "$P/.marvin/agents"
@@ -701,6 +705,94 @@ hd "run: the project copy routes a lane to the astra model → still refused wit
 sed 's/`gpt-5.6-terra`/gpt-6-astra/' "$P/.marvin/agents/model-profile.md" > "$WORK/mp" && cp "$WORK/mp" "$P/.marvin/agents/model-profile.md"
 sut "$P" -- run review --prompt-file "$PF"
 assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+rm -rf "$P/.marvin/agents"
+
+
+# ============================================================================================================
+# fix round 1 — the --wait-max wall-clock budget (Review Focus 4), the job id on submission, the astra guard
+cp "$WORK/fx/status-running" "$WORK/fx/status-slow"; echo 4 > "$WORK/fx/status-slow.delay"
+cp "$WORK/fx/ready" "$WORK/fx/setup-slow"; echo 2 > "$WORK/fx/setup-slow.delay"
+cp "$WORK/fx/task" "$WORK/fx/task-slow"; echo 5 > "$WORK/fx/task-slow.delay"
+cp "$WORK/fx/result-ok" "$WORK/fx/result-slow"; echo 5 > "$WORK/fx/result-slow.delay"
+cp "$WORK/fx/task" "$WORK/fx/task-rc1"; echo 1 > "$WORK/fx/task-rc1.rc"
+within() {  # within <t0> <budget> — the run returned within budget + 2 s ($SECONDS rounding, process start)
+  local took=$((SECONDS - $1))
+  if [ "$took" -le $(($2 + 2)) ]; then ok "returned in ${took} s (budget $2 s + 2)"; else bad "took ${took} s, budget $2 s + 2"; fi
+}
+
+hd "budget: slow status calls would cross --wait-max → the last call is capped, exit 5 pending <id> in time"
+t0=$SECONDS
+sut "$P" FAKE_STATUS=status-slow -- run review --prompt-file "$PF" --wait-max 5
+assert_eq "pending $J"; assert_rc 5; assert_lines 1; within "$t0" 5
+
+hd "budget: the 60 s per-call timeout never outlasts the budget (setup + task slow, --wait-max 3)"
+t0=$SECONDS
+sut "$P" FAKE_SETUP=setup-slow FAKE_TASK=task-slow -- run review --prompt-file "$PF" --wait-max 3
+assert_eq "unavailable: timeout (job may be queued; check status)"; assert_rc 4; within "$t0" 3
+
+hd "budget: completed, but the result fetch would cross the budget → exit 5 pending <id> (resume with result)"
+t0=$SECONDS
+sut "$P" FAKE_RESULT=result-slow -- run review --prompt-file "$PF" --wait-max 2
+assert_eq "pending $J"; assert_rc 5; within "$t0" 2
+sut "$P" -- result "$J"
+assert_rc 0
+
+hd "budget: a poll interval longer than the budget left → pending at once, no sleep past the budget"
+t0=$SECONDS
+sut "$P" FAKE_STATUS=status-running MARVIN_CODEX_POLL=30 -- run review --prompt-file "$PF" --wait-max 3
+assert_eq "pending $J"; assert_rc 5; within "$t0" 3
+
+hd "budget: result <id> obeys the same budget"
+t0=$SECONDS
+sut "$P" FAKE_STATUS=status-slow -- result "$J" --wait-max 1
+assert_eq "pending $J"; assert_rc 5; within "$t0" 1
+
+hd "budget: --wait-max 0 or absurdly large is a usage error"
+sut "$P" -- run review --prompt-file "$PF" --wait-max 0; assert_rc 2; assert_argv_empty
+sut "$P" -- result "$J" --wait-max 0; assert_rc 2; assert_argv_empty
+sut "$P" -- result "$J" --wait-max 99999999999999999999; assert_rc 2; assert_argv_empty
+
+hd "job id: announced on stderr as soon as it is known (stdout keeps its contract)"
+sut "$P" -- run review --prompt-file "$PF"
+assert_rc 0
+if grep -Fxq "submitted $J" "$WORK/stderr"; then ok "stderr has: submitted $J"; else bad "stderr: $(cat "$WORK/stderr")"; fi
+if cmp -s "$WORK/stdout" "$WORK/fx/result-ok"; then ok "stdout is still only the payload"; else bad "stdout changed: $OUT"; fi
+
+hd "job id: task rc != 0 but its output carries a job id → the job exists, it is polled to the end"
+sut "$P" FAKE_TASK=task-rc1 -- run review --prompt-file "$PF"
+assert_rc 0; assert_argv_pair status "$J"
+if grep -Fxq "submitted $J" "$WORK/stderr"; then ok "stderr has: submitted $J"; else bad "stderr: $(cat "$WORK/stderr")"; fi
+
+hd "astra: a project copy that renames its astra row does not launder the template's astra model"
+mkdir -p "$P/.marvin/agents"
+cat > "$P/.marvin/agents/model-profile.md" <<'EOF'
+## Codex profile
+
+| Lane | Tier | Model | Effort | Why |
+|---|---|---|---|---|
+| review | codex workhorse | gpt-5.6-sol | high | x |
+| astra | codex frontier | gpt-7-zenith | high | renamed in the project copy |
+EOF
+sut "$P" -- run review --prompt-file "$PF" --model gpt-6-astra
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+sut "$P" -- run review --prompt-file "$PF" --model gpt-7-zenith
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+rm -rf "$P/.marvin/agents"
+
+hd "astra: any model naming astra is refused without --astra (dated alias, odd case)"
+sut "$P" -- run review --prompt-file "$PF" --model gpt-6-astra-2026-10
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+sut "$P" -- run plan --prompt-file "$PF" --model my-ASTRA-preview
+assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
+
+hd "mc_is_astra: the TEMPLATE's astra row counts even when it does not say astra and the project copy renames it"
+mkdir -p "$WORK/kit/scripts" "$WORK/kit/templates/marvin/agents" "$P/.marvin/agents"
+printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-zenith | high | x |\n' > "$WORK/kit/templates/marvin/agents/model-profile.md"
+printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-nadir | high | x |\n' > "$P/.marvin/agents/model-profile.md"
+ia() { ( cd "$P" && env -i HOME="$WORK/fakehome" PATH="$TOOLS" bash -c '. "$1"; MC_HERE="$2"; mc_is_astra "$3" "$4"' _ "$SUT" "$WORK/kit/scripts" "$1" "$P" ); }
+if ia gpt-9-zenith; then ok "template astra row (gpt-9-zenith) is astra"; else bad "template astra row not recognised"; fi
+if ia GPT-9-NADIR; then ok "project astra row (gpt-9-nadir) is astra"; else bad "project astra row not recognised"; fi
+if ia gpt-5.6-sol; then bad "gpt-5.6-sol taken for astra"; else ok "gpt-5.6-sol is not astra"; fi
 rm -rf "$P/.marvin/agents"
 
 hd "mc_profile: sourced, reads lane model/effort from the template; unknown lane → rc 1; bad field → rc 2"
