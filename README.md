@@ -341,7 +341,7 @@ scripts/marvin-ticket-lint.sh        PreToolUse (tracker writes) hook body: tick
 scripts/test-ticket-lint.sh          behavioural suite for the ticket lint, incl. inline mutation checks (CI runs it too)
 scripts/marvin-style-plugins.sh      read-only finder of enabled competing style plugins (run by install/upgrade)
 scripts/test-style-plugins.sh        fixture suite for the finder, incl. an inline mutation check (CI runs it too)
-scripts/marvin-codex.sh              the only door to the Codex companion (codex-companion.mjs): locates it and answers `check` (is Codex usable?) with one status line
+scripts/marvin-codex.sh              the only door to the Codex companion (codex-companion.mjs): locates it; `check` (is Codex usable?) answers with one status line; `run <lane>` submits one guarded lane job (handover, astra, effort ceiling, write-evidence only on review/security) and waits under a wall-clock budget; `result <id>` resumes a pending job
 scripts/test-codex.sh                fixture suite for marvin-codex.sh with a fake node on PATH (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's fifteen sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual, the micro-tier developer-micro, the five escalation rungs (escalation-small-xhigh, -high, -xhigh, -max, -frontier) and the Codex forwarder codex

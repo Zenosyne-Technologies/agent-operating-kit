@@ -486,9 +486,17 @@ for le in plan:high security:high design:medium diagnose:xhigh; do
   assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort "${le##*:}"; assert_argv_not --write
 done
 
-hd "run: --write-evidence adds --write to a read-only lane"
+hd "run: --write-evidence adds --write to the review and security lanes"
 sut "$P" -- run review --prompt-file "$PF" --write-evidence
 assert_rc 0; assert_argv_has --write
+sut "$P" -- run security --prompt-file "$PF" --write-evidence
+assert_rc 0; assert_argv_has --write
+
+hd "run: --write-evidence on any other lane is refused — the companion is never called"
+for l in plan design diagnose build build-micro astra; do
+  sut "$P" -- run "$l" --prompt-file "$PF" --write-evidence --architect
+  assert_eq "refused: write-evidence only on review or security"; assert_rc 3; assert_lines 1; assert_argv_empty
+done
 
 hd "run: --model / --effort override the profile"
 sut "$P" -- run review --prompt-file "$PF" --model gpt-5.6-terra --effort LOW
@@ -652,12 +660,20 @@ for t in task-garbage task-noid task-badid; do
   assert_prefix "unavailable: error"; assert_rc 4; assert_argv_not status
 done
 
-hd "run: a hanging task / status call → exit 4 unavailable: timeout"
+hd "run: a hanging task call (no job id yet) → exit 4 unavailable: timeout (job may be queued…)"
 sut "$P" FAKE_TASK=task-hang MARVIN_CODEX_CALL_TIMEOUT=2 -- run review --prompt-file "$PF"
 assert_eq "unavailable: timeout (job may be queued; check status)"; assert_rc 4; assert_lines 1
+
+hd "a status or result call past the per-call timeout with the job id known → exit 5 pending <id>, never unavailable"
 sut "$P" FAKE_STATUS=status-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- result "$J"
-assert_eq "unavailable: timeout"; assert_rc 4
+assert_eq "pending $J"; assert_rc 5; assert_lines 1
 if grep -qi terminated "$WORK/stderr"; then bad "job-control noise: $(cat "$WORK/stderr")"; else ok "no Terminated noise"; fi
+sut "$P" FAKE_STATUS=status-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- run build --prompt-file "$PF"
+assert_eq "pending $J"; assert_rc 5; assert_lines 1
+if grep -qx "submitted $J" "$WORK/stderr"; then ok "stderr announced submitted $J"; else bad "stderr lacks submitted $J: $(cat "$WORK/stderr")"; fi
+: > "$WORK/fx/result-hang"; echo 97 > "$WORK/fx/result-hang.sleep"
+sut "$P" FAKE_RESULT=result-hang MARVIN_CODEX_CALL_TIMEOUT=1 -- run review --prompt-file "$PF"
+assert_eq "pending $J"; assert_rc 5; assert_lines 1; assert_argv_pair result "$J"
 
 hd "watchdog: a companion that ignores TERM is KILLed after the grace period"
 : > "$WORK/fx/stubborn"; echo 89 > "$WORK/fx/stubborn.stubborn"

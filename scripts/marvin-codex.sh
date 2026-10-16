@@ -22,6 +22,7 @@
 #     <toplevel>/.marvin/agents/model-profile.md, else (per lookup) in this kit's templates/ copy; --astra
 #     selects the astra row's model and, unless --effort is given, its effort. Guards, in order, each refusing
 #     with exit 3 and one stdout line:
+#       0. --write-evidence on a lane other than review|security -> refused: write-evidence only on review or security
 #       1. codex_handover (PROJECT-INFO.md frontmatter, lower-cased, `# comment` stripped; missing key/file or
 #          any value but ask|auto counts as off) is off and --architect is absent -> refused: codex_handover is off
 #       2. the lane is astra, or the resolved model names astra (any case, any dated alias) or equals the astra
@@ -33,7 +34,7 @@
 #     Then: node <companion> task --background --json --cwd <toplevel> --prompt-file <absolute file>
 #     --model <M> --effort <E> [--write]. --model is ALWAYS passed (the user's Codex default may be the costly
 #     frontier model); the prompt text never enters argv; --write only for build|build-micro or with
-#     --write-evidence. The job id (`jobId`) is polled with `status <id> --json --cwd <toplevel>` every
+#     --write-evidence (review|security only, guard 0). The job id (`jobId`) is polled with `status <id> --json --cwd <toplevel>` every
 #     MARVIN_CODEX_POLL seconds until it ends or the budget is spent, then `result <id> --json --cwd <toplevel>`.
 #     As soon as the id is known, `submitted <id>` goes to STDERR. A submission that times out prints
 #     `unavailable: timeout (job may be queued; check status)`: the job may exist, its id is unknowable.
@@ -43,9 +44,10 @@
 #
 #   run / result stdout and exit: 0 the job completed with a non-empty storedJob.result.rawOutput — stdout is
 #     the companion's `result --json` payload, unchanged · 4 one line `unavailable: <status|timeout|empty|
-#     error <reason>>` (job failed or cancelled, garbage or non-JSON output, unknown job) · 5 one line
-#     `pending <job-id>` (the budget ran out with the job unfinished or its result unfetched; resume with
-#     `result`) · 3 refused · 2 usage.
+#     error <reason>>` (job failed or cancelled, garbage or non-JSON output, unknown job; `timeout` only for the
+#     submission, before any id is known) · 5 one line `pending <job-id>` (the budget ran out, or a status or
+#     result call timed out, with the job unfinished or its result unfetched; resume with `result`) · 3 refused
+#     · 2 usage.
 #     --wait-max (whole seconds, 1..999999, default 540) is the TOTAL wall-clock budget, measured from script
 #     start: every companion call (setup, task, status, result) is capped at the seconds left, no call starts
 #     with under 1 s left, and no poll sleeps into the last second, so a call returns within about --wait-max
@@ -53,8 +55,8 @@
 #
 # Every companion call runs under a watchdog (MARVIN_CODEX_CALL_TIMEOUT seconds, default 60): a call past it
 # is killed (TERM, then KILL 2 s later) and counts as a timeout; no watchdog or sleeper outlives the call. Under
-# run/result the limit is also capped by the --wait-max budget (above); a status or result call it cut short
-# means pending.
+# run/result the limit is also capped by the --wait-max budget (above). A status or result call that times out
+# either way means pending: the job id is known, so the job may still be running and is resumable.
 #
 # Locating the companion (mc_locate prints its absolute path or returns 1), first hit wins:
 #   1. a `scope: project` entry of any `codex@*` key in the plugins file whose projectPath is the git toplevel
@@ -81,7 +83,7 @@ MC_US=$(printf '\037')
 MC_COMPANION=scripts/codex-companion.mjs
 MC_JOB_RE='^task-[a-z0-9]+-[a-z0-9]+$'
 MC_MODEL_RE='^[A-Za-z0-9][A-Za-z0-9._:-]*$'
-MC_TMP=""; MC_COMP=""; MC_STATUS=""; MC_HAVE_JSON=0; MC_CAPPED=0
+MC_TMP=""; MC_COMP=""; MC_STATUS=""; MC_HAVE_JSON=0
 MC_T0=$SECONDS; MC_DEADLINE=""   # run/result: the wall-clock budget, measured from script start
 
 # mc_entries — stdin: installed_plugins.json. One line per entry under any `codex@*` key:
@@ -205,17 +207,15 @@ mc_scratch() {
 # watchdog fired. The watchdog's own sleeper is killed by its TERM trap; the trap is armed (stop flag first)
 # before the sleeper exists, so a TERM at any point leaves no sleeper behind.
 #   Under a wall-clock budget (MC_DEADLINE, a $SECONDS value; run/result set it to script start + --wait-max)
-# the limit is min(per-call timeout, seconds left), and MC_CAPPED=1 says the budget, not the per-call timeout,
-# set it; with under 1 s left the call is not started at all (rc 124, MC_CAPPED=1).
+# the limit is min(per-call timeout, seconds left); with under 1 s left the call is not started at all (rc 124).
 mc_call() {
   local tag=$1 lim=${MARVIN_CODEX_CALL_TIMEOUT:-60} pid wd rc left; shift
   case "$lim" in ''|*[!0-9]*) lim=60 ;; esac
   [ "$lim" -gt 0 ] || lim=60
-  MC_CAPPED=0
   if [ -n "$MC_DEADLINE" ]; then
     left=$((MC_DEADLINE - SECONDS))
-    if [ "$left" -lt 1 ]; then MC_CAPPED=1; return 124; fi
-    if [ "$left" -lt "$lim" ]; then lim=$left; MC_CAPPED=1; fi
+    if [ "$left" -lt 1 ]; then return 124; fi
+    if [ "$left" -lt "$lim" ]; then lim=$left; fi
   fi
   rm -f "$MC_TMP/$tag.to"
   node "$MC_COMP" "$@" > "$MC_TMP/$tag.out" 2> "$MC_TMP/$tag.err" < /dev/null &
@@ -364,18 +364,15 @@ mc_job_why() {
 }
 
 # mc_wait <job> <top> — poll until the job ends or the budget (MC_DEADLINE) is spent; print per the run/result
-# contract. Every call is capped by the budget; a call the budget cut short, or a poll whose sleep would leave
-# under 1 s for the next status call, ends in `pending <job>`.
+# contract. Every call is capped by the budget; a call that timed out (the budget or the per-call watchdog cut
+# it short), or a poll whose sleep would leave under 1 s for the next status call, ends in `pending <job>`.
 mc_wait() {
   local job=$1 top=$2 poll=${MARVIN_CODEX_POLL:-5} pint rc st sst raw
   [[ $poll =~ ^[0-9]+(\.[0-9]+)?$ ]] || poll=5
   pint=${poll%%.*}; [ "$pint" = "$poll" ] || pint=$((pint + 1))   # the poll interval rounded up
   while :; do
     mc_call status status "$job" --json --cwd "$top"; rc=$?
-    if [ "$rc" -eq 124 ]; then
-      if [ "$MC_CAPPED" = 1 ]; then printf 'pending %s\n' "$job"; return 5; fi
-      mc_unavail timeout; return 4
-    fi
+    if [ "$rc" -eq 124 ]; then printf 'pending %s\n' "$job"; return 5; fi
     if [ "$rc" -ne 0 ] || ! mc_is_json status; then mc_unavail "error $(mc_reason status "$rc")"; return 4; fi
     st=$(mh_json get job.status < "$MC_TMP/status.out") || st=""
     case "$st" in
@@ -388,10 +385,7 @@ mc_wait() {
     sleep "$poll"
   done
   mc_call result result "$job" --json --cwd "$top"; rc=$?
-  if [ "$rc" -eq 124 ]; then
-    if [ "$MC_CAPPED" = 1 ]; then printf 'pending %s\n' "$job"; return 5; fi
-    mc_unavail timeout; return 4
-  fi
+  if [ "$rc" -eq 124 ]; then printf 'pending %s\n' "$job"; return 5; fi
   if [ "$rc" -ne 0 ] || ! mc_is_json result; then mc_unavail "error $(mc_reason result "$rc")"; return 4; fi
   st=$(mh_json get job.status < "$MC_TMP/result.out") || st=""
   sst=$(mh_json get storedJob.status < "$MC_TMP/result.out") || sst=""
@@ -434,6 +428,11 @@ mc_run() {
   MC_DEADLINE=$((MC_T0 + 10#$wmax))
   if [ -n "$model" ] && ! [[ $model =~ $MC_MODEL_RE ]]; then mc_err "not a model name: $model"; return 2; fi
   top=$(mc_top)
+
+  # guard 0 — write-capable evidence only where the evidence setting applies (codex_evidence: codex)
+  if [ "$wev" = 1 ]; then
+    case "$lane" in review|security) ;; *) echo "refused: write-evidence only on review or security"; return 3 ;; esac
+  fi
 
   # guard 1 — the project opted in (or the architect asked explicitly)
   if [ "$(mc_handover "$top")" = off ] && [ "$architect" = 0 ]; then echo "refused: codex_handover is off"; return 3; fi
