@@ -271,7 +271,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the fourteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+Every PR must pass the static release gate and the fifteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
@@ -289,6 +289,7 @@ bash scripts/test-brief-lint.sh
 bash scripts/test-docker-lint.sh
 bash scripts/test-ticket-lint.sh
 bash scripts/test-style-plugins.sh
+bash scripts/test-codex.sh
 ```
 
 The static gate's nineteen checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:`, the brief lint to the Agent tool, the Docker lint to Bash and the ticket lint to the tracker-write tools (`hooks-registered`) · the hook library's default context window equals the model profile's orchestrator window (`profile-window`).
@@ -335,6 +336,8 @@ scripts/marvin-ticket-lint.sh        PreToolUse (tracker writes) hook body: tick
 scripts/test-ticket-lint.sh          behavioural suite for the ticket lint, incl. inline mutation checks (CI runs it too)
 scripts/marvin-style-plugins.sh      read-only finder of enabled competing style plugins (run by install/upgrade)
 scripts/test-style-plugins.sh        fixture suite for the finder, incl. an inline mutation check (CI runs it too)
+scripts/marvin-codex.sh              the only door to the Codex companion (codex-companion.mjs): locates it and answers `check` (is Codex usable?) with one status line
+scripts/test-codex.sh                fixture suite for marvin-codex.sh with a fake node on PATH (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
 agents/*.md                        Marvin's fourteen sub-agent personas, shipped with the plugin (marvin:* namespace, tier-bound models) — incl. validator-visual, the micro-tier developer-micro and the five escalation rungs (escalation-small-xhigh, -high, -xhigh, -max, -frontier)
 commands/*.md                      two commands: /marvin:info (state report) and /marvin:play (bounded play scenario dispatcher)
