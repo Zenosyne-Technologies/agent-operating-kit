@@ -125,6 +125,7 @@ fx_SC3() {  # an UNMARKED worktree that is prunable, and one whose directory is 
   rm -f "$WT/up/.git"; rm -rf "$WT/um"; sweep "$1"; }
 fx_AR1() {  # --at-risk: an UNMARKED worktree whose ignored .env differs from the main checkout's is listed
   envwt ar1; rm -f "$(git -C "$WT/ar1" rev-parse --absolute-git-dir)/marvin-owned"; echo S=1 > "$WT/ar1/.env"; echo S=2 > "$R/.env"; sweep "$1" --at-risk; state "$WT/ar1"; }
+fx_ARX() { fresh; rm -rf "$WT"; mkdir -p "$WORK/real"; ln -s "$WORK/real" "$WT"; sweep "$1" --at-risk; OUT="$OUT rc:$RC"; }
 fx_AR2() {  # --at-risk: unmarked run state the project lacks is listed (G9)
   runwt ar2; rm -f "$(git -C "$WT/ar2" rev-parse --absolute-git-dir)/marvin-owned"; sweep "$1" --at-risk; state "$WT/ar2"; }
 fx_SC1() { fresh; git -C "$R" worktree add -q -b sc1 "$WT/sc1" develop; work "$WT/sc1" sc1; merge_into develop sc1; age "$WT/sc1"; sweep "$1" "${@:2}"; state "$WT/sc1"; }
@@ -308,6 +309,7 @@ sweep "$SWEEP" --at-risk; assert_rc 0; assert_empty; assert_there "$WT/clean"; a
 fx_G9g "$SWEEP" --at-risk; assert_only "state: kept"   # the runs .gitignore never counts
 fresh; envwt arh; echo S=1 > "$WT/arh/.env"; OUT=$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SWEEP" --at-risk --hook </dev/null 2>&1); RC=$?
 assert_rc 0; assert_empty   # never in --hook mode
+fx_ARX "$SWEEP"; assert_out "refused:"; assert_out " rc:0"   # report only: exit 0 even when refused
 R0=$R; R="$WORK/my repo"; WT="$R/.claude/worktrees"; fx_AR1 "$SWEEP"; assert_out "at-risk: \"$WT/ar1\" — G8"; rm -rf "$R"; R=$R0; WT="$R/.claude/worktrees"
 
 hd "W1 a JSON-escaped hook stdin cwd still names the worktree the session stands in (G2)"
@@ -345,6 +347,7 @@ mutation G8DIR fx_G8n '  git -C "$1" ls-files -z --others --ignored --exclude-st
 mutation G9IGNORE fx_G9g '      case "$f" in .marvin/runs/.gitignore) continue ;; .marvin/runs/?*) ;; *) continue ;; esac' '      case "$f" in .marvin/runs/?*) ;; *) continue ;; esac' "state: gone"
 mutation ATRISK fx_AR1 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      return 0' "at-risk: $WT/ar1"
 mutation ATRISKG9 fx_AR2 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      why=$(g8 "$p") && return 0' "at-risk: $WT/ar2"
+mutation ATRISKEXIT fx_ARX '  { [ "$HOOK" = 1 ] || [ "$ATRISK" = 1 ]; } && exit 0; exit 1' '  [ "$HOOK" = 1 ] && exit 0; exit 1' "rc:0"
 mutation ATRISKONLY fx_AR1 '  if [ "$ATRISK" = 1 ]; then   # report only, marked or not; a prunable entry has no checkout git can list' '  if false; then' "at-risk: $WT/ar1"
 mutation G8 fx_G8b '  why=$(g8 "$p") || { keep "$p" "$why"; return; }' '  :' "G8 ignored .env.local differs"
 mutation G8ABSENT fx_G8c '      if [ ! -e "$ROOT/$f" ] && [ ! -L "$ROOT/$f" ]; then printf '"'"'G8 ignored %s absent from the main checkout'"'"' "$(q "$f")"; exit 1; fi' '      :' "G8 ignored .env absent"

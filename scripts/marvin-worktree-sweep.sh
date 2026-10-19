@@ -41,7 +41,8 @@
 # --at-risk (the upgrade skill's readiness report): every linked worktree physically under
 # .claude/worktrees/, marked or NOT, gets one `at-risk: <path> — <G8|G9 reason>` line when G8 or G9 holds;
 # nothing is removed, no other line is printed, exit 0. Never in --hook mode (silent there).
-# Exit without --hook: 0 ok · 1 refused (symlinked scope) · 2 usage / not a git repository / no lib.
+# Exit without --hook: 0 ok · 1 refused (symlinked scope; --at-risk exits 0) · 2 usage / not a git
+# repository / no lib.
 set -u
 
 IDLE_MIN=15
@@ -87,7 +88,7 @@ fi
 WT_DIR="$ROOT/.claude/worktrees"
 if [ -L "$ROOT/.claude" ] || [ -L "$WT_DIR" ]; then
   say "refused: $(q "$WT_DIR") or its parent is a symlink — never followed"
-  [ "$HOOK" = 1 ] && exit 0; exit 1
+  { [ "$HOOK" = 1 ] || [ "$ATRISK" = 1 ]; } && exit 0; exit 1
 fi
 [ -d "$WT_DIR" ] || exit 0
 WT_PHYS=$(cd "$WT_DIR" && pwd -P) || exit 0
