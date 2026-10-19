@@ -136,18 +136,21 @@ fx_X1M() { fresh; rm -rf "$R/.marvin" "$W/.marvin" "$A/.marvin"; lw "$A" "$S/AOS
            sa "$1" "$A" "$T"; OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
 
 hd "SS1 briefing literal present: the session folder is created, .gitignore = *, the one line is printed"
-fresh; ss "$SYNC" "$W"; assert_rc 0
-name=""; for d in "$RUNS"/*-"$SID"; do [ -d "$d" ] && name=${d##*/}; done
-if [ "$(nsess)" = 1 ] && printf '%s' "$name" | grep -Eq "$MH_SESSION_RE"; then ok "one session folder: $name"; else bad "session folders: $(nsess) ($name)"; fi
+fresh; t0=$(date -u +%Y%m%dT%H%M%SZ); ss "$SYNC" "$W"; assert_rc 0; t1=$(date -u +%Y%m%dT%H%M%SZ)
+name=""; for d in "$RUNS"/*-"$SID"; do [ -d "$d" ] && name=${d##*/}; done   # the expected name is the folder the script made
+if [ "$(nsess)" = 1 ] && printf '%s' "$name" | grep -Eq "$MH_SESSION_RE" && [ "${name#*Z-}" = "$SID" ]; then ok "one session folder: $name"; else bad "session folders: $(nsess) ($name)"; fi
+stamp=${name%%Z-*}Z   # fixed-width UTC stamps compare as text: t0 <= stamp <= t1, whatever second the script read
+if [ ! "$stamp" \< "$t0" ] && [ ! "$stamp" \> "$t1" ]; then ok "UTC stamp $stamp within the test's clock window"; else bad "stamp $stamp outside [$t0, $t1]"; fi
 holds "$RUNS/.gitignore" '*'
 assert_only "$(want_line "$name")"
 if git -C "$R" check-ignore -q "$RUNS/$name/AOS-1/x.md"; then ok "the folder is git-ignored"; else bad "the folder is not ignored"; fi
 holds "$W/.marvin/runs/.gitignore" '*'   # the local checkout is bootstrapped too, seeding or not
 lw "$W" "$name/AOS-1/ledger.md" 'r1\n'; lw "$W" "$name/AOS-1/$REP" 'rep\n'
 if [ -z "$(git -C "$W" status --porcelain)" ]; then ok "local run files leave the session worktree clean"; else bad "worktree dirtied: $(git -C "$W" status --porcelain | head -3)"; fi
+ss "$SYNC" "$R" "$SID" compact; assert_rc 0; assert_only "$(want_line "$name")"   # same project, from the main checkout, on compact: the same folder
+if [ "$(nsess)" = 1 ]; then ok "compact reused it"; else bad "compact made another folder: $(nsess)"; fi
 fx_SS1L "$SYNC"; assert_only "$(want_line "$(cd "$RUNS" && ls -d *-"$SID")") status:clean"
 fresh; mkdir -p "$W/.marvin/runs"; ln -s "$WORK/nowhere" "$W/.marvin/runs/.gitignore"; ss "$SYNC" "$W"; assert_rc 0; gone "$WORK/nowhere"   # local symlink: refused
-ss "$SYNC" "$R" "$SID" compact; assert_rc 0; assert_only "$(want_line "$name")"   # from the main checkout, on compact: the same folder
 
 hd "SS2 briefing literal absent: nothing created, silent"
 fx_SS2 "$SYNC"; assert_rc 0; assert_only " runs:no"
