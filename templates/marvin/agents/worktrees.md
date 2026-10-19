@@ -29,6 +29,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
 - **When**:
   - The plugin's SessionStart hook sweeps at every session start, which catches previous orchestrators' leftovers.
   - The orchestrator runs `/marvin:clean-worktrees` right after merging and pushing a sub-agent's branch. The worktree just finished usually survives that run as recently active; that is expected, and a later run or the next session-start sweep removes it, so do not retry.
+  - `worktree_sweep` in `PROJECT-INFO.md` sets the automatic sweep: `on` removes; `check` (also when the key is absent or invalid) only reports what it would remove; `off` is silent. `/marvin:clean-worktrees` always sweeps and says when the automatic one is `check` or `off`.
   - Without the plugin there is no sweep: leave worktrees in place and list them in the handoff.
   - Docker resources and throwaway databases an agent leaves follow `tidying.md`, not this sweep.
 - **What**: the plugin's sweep script decides. It considers ONLY a worktree Marvin marked as its own (a `marvin-owned` marker in the worktree's git admin dir, never in the working tree):
