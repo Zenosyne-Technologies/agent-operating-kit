@@ -35,15 +35,15 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 
 - Writing any agent brief → `.marvin/agents/briefing.md`
 - Validating done work (BA + security personas, E2E script) → `.marvin/agents/validation-agent.md`; visual/design review of UI work → `.marvin/agents/visual-validation.md`; Codex handover, validation strategy, tollgates, Codex builds → `.marvin/agents/codex.md`
-- Documenting after a done task → `.marvin/agents/documentation-agent.md`
+- Documenting after a done task → `.marvin/agents/documentation-agent.md`; checking, creating, or amending the product handbooks (developer / user / admin wikis) → `.marvin/agents/handbooks.md`
 - Writing, updating OR SEARCHING FOR any document (start every search at `.docs/index.md`; never glob or grep-sweep to find one) → `.marvin/agents/document-standard.md` (header keys, index rows, crawl protocol)
 - Recording a durable rule, constraint or warning — or being bound by one → `.marvin/agents/information-guide.md` (tagging, indexing, briefing duty; severity levels and their read obligations: `.marvin/agents/information-severity.md`)
 - Tracker work → creating/updating issues: `.marvin/agents/ticket-filing.md` (defers to the in-tracker "Issue Intake & Triage Guide"); labeling ANY item you create or edit, and backfilling unlabeled ones: `.marvin/agents/label-syntax.md` (versioned registry); planning milestones/epics or mapping severity to native fields: `.marvin/agents/tracker-config.md` (levels, virtual-milestone rule, mappings)
 - Planning a `size:m`+ task → `.marvin/agents/planning-research.md` (`m` build decomposition, `m`+ brief falsifier, `l`/`xl` plan-validation + solution research)
+- Planning a milestone with two or more independent epics (offer fleet mode on a shared tracker where the host can start child sessions), or running as a fleet master or child → `.marvin/agents/fleet.md` (master) / `.marvin/agents/fleet-child.md` (child)
 - Branching, versioning, tagging, or cutting a release — any git decision beyond a commit → `.marvin/agents/git-strategy.md`; pushing, merging a sub-agent's branch, or any worktree → `.marvin/agents/worktrees.md`; Docker containers, volumes or images, or a throwaway database → `.marvin/agents/tidying.md`; how long a session runs, the context ladder and the stop-and-compact nudge → `.marvin/agents/session-budget.md`
 - Producing any report (digest / close-out / stakeholder) → `.marvin/agents/reporting.md` (snapshot first, render second); token/cost reporting + the telemetry context sidecar on tracker-issue start/switch → `.marvin/agents/token-economics.md`
 - Bound by a DO NOT — about to do something destructive, out-of-scope or irreversible → `.marvin/agents/guardrails.md` (the four dispositions, the escalation chain, the generic baseline + your persona's rows)
-- Checking, creating, or amending the product handbooks (developer / user / admin wikis) → `.marvin/agents/handbooks.md`
 - Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.marvin/agents/security.md`
 
 ## Standing rules

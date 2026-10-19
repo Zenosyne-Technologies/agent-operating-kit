@@ -14,7 +14,7 @@
 
 | 🧰 **Ready to ship** | 🧪 **Built under pressure** |
 |---|---|
-| **12 skills + 2 commands** cover setup, upgrades, reporting, docs, stress testing, kit validation, clean-up and the Codex handover. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
+| **13 skills + 2 commands** cover setup, upgrades, reporting, docs, stress testing, kit validation, clean-up, the Codex handover and fleet mode. | Proven across a 7-milestone SaaS build: **37 agent-built tasks**, each independently validated. |
 
 <p align="center"><sub>✦ Self-hosting: Marvin is built and operated under the same rules it installs. ✦</sub></p>
 
@@ -228,6 +228,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 | `codex <lane> [issue\|--base <ref>]` | You want OpenAI's Codex on one lane — `plan`, `review`, `security`, `design`, `diagnose` or `build` — for an issue or a diff. A reader gathers the DATA, the `marvin:codex` forwarder runs the lane and its verdict is relayed as given; `build` climbs the Codex build ladder, every round validated by Claude validators. |
 | `codex-astra <lane> [target] [--effort E]` | The same on the frontier Codex tier (Astra) — the only path to it, never routed automatically; effort capped at `xhigh`, checked before dispatch. |
 | `codex-setup` | Codex is not ready. Runs the readiness check and walks the setup runbook one confirmed step at a time (plugin, CLI); the login is yours to run (`!codex login`). |
+| `fleet [milestone\|stop]` | A milestone has two or more independent epics to run at once. Turns the session into the fleet master: drafts the program plan with each epic's `area:` lease, gets your approval, commits it on `develop`, then creates, locks and marks one worktree for each epic the plan lets start and starts a local child orchestrator in each — or prints one resume prompt per such epic where the host cannot start child sessions. Needs a shared tracker (Linear, Jira or GitHub), not Local, and compaction on (not `DISABLE_COMPACT=1`). `stop` ends the fleet at its edge. The rules are `fleet.md` / `fleet-child.md`. |
 
 | Command | What it does |
 |---|---|
@@ -297,7 +298,7 @@ bash scripts/test-style-plugins.sh
 bash scripts/test-codex.sh
 ```
 
-The static gate's nineteen checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive, plus `gpt-<digit>` anywhere (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:`, the brief lint to the Agent tool, the Docker lint to Bash and the ticket lint to the tracker-write tools (`hooks-registered`) · the hook library's default context window equals the model profile's orchestrator window (`profile-window`).
+The static gate's twenty checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` — whole-word, case-insensitive, plus `gpt-<digit>` anywhere (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:`, the brief lint to the Agent tool, the Docker lint to Bash and the ticket lint to the tracker-write tools (`hooks-registered`) · the hook library's default context window equals the model profile's orchestrator window (`profile-window`) · every routed fleet event carries its `**E-<event>**` tag exactly once in both `fleet.md` and `fleet-child.md` (`fleet-pairs`).
 
 ## Inventory
 
@@ -310,7 +311,7 @@ scripts/marvin-session-start.sh      SessionStart hook body: version-drift check
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
 scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
-scripts/validate-kit.sh              nineteen-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              twenty-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -379,6 +380,8 @@ templates/
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
     worktrees.md                   agent worktree location, push cadence, the sweep's when/what, WORKTREE: handover line
+    fleet.md                       fleet master — program plan and decision log, leases, starting and locking a child, doorbells and the board, the receiving half of every routed event, epic merges, successors
+    fleet-child.md                 fleet child — the doorbell line, the sending half of every routed event, relay verification, shared files, the compaction budget, the epic merge gate
     tidying.md                     Docker labels, naming, who removes what and when, the backstop sweep, binary logging off for throwaway databases
     user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
