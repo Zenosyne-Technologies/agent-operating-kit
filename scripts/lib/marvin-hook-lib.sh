@@ -276,7 +276,7 @@ MH_MARKER_RE='^marvin-owned (marvin:[a-z0-9-]+|orchestrator) ([0-9a-f]{8,40}|-) 
 
 # mh_path <path> — one comparable spelling of a path: C:\x\y, C:/x/y and /c/x/y all become /c/x/y.
 # Only a drive-letter path is rewritten (cygpath -u when present, else pure bash); POSIX paths pass
-# through unchanged. Runs of `/` are squeezed to one. rc 1 on an empty input.
+# through unchanged. In a rewritten drive-letter path, runs of `/` are squeezed to one. rc 1 on an empty input.
 mh_path() {
   local p="${1:-}" d r
   [ -n "$p" ] || return 1

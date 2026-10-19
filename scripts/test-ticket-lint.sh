@@ -4,7 +4,7 @@
 # issue_write, gh issue create|edit, Local Write) × C1–C6; Jira Epic and Local children: exempt from C4;
 # label-less edits never denied; C5 prose positives and ordinary-prose negatives; registry parse
 # (resolved areas vs placeholders, sev4 vs sev4-low, milestone/release patterns, registry absent); modes
-# block (absent, invalid, # comment) / advise / off; no echo of prose or odd labels; valid JSON; sub-agent
+# block (explicit, invalid value, # comment) / advise (absent, empty) / off; no echo of prose or odd labels; valid JSON; sub-agent
 # calls fire; non-Marvin, other tools and malformed input silent; never writes; exit 0.
 # bash 3.2 + POSIX awk; python3 optional.
 set -uo pipefail
@@ -435,7 +435,7 @@ hd "M9 C6 value check removed — T9 size:huge must catch it"
 mutation c6 '    if ((dm in UNK) || ((dm, (dm == "sev" ? x : v)) in OK)) continue' '    continue' "has:C6" "$P" "$(pre_in "$J" "$(jira "$GOODL,\"size:huge\"")")"
 hd "M10 placeholder areas checked — T9 placeholder registry must catch it"
 mutation placeholder '  v = c[4]; if (index(v, "{{")) { o = o "|" dm ":?"; next }' '  v = c[4]' silent "$PP" "$(pre_in "$J" "$(jira '"type:feature","area:anything","origin:roadmap","size:m"')")"
-hd "M11 absent mode defaults to block — T10 must catch it"
+hd "M11 absent mode defaults to block instead of advise — T10 must catch it"
 PABS="$WORK/pabs"; mk_project "$PABS" - resolved; PSTR="$WORK/pstr"; mk_project "$PSTR" 'ticket_lint: strict' resolved
 mutation mode 'mh_mode "$fm" ticket_lint "block advise off" advise >/dev/null; mode=$MH_MODE' 'mh_mode "$fm" ticket_lint "block advise off" block >/dev/null; mode=$MH_MODE' nodeny "$PABS" "$(pre_in "$J" "$(jira "$V")")"
 hd "M11b an unknown explicit value no longer fails closed — T10 must catch it"
