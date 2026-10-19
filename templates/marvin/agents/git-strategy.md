@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Git strategy — branches, versions, releases
 
-Everything about git is decided here. Another file may name a concrete INSTANCE it needs — the branch a brief sends an agent to (`feature/AOS-123-cache-keys`), the branch a gate runs on, the tag a release carries. No other file may restate the MODEL: which branch types exist, what each is cut from and merges to, when a branch dies, who may tag, how a version is classified, **how a version is spelled**, or **what a tag message may contain**. Those last two are in the list because a drifting second copy already produced a defect here (`release:vv1.2.0`) — spelling rules look too small to own until two files disagree about one. Naming an instance is required; a second copy of the model is the defect, not a convenience.
+Everything about git is decided here. Another file may name a concrete INSTANCE it needs — the branch a brief sends an agent to (`feature/AOS-123-cache-keys`), the branch a gate runs on, the tag a release carries. No other file may restate the MODEL: which branch types exist, what each is cut from and merges to, when a branch dies, who may tag, how a version is classified, **how a version is spelled**, or **what a tag message may contain**. Those last two are in the list because a drifting second copy already produced a defect here (`release:vv1.2.0`) — spelling rules look too small to own until two files disagree about one. Naming an instance is required; a second copy of the model is the defect, not a convenience. A project may refine this model (branches, merge style, push cadence) in its `CLAUDE.md`; the tagging authority below is not.
 
 ## Branch model (gitflow)
 
