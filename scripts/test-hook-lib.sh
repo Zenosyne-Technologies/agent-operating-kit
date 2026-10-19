@@ -129,6 +129,52 @@ F mh_fm_value "$FM" c; eq "x#y"
 F mh_fm_value "$FM" d; eq ""
 F mh_fm_value "$FM" e; eq "plain"
 
+hd "L8 mh_path: one comparable form for Windows spellings; POSIX paths pass through"
+F mh_path 'C:\Work\a b\r'; rc 0; eq "/c/Work/a b/r"
+F mh_path 'C:/Work/x'; rc 0; eq "/c/Work/x"
+F mh_path '/c/Work/x'; rc 0; eq "/c/Work/x"
+F mh_path '/private/tmp/x'; rc 0; eq "/private/tmp/x"
+F mh_path 'c:\x\y'; rc 0; eq "/c/x/y"
+F mh_path ''; rc 1
+
+hd "L9 mh_mode: lower-cased when allowed; absent/empty -> default; invalid -> default + MH_MODE_INVALID"
+mode() { OUT=$( ( . "$LIBUSE"; v=$(mh_mode "$1" worktree_sweep "off on dry-run" "$2"); echo "$v|inv=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; }   # mode <fm> <default>
+mode $'worktree_sweep: OFF' on; rc 0; eq "off|inv="
+mode $'other: 1' on; rc 0; eq "on|inv="
+mode $'worktree_sweep:' on; rc 0; eq "on|inv="
+mode $'worktree_sweep: on # c' off; rc 0; eq "on|inv="
+mode $'worktree_sweep: "Dry-Run"' on; rc 0; eq "dry-run|inv="
+# MH_MODE_INVALID is set in the calling shell (no command substitution) and reset on the next call
+OUT=$( ( . "$LIBUSE"; mh_mode $'worktree_sweep: bogus' worktree_sweep "off on" on >/dev/null; a=$MH_MODE_INVALID
+         v=$(mh_mode $'worktree_sweep: bogus' worktree_sweep "off on" on); mh_mode $'worktree_sweep: off' worktree_sweep "off on" on >/dev/null
+         echo "$v|a=$a|after=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; rc 0; eq "on|a=bogus|after="
+
+hd "L10 mh_runs_root: the main checkout's physical .marvin/runs, from any linked worktree"
+RR="$WORK/rr main"; mkdir -p "$RR" && git -C "$RR" init -q -b main . && git -C "$RR" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
+  && git -C "$RR" worktree add -q "$WORK/rr wt" -b side 2>/dev/null
+PHYS=$(cd "$RR" && pwd -P)
+F mh_runs_root "$RR"; rc 0; eq "$PHYS/.marvin/runs"
+F mh_runs_root "$WORK/rr wt"; rc 0; eq "$PHYS/.marvin/runs"
+mkdir -p "$RR/sub dir"; F mh_runs_root "$RR/sub dir"; rc 0; eq "$PHYS/.marvin/runs"
+git init -q --bare "$WORK/rr.git"; F mh_runs_root "$WORK/rr.git"; rc 1; eq ""
+mkdir -p "$WORK/notrepo"; F mh_runs_root "$WORK/notrepo"; rc 1; eq ""
+F mh_runs_root ""; rc 1
+
+hd "L11 layout regexes: session folder, key, stamp, marker"
+re() { OUT=$( ( . "$LIBUSE"; printf '%s' "$2" | grep -Eq "${!1}" && echo match || echo no ) 2>&1); RC=$?; }   # re <CONST> <value>
+re MH_SESSION_RE 20261019T101500Z-0b1f6c1e-aaaa-4bbb-8ccc-0123456789ab; eq match
+re MH_SESSION_RE 20261019T101500Z-short; eq no
+re MH_KEY_RE AOS-222; eq match
+re MH_KEY_RE adhoc; eq no
+re MH_KEY_RE aos-222; eq no
+re MH_KEY_RE A-1; eq no
+re MH_STAMP_RE 20261019T101500Z-note.md; eq match
+re MH_STAMP_RE note.md; eq no
+re MH_MARKER_RE 'marvin-owned marvin:developer-small 0123abcd 20261019T101500Z'; eq match
+re MH_MARKER_RE 'marvin-owned orchestrator - 20261019T101500Z'; eq match
+re MH_MARKER_RE 'marvin-owned marvin:Dev 0123abcd 20261019T101500Z'; eq no
+re MH_MARKER_RE 'marvin-owned orchestrator abc 20261019T101500Z'; eq no
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig

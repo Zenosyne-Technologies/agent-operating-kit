@@ -266,3 +266,59 @@ mh_q() {
         else printf "%c", b } }
     END{ printf "\"" }'
 }
+
+# Layout regexes (ERE, for grep -E / [[ =~ ]]) — the single owner of the run-state names (AOS-222).
+# MH_KEY_RE matches a ticket key ONLY; the literal folder name `adhoc` is checked separately by callers.
+MH_SESSION_RE='^[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}$'                                   # a session folder
+MH_KEY_RE='^[A-Z][A-Z0-9]+-[0-9]+$'                                                   # a ticket key (not `adhoc`)
+MH_STAMP_RE='^[0-9]{8}T[0-9]{6}Z-'                                                    # a timestamped run file
+MH_MARKER_RE='^marvin-owned (marvin:[a-z0-9-]+|orchestrator) ([0-9a-f]{8,40}|-) [0-9]{8}T[0-9]{6}Z$'   # a worktree marker line
+
+# mh_path <path> — one comparable spelling of a path: C:\x\y, C:/x/y and /c/x/y all become /c/x/y.
+# Only a drive-letter path is rewritten (cygpath -u when present, else pure bash); POSIX paths pass
+# through unchanged. rc 1 on an empty input.
+mh_path() {
+  local p="${1:-}" d r
+  [ -n "$p" ] || return 1
+  case "$p" in
+    [A-Za-z]:|[A-Za-z]:[\\/]*)
+      if command -v cygpath >/dev/null 2>&1 && r=$(cygpath -u -- "$p" 2>/dev/null) && [ -n "$r" ]; then
+        p=$r
+      else
+        d=$(printf '%s' "${p%%:*}" | tr 'A-Z' 'a-z')
+        r=${p#?:}; r=${r//\\//}
+        p="/$d$r"
+      fi ;;
+  esac
+  printf '%s' "$p"
+}
+
+# mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting: the value
+# lower-cased when it is in the allowed list; absent, empty or not allowed → <default>. A value that is
+# present but not allowed also sets the global MH_MODE_INVALID to it (reset to empty on every call), so a
+# caller can name the typo. Call it WITHOUT a command substitution when MH_MODE_INVALID is wanted.
+MH_MODE_INVALID=""
+mh_mode() {
+  local v w
+  MH_MODE_INVALID=""
+  v=$(mh_fm_value "$1" "$2" | tr 'A-Z' 'a-z')
+  if [ -z "$v" ]; then printf '%s' "$4"; return 0; fi
+  for w in $3; do
+    [ "$v" = "$w" ] && { printf '%s' "$v"; return 0; }
+  done
+  MH_MODE_INVALID=$v
+  printf '%s' "$4"
+}
+
+# mh_runs_root <any checkout dir> — <main checkout>/.marvin/runs, physical. The git common dir is the
+# main checkout's .git from a linked worktree too, so every checkout resolves to the one runs folder.
+# rc 1 for a bare repo, a non-repo, a git too old for --path-format, or a common dir that is not <main>/.git.
+mh_runs_root() {
+  local d="${1:-}" c m
+  [ -n "$d" ] && [ -d "$d" ] || return 1
+  [ "$(git -C "$d" rev-parse --is-bare-repository 2>/dev/null)" = false ] || return 1
+  c=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && [ -n "$c" ] || return 1
+  [ "${c##*/}" = .git ] || return 1
+  m=$(cd "$c/.." 2>/dev/null && pwd -P) && [ -n "$m" ] || return 1
+  printf '%s' "$m/.marvin/runs"
+}
