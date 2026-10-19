@@ -2044,6 +2044,46 @@ assert_gone ".marvin/runs/$L/AOS-1/20260101T000000Z-developer.md" "the differing
 assert_eq "$(find .marvin/runs -name '.marvin-runs-migrate.*' | wc -l | tr -d ' ')" "0" "no temp file left behind"
 assert_report_wellformed "failed copy"
 
+hd "N15 run from a linked worktree: a relative --defer resolves against the main checkout"
+mk_runs n15; mk_wt wt1; mk_wt sess
+wt1_before=$(tree_sum .claude/worktrees/wt1)
+cd .claude/worktrees/sess || exit 1
+run_migrate --check --defer .claude/worktrees/wt1
+assert_rc 0 "--check from a session worktree, relative --defer"
+assert_out "deferred: .claude/worktrees/wt1 — open session"
+run_migrate --defer .claude/worktrees/wt1
+assert_rc 0 "the real run from a session worktree"
+cd "$WORK/n15" || exit 1
+assert_eq "$(tree_sum .claude/worktrees/wt1)" "$wt1_before" "the deferred worktree is untouched"
+L=$(legacy_dirs)
+assert_there ".marvin/runs/$L/AOS-2/20260103T000000Z-validator-sess.md" "the session worktree's run state moved"
+assert_there ".marvin/runs/$L/AOS-1/ledger.md" "the main checkout's run state moved"
+assert_report_wellformed "relative defer from a linked worktree"
+cd .claude/worktrees/sess || exit 1
+mkdir -p .claude/worktrees/wt1   # a relative path that DOES resolve against the cwd wins, and is not a worktree
+run_migrate --check --defer .claude/worktrees/wt1
+assert_rc 2 "a cwd-relative --defer that is not a registered worktree is still a usage error"
+printf 'x\n' > "$WORK/n15-file"
+run_migrate --check --defer "$WORK/n15-file"
+assert_rc 2 "a --defer that is not a directory"
+assert_out "--defer: not a directory"
+cd "$WORK/n15" || exit 1
+
+hd "N16 the upgrade skill's own capture files under .marvin/runs/ are never sources and never reported"
+mk_runs n16
+printf 'probe\n' > .marvin/runs/upgrade-20261019T120000Z-migrate-check.txt
+printf 'sweep\n' > .marvin/runs/upgrade-20261019T120000Z-sweep-at-risk.txt
+mkdir -p .marvin/runs/upgrade-20261019T120000Z-dir.txt
+printf 'n\n' > .marvin/runs/upgrade-notes.txt   # not a capture name: an ordinary stray file
+run_migrate
+assert_rc 0
+assert_out "skipped=2"
+assert_out "skipped: .marvin/runs/upgrade-20261019T120000Z-dir.txt (not a key folder)"
+assert_out "skipped: .marvin/runs/upgrade-notes.txt (not a key folder)"
+assert_eq "$(report_lines | grep -c 'migrate-check.txt\|sweep-at-risk.txt')" "0" "a capture file is not reported"
+assert_body .marvin/runs/upgrade-20261019T120000Z-migrate-check.txt "probe" "and stays where it is"
+assert_report_wellformed "capture files"
+
 fi  # end SUITE runs
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
