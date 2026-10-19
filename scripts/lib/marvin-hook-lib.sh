@@ -226,6 +226,45 @@ mh_budget_init() {
   e="${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-}"
   if printf '%s' "$e" | grep -Eq '^[0-9]{1,3}$' && [ "$e" -ge 1 ] && [ "$e" -le 100 ]; then MH_SCALE=$e; fi
 }
+# mh_fleet_init <frontmatter> — the fleet-mode settings: MH_FLEET_MAX_CHILDREN (1–9, default 3),
+# MH_FLEET_MAX_COMPACTIONS (0–9, default 3), MH_FLEET_RESTART_PCT (1–99, default 33). An invalid value
+# falls back to its default.
+mh_fleet_init() {
+  local fm="$1" c m p
+  MH_FLEET_MAX_CHILDREN=3; MH_FLEET_MAX_COMPACTIONS=3; MH_FLEET_RESTART_PCT=33
+  c=$(mh_fm_value "$fm" fleet_max_children)
+  printf '%s' "$c" | grep -Eq '^[0-9]{1,2}$' || c=
+  m=$(mh_fm_value "$fm" fleet_max_compactions)
+  printf '%s' "$m" | grep -Eq '^[0-9]{1,2}$' || m=
+  p=$(mh_fm_value "$fm" fleet_restart_max_pct)
+  printf '%s' "$p" | grep -Eq '^[0-9]{1,3}$' || p=
+  if [ -n "$c" ] && [ "$((10#$c))" -ge 1 ] && [ "$((10#$c))" -le 9 ]; then MH_FLEET_MAX_CHILDREN=$((10#$c)); fi
+  if [ -n "$m" ] && [ "$((10#$m))" -le 9 ]; then MH_FLEET_MAX_COMPACTIONS=$((10#$m)); fi
+  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi
+}
+# mh_fleet_role <root> — prints child | master | nothing; sets MH_FLEET_EPIC (child only, else empty; read
+# it from the calling shell, not from inside $( )). The marker is <this worktree's private git dir>/marvin-fleet:
+# lines role=child|master and epic=<KEY>. Never followed if a symlink; first 4 KiB only; read-only, silent,
+# rc 0 always — a hook never blocks.
+mh_fleet_role() {
+  local root="$1" gd mk body role epic
+  MH_FLEET_EPIC=
+  gd=$(git -C "$root" rev-parse --git-dir 2>/dev/null) || return 0
+  [ -n "$gd" ] || return 0
+  case "$gd" in /*) ;; *) gd="$root/$gd" ;; esac
+  mk="$gd/marvin-fleet"
+  [ ! -L "$mk" ] && [ -f "$mk" ] || return 0
+  body=$(head -c 4096 -- "$mk" 2>/dev/null | tr -d '\r')
+  role=$(printf '%s\n' "$body" | sed -nE 's/^role=//p' | head -n 1)
+  case "$role" in
+    child)
+      epic=$(printf '%s\n' "$body" | sed -nE 's/^epic=//p' | head -n 1)
+      if printf '%s' "$epic" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+$'; then MH_FLEET_EPIC=$epic; fi
+      echo child ;;
+    master) echo master ;;
+  esac
+  return 0
+}
 # mh_win_for <k> — the resolved window, stepped up (→ 200k → 1M → k) when usage exceeds it
 mh_win_for() {
   local k=$1 w=$MH_WIN

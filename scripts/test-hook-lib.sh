@@ -129,6 +129,62 @@ F mh_fm_value "$FM" c; eq "x#y"
 F mh_fm_value "$FM" d; eq ""
 F mh_fm_value "$FM" e; eq "plain"
 
+# ── fleet role marker and settings (fleet-mode) ───────────────────────────────────────────────────
+# fleet <root> → "<role>|<epic>" read in ONE shell (MH_FLEET_EPIC does not survive a $( ) subshell)
+fleet() { OUT=$( ( . "$LIBUSE"; r=$(mh_fleet_role "$1" 2>"$WORK/fleet.err"); mh_fleet_role "$1" >/dev/null 2>>"$WORK/fleet.err"; printf '%s|%s' "$r" "$MH_FLEET_EPIC" ) 2>&1 ); RC=$?; }
+mkrepo() { rm -rf "$1"; mkdir -p "$1"; git -C "$1" init -q; }
+gdir()   { ( cd "$1" && cd "$(git rev-parse --git-dir)" && pwd -P ); }
+
+hd "F1 a role=child marker in the private git dir prints child and sets MH_FLEET_EPIC"
+mkrepo "$WORK/f1"; printf 'role=child\nepic=ABC-12\n' > "$(gdir "$WORK/f1")/marvin-fleet"
+fleet "$WORK/f1"; rc 0; eq "child|ABC-12"
+printf 'role=master\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; rc 0; eq "master|"
+printf 'role=child\nepic=bad key\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; eq "child|"
+printf 'role=child\r\nepic=ABC-12\r\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; eq "child|ABC-12"
+
+hd "F1b the marker lives in one worktree's private git dir; the main checkout reads nothing"
+mkrepo "$WORK/f1b"; git -C "$WORK/f1b" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i
+git -C "$WORK/f1b" worktree add -q "$WORK/f1b-wt" -b wt 2>/dev/null
+printf 'role=child\nepic=XY-7\n' > "$(gdir "$WORK/f1b-wt")/marvin-fleet"
+fleet "$WORK/f1b-wt"; rc 0; eq "child|XY-7"
+fleet "$WORK/f1b"; rc 0; eq "|"
+
+hd "F2 no marker is empty output, rc 0"
+mkrepo "$WORK/f2"; fleet "$WORK/f2"; rc 0; eq "|"
+
+hd "F3 a marker that is a symlink is never followed"
+mkrepo "$WORK/f3"; printf 'role=child\nepic=ABC-12\n' > "$WORK/f3-real"; ln -s "$WORK/f3-real" "$(gdir "$WORK/f3")/marvin-fleet"
+fleet "$WORK/f3"; rc 0; eq "|"
+
+hd "F4 an unknown role or an empty marker is empty output"
+mkrepo "$WORK/f4"; printf 'role=admiral\nepic=ABC-12\n' > "$(gdir "$WORK/f4")/marvin-fleet"
+fleet "$WORK/f4"; rc 0; eq "|"
+: > "$(gdir "$WORK/f4")/marvin-fleet"; fleet "$WORK/f4"; rc 0; eq "|"
+
+hd "F5 a root that is not a git repo is empty output, rc 0, nothing on stderr"
+mkdir -p "$WORK/f5"; fleet "$WORK/f5"; rc 0; eq "|"
+fleet "$WORK/f5-missing"; rc 0; eq "|"
+if [ ! -s "$WORK/fleet.err" ]; then ok "no stderr"; else bad "stderr: $(head -c 80 "$WORK/fleet.err")"; fi
+
+fprobe() { OUT=$( ( . "$LIBUSE"; mh_fleet_init "$1"; printf '%s %s %s' "$MH_FLEET_MAX_CHILDREN" "$MH_FLEET_MAX_COMPACTIONS" "$MH_FLEET_RESTART_PCT" ) 2>&1 ); RC=$?; }
+hd "S1 fleet_max_compactions: 0–9, else 3"
+fprobe ""; eq "3 3 33"
+for v in abc -1 99 10; do fprobe "fleet_max_compactions: $v"; eq "3 3 33"; done
+fprobe "fleet_max_compactions: 0"; eq "3 0 33"
+fprobe "fleet_max_compactions: 9   # cap"; eq "3 9 33"
+
+hd "S2 fleet_restart_max_pct: 1–99, else 33"
+for v in 0 100 x -5 007x; do fprobe "fleet_restart_max_pct: $v"; eq "3 3 33"; done
+fprobe "fleet_restart_max_pct: 50"; eq "3 3 50"
+fprobe "fleet_restart_max_pct: 08"; eq "3 3 8"
+
+hd "S3 fleet_max_children: 1–9, else 3"
+for v in 0 12 a; do fprobe "fleet_max_children: $v"; eq "3 3 33"; done
+fprobe "fleet_max_children: 2"; eq "2 3 33"
+fprobe "fleet_max_children: 9
+fleet_max_compactions: 1
+fleet_restart_max_pct: 99"; eq "9 1 99"
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
@@ -156,6 +212,18 @@ hd "ML4 depth guard removed — J7 must catch it"
 mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
 hd "ML5 trailing-comment strip removed — L7 must catch it"
 mutlib cmt "    | sed -E 's/(^|[[:space:]]+)#.*\$//' \\" '    | cat \' f_cmt
+f_fsym()  { fleet "$WORK/f3"; }
+f_frole() { printf 'role=admiral\nepic=ABC-12\n' > "$(gdir "$WORK/f4")/marvin-fleet"; fleet "$WORK/f4"; }
+f_fepic() { printf 'role=child\nepic=bad key\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; }
+f_fpct()  { fprobe "fleet_restart_max_pct: 100"; }
+hd "ML7 symlink guard on the fleet marker removed — F3 must catch it"
+mutlib fsym '  [ ! -L "$mk" ] && [ -f "$mk" ] || return 0' '  [ -f "$mk" ] || return 0' f_fsym
+hd "ML8 role allow-list opened to any value — F4 must catch it"
+mutlib frole '    master) echo master ;;' '    ?*) echo "$role" ;;' f_frole
+hd "ML9 epic key shape check removed — F1 must catch it"
+mutlib fepic "      if printf '%s' \"\$epic\" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+\$'; then MH_FLEET_EPIC=\$epic; fi" '      MH_FLEET_EPIC=$epic' f_fepic
+hd "ML10 restart-percentage upper bound removed — S2 must catch it"
+mutlib fpct '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' f_fpct
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
