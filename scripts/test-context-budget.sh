@@ -253,6 +253,7 @@ assert_out "successor due: post-compaction context at 40% (limit 33%)"; assert_o
 tfleet "$T" 1 330; run "$HOOK" "$PC" PostToolUse "$T"; assert_out "post-compaction context at 33% (limit 33%)"
 tfleet "$T" 1 320; run "$HOOK" "$PC" PostToolUse "$T"; assert_rc0; assert_empty
 tfleet "$T" 1 400 405; run "$HOOK" "$PC" PostToolUse "$T"; assert_rc0; assert_empty
+tfleet "$T" 1 400 850; run "$HOOK" "$PC" PostToolUse "$T"; assert_out "start no new task"; assert_lacks "successor due"
 tfleet "$T" 1 400 405 410; run "$HOOK" "$PC" UserPromptSubmit "$T"; assert_out "post-compaction context at 40% (limit 33%)"
 tfleet "$T" 1 400 405 410 415; run "$HOOK" "$PC" UserPromptSubmit "$T"; assert_lacks "successor due"; assert_out "past the 400k soft budget"
 PR="$WORK/proj-restart"; mk_project "$PR" "" "" "" child "fleet_restart_max_pct: 50"
@@ -280,12 +281,15 @@ tfleet "$T" 1 930 950; run "$HOOK" "$PK" PostToolUse "$T"; assert_json
 assert_out "successor due: compaction cap reached (1 of 1)"; assert_lacks "rest point"
 
 hd "F9 the rest point: 92 % winds down, 94 % rests, the override scales both, the disable switches (brief B9)"
+S3W94="wind down to the rest point: dispatch only work that can finish before it (94% of the window), nothing size:l or larger; end your turn below it only to wait on the architect or the master (a question, cross-epic or blocked doorbell). Rules: .marvin/agents/fleet-child.md"
 transcript "$T" 850 920; run "$HOOK" "$PC" PostToolUse "$T"; assert_json
-assert_out "at 92% of the 1000k context window — $X2 Rules: .marvin/agents/session-budget.md"; assert_lacks "rest point"
-run "$HOOK" "$PC" UserPromptSubmit "$T"; assert_out "$X2"; assert_lacks "rest point"
+assert_out "~920k tokens, at 92% of the 1000k context window — $S3W94"; assert_lacks "$X2"; assert_lacks "rest point: dispatch nothing new"
+run "$HOOK" "$PC" UserPromptSubmit "$T"; assert_out "$S3W94"; assert_lacks "$X2"
+run "$HOOK" "$PM" PostToolUse "$T"; assert_out "at 92% of the 1000k context window — $X2 Rules: .marvin/agents/session-budget.md"; assert_lacks "wind down to the rest point"
+run "$HOOK" "$PM" UserPromptSubmit "$T"; assert_out "$X2"; assert_lacks "wind down to the rest point"
 transcript "$T" 930 940; run "$HOOK" "$PC" PostToolUse "$T"; assert_out "rest point: dispatch nothing new"
 transcript "$T" 920 950; run "$HOOK" "$PC" PostToolUse "$T"; assert_out "rest point: dispatch nothing new"
-transcript "$T" 690 730; runenv CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 "$PC" PostToolUse "$T"; assert_out "$X2"; assert_lacks "rest point"
+transcript "$T" 690 730; runenv CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 "$PC" PostToolUse "$T"; assert_out "finish before it (75% of the window)"; assert_lacks "rest point: dispatch nothing new"
 transcript "$T" 740 760; runenv CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80 "$PC" PostToolUse "$T"; assert_out "rest point: dispatch nothing new"
 transcript "$T" 895 910; runenv DISABLE_AUTO_COMPACT=1 "$PC" PostToolUse "$T"; assert_is "$(expect PostToolUse 910 'at 91% of the 1000k context window' "$X3")"
 transcript "$T" 850 950; runenv DISABLE_AUTO_COMPACT=1 "$PC" PostToolUse "$T"; assert_out "$X3"; assert_lacks "rest point"
@@ -359,6 +363,11 @@ REST='  if [ "$1" -gt 0 ] && [ "$(mh_pct "$1")" -ge $((MH_FLEET_REST_PCT * MH_SC
 mutation rest lib "$REST" '  if [ "$1" -gt 0 ] && [ "$(mh_pct "$1")" -gt $((MH_FLEET_REST_PCT * MH_SCALE / 100)) ]; then echo 1; else echo 0; fi' "$PC" PostToolUse "930 940"
 hd "M11 rest point unscaled — F9 (the override at 80) must catch it"
 mutation restscale lib "$REST" '  if [ "$1" -gt 0 ] && [ "$(mh_pct "$1")" -ge "$MH_FLEET_REST_PCT" ]; then echo 1; else echo 0; fi' "$PC" PostToolUse "740 760" CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80
+hd "M12 the child's wind-down branch dropped — F9 (child at 92 % gets S3W) must catch it"
+mutation s3w hook '  elif [ "$1" = 3 ] && [ -z "$off" ] && [ "$MH_FLEET_ROLE" = child ]; then' '  elif false; then' "$PC" PostToolUse "850 920"
+hd "M13 PostToolUse post-compaction window widened to n ≤ 3 — F4 (400k → 850k) must catch it"
+tfleet "$T" 1 400 850
+mutation lim hook '    lim=1; [ "$event" = UserPromptSubmit ] && lim=3' '    lim=3' "$PC" PostToolUse -
 
 printf '\n----\ntest-context-budget: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

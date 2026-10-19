@@ -9,11 +9,12 @@
 #   PostToolUse      — only on the turn the level RISES (stateless: the last two messages are compared).
 #   UserPromptSubmit — on every prompt at level ≥ 1: the user is present, so that is when to tell them.
 # Fleet mode (a role marker, lib mh_fleet_role; no marker = the solo texts above, unchanged): level 3 only
-# winds down; the REST point (lib mh_fleet_rest, a state above level 3) tells a child or master to write the
-# handoff and keep working until the host auto-compacts it. A child is sent a SUCCESSOR instead at the
-# compaction cap, when its first message after a compaction is too large, or when compaction is off
-# (DISABLE_COMPACT); DISABLE_AUTO_COMPACT means no rest point (today's level-3 text). The compaction history
-# is read only for a fleet child at level ≥ 2, after a size drop, or on a prompt (it costs ~1 s per 100 MB).
+# winds down (a child: toward the rest point, never idling below it); the REST point (lib mh_fleet_rest, a
+# state above level 3) tells a child or master to write the handoff and keep working until the host
+# auto-compacts it. A child is sent a SUCCESSOR instead at the compaction cap, when its first message after a
+# compaction is too large, or when compaction is off (DISABLE_COMPACT); DISABLE_AUTO_COMPACT means no rest
+# point (today's level-3 text). The compaction history is read only for a fleet child at level ≥ 2, after a
+# size drop, or on a prompt (it costs ~0.8 s per 100 MB).
 # What each level demands is owned by .marvin/agents/session-budget.md (fleet: fleet.md, fleet-child.md).
 # Contract: Marvin projects only; sub-agent invocations skipped; never writes a file; always exits 0; only
 # numbers this script computed reach the output; never blocks.
@@ -60,6 +61,8 @@ fsay() {  # fsay <state> — the fleet role's advisory: successor, rest, level 3
     say 3 "rest point: dispatch nothing new, write the handoff and reach a clean logical break (all work committed, tracker current, no sub-agent running); then keep to small steps and do NOT end your turn to wait — the host's auto-compact fires shortly (compaction $((c + 1)) of $MH_FLEET_MAX_COMPACTIONS); after it, resume from the handoff." .marvin/agents/fleet-child.md
   elif [ "$1" = 4 ]; then
     say 3 "rest point: write the handoff, then keep to small steps — the host's auto-compact fires shortly; never hand off while a child runs (a fresh master only at a fleet edge)." .marvin/agents/fleet.md
+  elif [ "$1" = 3 ] && [ -z "$off" ] && [ "$MH_FLEET_ROLE" = child ]; then
+    say 3 "wind down to the rest point: dispatch only work that can finish before it ($((MH_FLEET_REST_PCT * MH_SCALE / 100))% of the window), nothing size:l or larger; end your turn below it only to wait on the architect or the master (a question, cross-epic or blocked doorbell)." .marvin/agents/fleet-child.md
   elif [ "$1" = 3 ] && [ -z "$off" ]; then say 3 "$S2"
   else say "$1"; fi
 }
