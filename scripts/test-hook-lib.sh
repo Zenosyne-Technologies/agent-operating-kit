@@ -197,6 +197,52 @@ fprobe "fleet_max_children: 9
 fleet_max_compactions: 1
 fleet_restart_max_pct: 99"; eq "9 1 99"
 
+# ── compaction metrics from the transcript (fleet-mode) ───────────────────────────────────────────
+# amsg <file> <k> appends one assistant message of context size k (thousands); boundary <file> [sidechain] appends a
+# compaction line. mh_compactions / mh_since_compact are read through F (OUT = stdout+stderr, RC = their own status).
+CMSG=0
+amsg() { CMSG=$((CMSG+1))
+  printf '{"type":"assistant","message":{"id":"msg_c%d","content":[{"type":"thinking","thinking":"hm"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d,"output_tokens":50}}}\n' "$CMSG" $(( $2 * 1000 - 1000 )) >> "$1"; }
+boundary() { printf '{"type":"system","subtype":"compact_boundary","isSidechain":%s,"compactMetadata":{"trigger":"auto","preTokens":990000}}\n' "${2:-false}" >> "$1"; }
+
+hd "C1 mh_compactions counts main-thread compaction lines over the whole file"
+C="$WORK/c1.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 120; boundary "$C"; amsg "$C" 130
+F mh_compactions "$C"; rc 0; eq 2
+: > "$C"; amsg "$C" 100; F mh_compactions "$C"; rc 0; eq 0
+: > "$C"; boundary "$C"; for _i in $(seq 450); do amsg "$C" 50; done   # the boundary is far outside any 400-line tail
+F mh_compactions "$C"; rc 0; eq 1
+F mh_compactions "$WORK/none.jsonl"; rc 1
+F mh_compactions ""; rc 1
+
+hd "C2 compaction text quoted in a tool result, or without the system type, is not a compaction"
+C="$WORK/c2.jsonl"; : > "$C"
+printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"{\\"type\\":\\"system\\",\\"subtype\\":\\"compact_boundary\\"}"}]}}\n' >> "$C"
+printf '{"type":"user","subtype":"compact_boundary","message":{"content":"x"}}\n' >> "$C"
+F mh_compactions "$C"; rc 0; eq 0
+boundary "$C"; F mh_compactions "$C"; rc 0; eq 1
+
+hd "C3 a sub-agent (sidechain) compaction is not the main thread's"
+C="$WORK/c3.jsonl"; : > "$C"; boundary "$C" true; F mh_compactions "$C"; rc 0; eq 0
+boundary "$C"; F mh_compactions "$C"; rc 0; eq 1
+
+hd "C4 mh_since_compact: messages after the LAST compaction, and the size of the first of them"
+C="$WORK/c4.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 120; amsg "$C" 130
+F mh_since_compact "$C"; rc 0; eq "2 120"
+: > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 700; boundary "$C"; amsg "$C" 150; amsg "$C" 160; amsg "$C" 170
+F mh_since_compact "$C"; rc 0; eq "3 150"
+: > "$C"; boundary "$C"; amsg "$C" 80; boundary "$C" true; amsg "$C" 90   # a sidechain boundary does not reset the count
+F mh_since_compact "$C"; rc 0; eq "2 80"
+# one message over several lines is one message, last line's size (as mh_sizes)
+: > "$C"; boundary "$C"; amsg "$C" 100; CMSG=$((CMSG-1)); amsg "$C" 110; amsg "$C" 120
+F mh_since_compact "$C"; rc 0; eq "2 110"
+F mh_since_compact "$WORK/none.jsonl"; rc 1
+
+hd "C5 mh_since_compact prints nothing without a compaction or without a message after it"
+C="$WORK/c5.jsonl"; : > "$C"; amsg "$C" 100; amsg "$C" 200
+F mh_since_compact "$C"; rc 0; eq ""
+boundary "$C"; F mh_since_compact "$C"; rc 0; eq ""
+: > "$C"; F mh_since_compact "$C"; rc 0; eq ""
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
@@ -248,6 +294,25 @@ hd "ML9 epic key shape check removed — F1 must catch it"
 mutlib fepic "      if printf '%s' \"\$epic\" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+\$'; then MH_FLEET_EPIC=\$epic; fi" '      MH_FLEET_EPIC=$epic' f_fepic
 hd "ML10 restart-percentage upper bound removed — S2 must catch it"
 mutlib fpct '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' f_fpct
+f_cpat()  { F mh_compactions "$WORK/c2.jsonl"; }
+f_cside() { F mh_compactions "$WORK/c3.jsonl"; }
+f_ctail() { F mh_compactions "$WORK/c1.jsonl"; }
+f_cm()    { local f="$WORK/cm.jsonl"; : > "$f"; amsg "$f" 900; boundary "$f"; amsg "$f" 700; boundary "$f"; amsg "$f" 150; amsg "$f" 160; F mh_since_compact "$f"; }
+f_clast() { f_cm; }
+f_cfirst() { f_cm; }
+f_crc()   { F mh_compactions "$WORK/none.jsonl"; }
+hd "ML15 compaction match loses the system type — C2 must catch it"
+mutlib cpat "MH_COMPACT_PAT='\"type\":\"system\",\"subtype\":\"compact_boundary\"'" "MH_COMPACT_PAT='\"subtype\":\"compact_boundary\"'" f_cpat
+hd "ML16 sidechain compactions counted — C3 must catch it"
+mutlib cside "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -vc '\"isSidechain\":true'" "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -c ''" f_cside
+hd "ML17 compactions read only the 400-line tail — C1 must catch it"
+mutlib ctail "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -vc '\"isSidechain\":true'" "  tail -n 400 -- \"\$1\" | grep -F -- \"\$MH_COMPACT_PAT\" 2>/dev/null | grep -vc '\"isSidechain\":true'" f_ctail
+hd "ML18 since_compact anchors on the FIRST compaction — C4 must catch it"
+mutlib clast "  ln=\$(grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -v '\"isSidechain\":true' | head -n 1 | cut -d: -f1)" f_clast
+hd "ML19 since_compact reports the LAST message's size, not the first's — C4 must catch it"
+mutlib cfirst "  | awk \"\$MH_SIZES_AWK\" | awk 'NR == 1 { f = \$0 } END { if (NR) print NR, f }'" "  | awk \"\$MH_SIZES_AWK\" | awk '{ f = \$0 } END { if (NR) print NR, f }'" f_cfirst
+hd "ML20 unreadable file no longer rc 1 — C1 rc must catch it"
+mutlib crc '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 0' f_crc
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

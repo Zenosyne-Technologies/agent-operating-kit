@@ -143,29 +143,57 @@ mh_fm_value() {
     | sed -E 's/^[[:space:]"'"'"']+//; s/[[:space:]"'"'"']+$//'
 }
 
-# Context size (in thousands) per MESSAGE, last two messages. Only lines whose type is assistant and that
-# carry an UNESCAPED "usage":{ are read (usage text quoted inside a tool result is escaped, so never
-# counts); the counters are matched only in the text from the LAST "usage":{ on, so a tool_use input
-# holding an input_tokens key earlier on the line is ignored. One size per "id":"msg_…" (last line wins);
-# a line without a message id is its own message.
+# Context size (in thousands) per MESSAGE. MH_SIZES_AWK reads assistant lines that carry an UNESCAPED
+# "usage":{ (usage text quoted inside a tool result is escaped, so never counts) and prints one size per
+# message, in order; the counters are matched only in the text from the LAST "usage":{ on, so a tool_use
+# input holding an input_tokens key earlier on the line is ignored. One size per "id":"msg_…" (last line
+# wins); a line without a message id is its own message. mh_sizes keeps the last two of the 400-line tail;
+# mh_since_compact runs the same program over the text after the last compaction.
+IFS= read -r -d '' MH_SIZES_AWK <<'AWK' || true
+{
+  key = "L" NR
+  if (match($0, /"id":"msg_[^"]*"/)) key = substr($0, RSTART, RLENGTH)
+  rest = $0; pos = 0
+  while ((i = index(rest, "\"usage\":{")) > 0) { pos += i; rest = substr(rest, i + 1) }
+  u = substr($0, pos)
+  n = 0
+  if (match(u, /"input_tokens":[0-9]+/))                { n += substr(u, RSTART + 15, RLENGTH - 15) }
+  if (match(u, /"cache_read_input_tokens":[0-9]+/))     { n += substr(u, RSTART + 26, RLENGTH - 26) }
+  if (match(u, /"cache_creation_input_tokens":[0-9]+/)) { n += substr(u, RSTART + 30, RLENGTH - 30) }
+  if (!(key in val)) order[++cnt] = key
+  val[key] = int(n / 1000)
+}
+END { for (j = 1; j <= cnt; j++) print val[order[j]] }
+AWK
 mh_sizes() {
   [ -n "${1:-}" ] && [ -f "$1" ] || return 1
   tail -c 8000000 -- "$1" 2>/dev/null | tail -n 400 \
   | grep '"type":"assistant"' | grep '"usage":{' \
-  | awk '{
-      key = "L" NR
-      if (match($0, /"id":"msg_[^"]*"/)) key = substr($0, RSTART, RLENGTH)
-      rest = $0; pos = 0
-      while ((i = index(rest, "\"usage\":{")) > 0) { pos += i; rest = substr(rest, i + 1) }
-      u = substr($0, pos)
-      n = 0
-      if (match(u, /"input_tokens":[0-9]+/))                { n += substr(u, RSTART + 15, RLENGTH - 15) }
-      if (match(u, /"cache_read_input_tokens":[0-9]+/))     { n += substr(u, RSTART + 26, RLENGTH - 26) }
-      if (match(u, /"cache_creation_input_tokens":[0-9]+/)) { n += substr(u, RSTART + 30, RLENGTH - 30) }
-      if (!(key in val)) order[++cnt] = key
-      val[key] = int(n / 1000)
-    }
-    END { for (j = 1; j <= cnt; j++) print val[order[j]] }' | tail -n 2
+  | awk "$MH_SIZES_AWK" | tail -n 2
+}
+
+# A compaction is one main-thread transcript line holding the literal system/compact_boundary pair (a
+# sub-agent's carries "isSidechain":true; quoted inside a tool result the quotes are escaped, so no match).
+MH_COMPACT_PAT='"type":"system","subtype":"compact_boundary"'
+# mh_compactions <transcript> — the number of compactions in the WHOLE file (not the 400-line tail); rc 1
+# when the file is unreadable.
+mh_compactions() {
+  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
+  grep -F -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | grep -vc '"isSidechain":true'
+  return 0
+}
+# mh_since_compact <transcript> — "<n> <k>": the messages after the LAST compaction and the context size (k)
+# of the first of them, sized exactly as mh_sizes does; nothing when there is no compaction or no message
+# after it. rc 1 only when the file is unreadable.
+mh_since_compact() {
+  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
+  local ln
+  ln=$(grep -nF -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | grep -v '"isSidechain":true' | tail -n 1 | cut -d: -f1)
+  [ -n "$ln" ] || return 0
+  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null \
+  | grep '"type":"assistant"' | grep '"usage":{' \
+  | awk "$MH_SIZES_AWK" | awk 'NR == 1 { f = $0 } END { if (NR) print NR, f }'
+  return 0
 }
 
 # mh_last_text <transcript> — the last main-thread assistant text block, decoded. Up to five candidate
