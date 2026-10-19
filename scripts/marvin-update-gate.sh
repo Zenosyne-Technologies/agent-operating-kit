@@ -44,12 +44,11 @@ function pt(s,   x, p) {  # a table row -> its first cell as a bold point token 
   if (x == "What" || x == "Impact" || x == "Cause" || x == "Fix" || x == "Needs you?") return "**" x "**"
   return "" }  # (English labels only feed the order check; the point count is ispoint)
 function hasall(c) { return index(c, "**What**") && index(c, "**Impact**") && index(c, "**Cause**") && index(c, "**Fix**") && index(c, "**Needs you?**") }
-function ispoint(s, nx,   x, p) {  # 1 if s is a point line: a bold-led (bulleted) blockquote line, or a table row with a first cell
+function ispoint(s, nx,   x, y, p) {  # 1 if s is a point line (callers pass only ">" lines or table rows): a bold-led (bulleted) blockquote line, or a table row with a first cell
   if (s ~ /^[ \t]*(>[ \t]*)?\|/) {  # table row: first cell non-empty, not a separator row, not the header (the row above a separator)
-    if (nx ~ /^[ \t]*(>[ \t]*)?\|[ \t]*:?-+:?[ \t]*(\||$)/) return 0
+    y = nx; if (sub(/^[ \t]*(>[ \t]*)?\|/, "", y) && y ~ /^[ \t]*:?-+:?[ \t]*(\|.*)?$/) return 0
     x = s; sub(/^[ \t]*(>[ \t]*)?\|/, "", x); p = index(x, "|"); if (p) x = substr(x, 1, p - 1)
     gsub(/[ \t]/, "", x); return x != "" && x !~ /^:?-+:?$/ }
-  if (s !~ /^[ \t]*>/) return 0
   x = s; sub(/^[ \t]*>[ \t]*/, "", x); sub(/^[-*][ \t]+/, "", x)
   return x ~ /^\*\*[^*]+\*\*/ }
 function inorder(c,   k, p, q, r) {

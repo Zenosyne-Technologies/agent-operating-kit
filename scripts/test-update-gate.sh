@@ -224,6 +224,32 @@ mk_t "> **⚠️ x**
 
 - x"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # EN-order: all five English labels, out of order
 
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | sed -E 's/^> - /> * /')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # '*' bullets
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | sed -E 's/^> - /> * /' | grep -v 'Ok\*\*')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # four '*' bullets
+mk_t '> **⚠️ AOS-13 lassú**
+> | pont | részlet |
+> |:--|---|
+> | Mi | az export lassú. |
+> | Hatás | AOS-13 vár. |
+> | Ok | ismeretlen |
+> | Javítás | index. |
+> | Kell tőled? | nem |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # table inside the blockquote
+mk_t '> **⚠️ AOS-13 lassú**
+> | pont | részlet |
+> |---|---|
+> | Mi | az export lassú. |
+> | Hatás | AOS-13 vár. |
+> | Ok | ismeretlen |
+> | Javítás | index. |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # quoted table: header not a point
+
 hd "G6 fenced and inline code is ignored"
 mk_t 'Example:
 ```
@@ -371,7 +397,7 @@ mk_t '> **⚠️ AOS-13 lassú**
 **Következő**
 
 - javítás'
-mutation header '    if (nx ~ /^[ \t]*(>[ \t]*)?\|[ \t]*:?-+:?[ \t]*(\||$)/) return 0' '    if (0) return 0' "$P" "$(ups_in "$P")"
+mutation header '    y = nx; if (sub(/^[ \t]*(>[ \t]*)?\|/, "", y) && y ~ /^[ \t]*:?-+:?[ \t]*(\|.*)?$/) return 0' '    if (0) return 0' "$P" "$(ups_in "$P")"
 
 printf '\n----\ntest-update-gate: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
