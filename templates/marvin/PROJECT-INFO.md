@@ -20,6 +20,10 @@ issue_log_path: {{DOCS_ISSUE_LOG_PATH}}
 telemetry: {{TELEMETRY}}
 update_gate: advise
 ticket_lint: block
+codex_handover: off
+validation_strategy: claude
+codex_lanes: []
+codex_evidence: claude
 # Optional: overrides the window the context ladder measures (.marvin/agents/session-budget.md)
 # context_window_ktokens: 1000
 kit_version: {{KIT_VERSION}}
@@ -35,5 +39,6 @@ Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Th
 - `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`)
 - `update_gate` sets the user-update format check (`advise` | `block` | `off`, `.marvin/agents/user-updates.md` *Enforcement*); `context_window_ktokens`, `session_soft_ktokens` and `session_hard_ktokens` are optional overrides for `.marvin/agents/session-budget.md`
 - `ticket_lint` sets the tracker-write label check (`block` | `advise` | `off`; absent = `block`) — `.marvin/agents/ticket-filing.md`
+- `codex_handover` (`off` | `ask` | `auto`), `validation_strategy` (`claude` | `codex` | `four-eye` | `claude+lanes`), `codex_lanes` (any of `plan`, `review`, `security`, `design`) and `codex_evidence` (`claude` | `codex`) set the Codex handover — `.marvin/agents/codex.md`
 - Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
 - Operating rules: `.marvin/CLAUDE.marvin.md` (imported by `CLAUDE.md`) + the `.marvin/agents/` rules cascade

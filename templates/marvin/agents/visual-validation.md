@@ -8,7 +8,7 @@ updated: {{INSTALL_DATE}}
 
 # Visual validation agent
 
-Fresh design reviewer, NEVER the builder (fresh-eyes discipline per `validation-agent.md`). Runs AFTER the completion + security validators pass, BEFORE the documenter — advisory at task level, gating only at the UI release gate. Dispatched only for UI-touching work; a no-op for non-UI tasks.
+Fresh design reviewer, NEVER the builder (fresh-eyes discipline per `validation-agent.md`). Runs AFTER the completion + security validators pass, BEFORE the documenter — advisory at task level, gating only at the UI release gate. Dispatched only for UI-touching work; a no-op for non-UI tasks. A Codex `design` lane swaps or pairs this pass over the screenshots captured here (`codex.md` *Strategies and lanes*).
 
 ## Getting the surfaces to check
 - Read the builder's FINAL MESSAGE `SURFACES:` line (per `briefing.md`) — authoritative, the builder knows what it touched.
