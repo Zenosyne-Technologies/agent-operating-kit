@@ -408,6 +408,10 @@ templates/
       stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .marvin/reports/
 ```
 
+## Windows
+
+The hooks and helper scripts are bash scripts, so on Windows they need Git for Windows (Git Bash) on the machine; the Claude Code desktop app and the CLI both run them through it. Install Git for Windows with its default "Git from the command line and also from 3rd-party software" option, keep line endings as LF for this plugin's files (`core.autocrlf=false`; a CRLF-mangled bash script fails), and install the plugin as in Manual install. The path-handling code (`mh_path` in `scripts/lib/marvin-hook-lib.sh`) treats `C:\x\y`, `C:/x/y` and `/c/x/y` as one path, so the marker, sweep and run-state comparisons hold across the spellings Git Bash and the desktop app produce. A `windows-latest` CI job (Git Bash, `core.autocrlf=false` set before checkout) runs the worktree-sweep, session-hook, hook-library, ticket-lint, worktree-marker and run-state-sync suites; that job is added and its first run is pending, so Windows support is untested until it has gone green once.
+
 ## Portability notes
 
 - **Each version targets a declared model set.** Templates name tiers (`orchestrator` / `heavy worker` / `small worker` / `micro` / `frontier`); `templates/marvin/agents/model-profile.md` alone maps them to concrete models, and install writes those names in — no install-time substitution. v0.36's set: Opus 5.5 as orchestrator and heavy worker, Sonnet 5.5 as small worker, Haiku 5.5 as micro (both pinned at `high`), Fable 5.1 as the opt-in frontier — default efforts and its three model-specific rules (the max gate recommends `max` over frontier, the micro tier always runs at `high`, fully-specified code is micro-tier work) are the profile's. Other models are unsupported: the orchestrator says so once when its session model differs from the profile's.
