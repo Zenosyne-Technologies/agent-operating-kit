@@ -19,7 +19,7 @@ The ONE owner of what agents leave on the host outside git. Worktrees themselves
   `T=$(git rev-parse --show-toplevel); case "$T" in */.claude/worktrees/*) O=$(basename "$T");; *) O=main;; esac`
 - Names start with `<P>-<O>-`, lower-cased, only `[a-z0-9_-]` (compose rejects `.`). A compose stack runs with `-p <P>-<O>` and its compose file declares the four labels on every service, volume and network.
 - A container inherits its image's labels: one run from a throwaway agent image carries them and is swept with that image's owner once the owner worktree is gone. Run anything meant to outlive the task from an image labelled `keep`, or from your own image.
-- A project that keeps its Docker resources unlabelled says so in `CLAUDE.md`: then agents neither label those resources nor edit those compose files, and anything they must label for durability is `marvin.lifetime=keep`.
+- A project that keeps its Docker resources unlabelled says so in `CLAUDE.md`: then agents neither label those resources nor edit those compose files, and anything they must label for durability is `marvin.lifetime=keep`. `docker_lint: off` in `.marvin/PROJECT-INFO.md` silences the Docker lint for such a project.
 - Set all four labels every time. `throwaway` is the normal value; `keep` only when the brief or the user says the resource outlives the task. The sweep treats a missing lifetime as `keep` and never removes it.
 
 ## Remove it when definitely done

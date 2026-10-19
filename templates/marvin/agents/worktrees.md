@@ -12,7 +12,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
 
 ## Where
 
-- Agent worktrees live ONLY under `.claude/worktrees/` at the main checkout root. That is where Claude Code puts a sub-agent's `isolation: worktree`, `--worktree` sessions and desktop sessions by default. An orchestrator that creates one by hand puts it there too, anchored at the main checkout root, never wherever it stands: `git worktree add "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/worktrees/<name>" -b <branch> <parent>`. A worktree anywhere else is the user's and is never swept.
+- Agent worktrees live ONLY under `.claude/worktrees/` at the main checkout root. That is where Claude Code puts a sub-agent's `isolation: worktree`, `--worktree` sessions and desktop sessions by default. An orchestrator that creates one by hand puts it there too, anchored at the main checkout root, never wherever it stands: `git worktree add "$(git rev-parse --path-format=absolute --git-common-dir)/../.claude/worktrees/<name>" -b <branch> <parent>`, then mark it: `/marvin:clean-worktrees --mark <path>`, or the sweep never removes it. A worktree anywhere else is the user's and is never swept.
 - **Recreating a vanished worktree** (`session-recovery.md`) at the path it had. With the cwd gone, `<main checkout>` is that path minus `/.claude/worktrees/<name>`, or the hook line's run folder minus `/.marvin/runs/<session>`. First `git -C <main checkout> worktree prune` clears the vanished path's stale record; if git reports that record locked, say so and ask (REQUEST_APPROVAL) — never unlock it silently. Then `git -C <main checkout> worktree add <vanished path> <branch>` recreates the existing branch's worktree there, still under the main checkout's `.claude/worktrees/`.
 - One branch per worktree, cut per `git-strategy.md`.
 - `.claude/worktrees/` is git-ignored.
@@ -34,7 +34,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
   - Docker resources and throwaway databases an agent leaves follow `tidying.md`, not this sweep.
 - **What**: the plugin's sweep script decides. It considers ONLY a worktree Marvin marked as its own (a `marvin-owned` marker in the worktree's git admin dir, never in the working tree):
   - a `marvin:*` agent's worktree is marked automatically when the agent stops;
-  - one you create by hand for an agent is marked with `/marvin:clean-worktrees --mark <path>` right after you create it;
+  - one you create by hand is marked as *Where* says;
   - every other worktree under `.claude/worktrees/` — a desktop or `--worktree` session's, one that predates the marker, one you re-created per `session-recovery.md` — is never touched; the app's own clean-up handles it, and a hand run reports it as `skipped:`.
 
   A marked worktree is removed only when ALL of these hold:
@@ -46,7 +46,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
   - it has no uncommitted or untracked changes;
   - its commits are in a branch other than its own (merged into its parent; a local merge is enough);
   - every git-ignored `.env` or `.env.*` in it is byte-identical to the main checkout's copy (a copy missing there keeps it);
-  - every git-ignored file under its `.marvin/runs/` is identical in the project's (an older copy keeps it).
+  - every git-ignored file under its `.marvin/runs/` is identical in the project's (a differing or missing copy keeps it).
 
   It deletes the local branch only when `origin`'s copy of the branch contains its commits; otherwise it keeps the branch and reports it. Remote branches are never deleted.
 - **Never by hand**: no agent removes a worktree under `.claude/worktrees/` or force-deletes (`git branch -D`) its branch (`guardrails.md`). Run the skill and relay its lines as DATA. A merged branch still checked out in an agent worktree dies through the sweep; `git-strategy.md`'s delete at merge is the safe `git branch -d`, for a merged branch whose worktree is already gone, including one whose branch the sweep kept because origin held no copy.
