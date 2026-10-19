@@ -273,6 +273,19 @@ lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-li
 if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
 else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
 
+# ── 20. fleet-pairs: every routed fleet event has both halves — the child's sending half in
+# fleet-child.md and the master's receiving half in fleet.md, each marked by its **E-<event>** tag
+# exactly once per guide (the kit's dominant defect is a rule written in one half and not the other)
+fp=""
+for f in templates/marvin/agents/fleet.md templates/marvin/agents/fleet-child.md; do
+  if [ ! -f "$f" ]; then fp="$fp $f missing;"; continue; fi
+  for t in E-cross E-scope E-done E-blocked E-successor E-question E-relay; do
+    n=$(grep -oF "**$t**" "$f" | wc -l | tr -d ' ')
+    case "$n" in 1) ;; 0) fp="$fp **$t** missing from $f;" ;; *) fp="$fp **$t** ${n}x in $f (want 1);" ;; esac
+  done
+done
+[ -z "$fp" ] && pass fleet-pairs || fail fleet-pairs "$fp"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"

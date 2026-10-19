@@ -19,7 +19,7 @@ Every DO NOT an agent meets resolves to exactly ONE disposition. This file is th
 
 ## The escalation chain
 
-sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has NO channel to the user: on a CLARIFY or REQUEST_APPROVAL hit it STOPS, commits whatever safe work it finished, and reports the exact block in its FINAL MESSAGE. The orchestrator resolves it inline (a DO_INSTEAD it may authorise) or carries it to the user; a genuinely irreversible or destructive REQUEST_APPROVAL ALWAYS reaches the user. No sub-agent self-authorises past a REQUEST_APPROVAL, and no agent treats silence as approval.
+sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has NO channel to the user: on a CLARIFY or REQUEST_APPROVAL hit it STOPS, commits whatever safe work it finished, and reports the exact block in its FINAL MESSAGE. The orchestrator resolves it inline (a DO_INSTEAD it may authorise) or carries it to the user; a genuinely irreversible or destructive REQUEST_APPROVAL ALWAYS reaches the user, and only the user's own answer approves it — or, in fleet mode, a relay verified per `fleet-child.md`. No sub-agent self-authorises past a REQUEST_APPROVAL, and no agent treats silence as approval.
 
 ## Generic baseline — binds EVERY agent
 
