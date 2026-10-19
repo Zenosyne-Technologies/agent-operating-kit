@@ -372,6 +372,7 @@ templates/
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
     worktrees.md                   agent worktree location, push cadence, the sweep's when/what, WORKTREE: handover line
+    session-recovery.md            the session's worktree vanished mid-task — recreate from its branch, re-check the branch, confirm run state in the project, never mark, report
     tidying.md                     Docker labels, naming, who removes what and when, the backstop sweep, binary logging off for throwaway databases
     user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
