@@ -106,10 +106,19 @@ in_list() {  # in_list <value> <array name>
 phys() { (cd "$1" 2>/dev/null && pwd -P); }
 
 # ── the worktrees, and the deferred ones ─────────────────────────────────────────────────────
+# Listed through a temp file so git's exit status is seen: a failed listing is never "no worktrees" —
+# it would silently leave every worktree's run state behind and call the run done.
 WT_RAW=()
+WTL=$(mktemp "${TMPDIR:-/tmp}/${SELF}.XXXXXX") || { printf '%s: refused: cannot create a temp file\n' "$SELF" >&2; exit 2; }
+if ! git -C "$MAIN" worktree list --porcelain -z > "$WTL" 2>/dev/null; then
+  rm -f -- "$WTL"
+  printf '%s: refused: cannot list worktrees (git worktree list failed) — nothing moved\n' "$SELF" >&2
+  exit 2
+fi
 while IFS= read -r -d '' p; do
   case "$p" in "worktree "*) WT_RAW[${#WT_RAW[@]}]=${p#worktree } ;; esac
-done < <(git -C "$MAIN" worktree list --porcelain -z 2>/dev/null)
+done < "$WTL"
+rm -f -- "$WTL"
 if [ "${#WT_RAW[@]}" -gt 0 ]; then
   while IFS= read -r -d '' p; do
     pp=$(phys "$p") || continue

@@ -149,6 +149,12 @@ rewrites-content|N12|s/^  rm -f -- "\$s"\n\}/  rm -f -- "\$s"\n  printf x >> "\$
 no-legacy-reuse|N13|s/^  elif \[ "\$\{#LEG\[\@\]\}" -eq 1 \]; then L=\$\{LEG\[0\]\}/  elif false; then L=\${LEG[0]}/m
 multi-legacy-accepted|N13|s/^  if \[ "\$\{#LEG\[\@\]\}" -gt 1 \]; then/  if false; then/m
 legacy-file-accepted|N13|s/; else refuse "a legacy name that is not a folder[^\n]*; fi$/; fi/m
+worktree-list-failure-ignored|N05|s/^if ! git (-C "\$MAIN" worktree list --porcelain -z > "\$WTL" 2>\/dev\/null); then/git $1\nif false; then/m
+identical-winner-displaced|N13|s/if has "\$t" && cmp -s -- "\$w" "\$t"; then op dedup/if false; then op dedup/
+no-kept-match|N13|s/^kept_match\(\) \{  # kept_match/kept_match() { return 1;  # kept_match/m
+copy-without-cmp|N14|s/^  cmp -s -- "\$s" "\$d" \|\| \{ rm -f -- "\$d"; return 1; \}\n//m
+no-copy-fallback|N14|s/^  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then\n/  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then return 1\n/m
+copy-loses-mtime|N14|s/cp -p -- "\$s" "\$tmp"/cp -- "\$s" "\$tmp"/
 irregular-target-accepted|N13|s/^  if has "\$t" && \[ ! -f "\$t" \]; then refuse[^\n]*\n//m
 '
 

@@ -1796,6 +1796,18 @@ run_migrate . .;                         assert_rc 2 "two repository paths"
 mkdir -p "$WORK/n05-norepo"
 run_migrate "$WORK/n05-norepo";          assert_rc 2 "not a git work tree"
 assert_eq "$(snapshot)" "$before" "no usage error changed anything"
+# a failed `git worktree list` is never "no worktrees": exit 2, nothing moved
+mkdir -p "$WORK/shim-git"
+cat > "$WORK/shim-git/git" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = worktree ] && { echo "fatal: simulated worktree list failure" >&2; exit 128; }; done
+exec $(command -v git) "\$@"
+EOF
+chmod +x "$WORK/shim-git/git"
+PATH="$WORK/shim-git:$PATH" run_migrate
+assert_rc 2 "a failed worktree listing exits 2"
+assert_out "refused: cannot list worktrees"
+assert_eq "$(snapshot)" "$before" "nothing moved when the worktrees cannot be listed"
 
 hd "N06 --defer-flat leaves the main checkout's flat folders untouched"
 mk_runs n06; mk_wt wt1
@@ -1962,6 +1974,71 @@ run_migrate
 assert_runs_refused "a target that is a folder"
 assert_out "refused: a target that is not a regular file: .marvin/runs/20260301T000000Z-$NIL/AOS-1/ledger.md"
 assert_eq "$(snapshot)" "$before" "nothing changed"
+
+# a deferred worktree's ledger.md byte-identical to the one that landed is deduplicated on the later
+# run — whether it is newer by mtime (the winner branch) or not (the kept-copy branch); no older-<n>
+for n13_case in newer same; do
+  mk_runs "n13e-$n13_case"; mk_wt wt1
+  W=.claude/worktrees/wt1/.marvin/runs/AOS-1
+  mkdir -p "$W"; cp -p .marvin/runs/AOS-1/ledger.md "$W/ledger.md"
+  [ "$n13_case" = newer ] && touch -t 202603010000 "$W/ledger.md"
+  run_migrate --defer .claude/worktrees/wt1
+  assert_rc 0
+  L1=$(legacy_dirs)
+  run_migrate
+  assert_rc 0 "the later run ($n13_case mtime)"
+  assert_out "moved: $W/ledger.md -> .marvin/runs/$L1/AOS-1/ledger.md"
+  assert_gone "$W/ledger.md" "the identical copy is removed ($n13_case mtime)"
+  assert_body ".marvin/runs/$L1/AOS-1/ledger.md" "$LEDGER_MAIN" "the landed ledger is unchanged"
+  assert_eq "$(find ".marvin/runs/$L1/AOS-1" -name 'ledger.older-*' | wc -l | tr -d ' ')" "0" "no older-<n> copy for identical bytes ($n13_case mtime)"
+  assert_out "kept-older=0"
+  assert_report_wellformed "identical ledger, $n13_case mtime"
+done
+
+hd "N14 the copy path (no hard link possible): bytes land verified, the source goes only after cmp"
+# A shimmed `ln` refuses to link a source into place (as across filesystems), so place() takes its copy
+# path: `cp -p` to a temp beside the target, linked in, compared, and only then the source removed.
+mkdir -p "$WORK/shim-ln" "$WORK/shim-cp"
+cat > "$WORK/shim-ln/ln" <<EOF
+#!/bin/sh
+src=""; prev=""
+for a in "\$@"; do src=\$prev; prev=\$a; done
+case "\${src##*/}" in .marvin-runs-migrate.*) exec $(command -v ln) "\$@" ;; esac
+exit 1
+EOF
+cat > "$WORK/shim-cp/cp" <<'EOF'
+#!/bin/sh
+for a in "$@"; do last=$a; done
+printf 'a short copy\n' > "$last"
+exit 0
+EOF
+chmod +x "$WORK/shim-ln/ln" "$WORK/shim-cp/cp"
+mk_runs n14; mk_wt wt1
+touch -t 202601010000 "$WORK/n14-ref"
+before=$(content_set); n_before=$(file_count)
+PATH="$WORK/shim-ln:$PATH" run_migrate
+assert_rc 0 "the copy path"
+L=$(legacy_dirs)
+assert_body ".marvin/runs/$L/AOS-1/ledger.md" "$LEDGER_MAIN" "the copy holds the source's bytes"
+assert_body ".marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt1.md" "validator report from wt1"
+assert_gone .marvin/runs/AOS-1/ledger.md "the source is removed once the copy compared equal"
+if [ ".marvin/runs/$L/AOS-1/ledger.md" -nt "$WORK/n14-ref" ] || [ "$WORK/n14-ref" -nt ".marvin/runs/$L/AOS-1/ledger.md" ]; then
+  bad "the copy kept the source's mtime (a later merge decides by it)"
+else ok "the copy kept the source's mtime (a later merge decides by it)"; fi
+assert_eq "$(content_set)" "$before" "the content invariant holds on the copy path"
+assert_eq "$(file_count)" "$n_before" "no file gained or lost"
+assert_eq "$(find .marvin/runs -name '.marvin-runs-migrate.*' | wc -l | tr -d ' ')" "0" "no temp file left behind"
+# a copy that does not compare equal: the run fails, the source stays, the bad copy is removed
+mk_runs n14b
+PATH="$WORK/shim-cp:$WORK/shim-ln:$PATH" run_migrate
+assert_rc 1 "a copy that differs fails the move"
+assert_out "result=refused"
+assert_out "refused: move failed"
+assert_body .marvin/runs/AOS-1/20260101T000000Z-developer.md "developer report" "the source is kept when cmp fails"
+L=$(legacy_dirs)
+assert_gone ".marvin/runs/$L/AOS-1/20260101T000000Z-developer.md" "the differing copy is removed"
+assert_eq "$(find .marvin/runs -name '.marvin-runs-migrate.*' | wc -l | tr -d ' ')" "0" "no temp file left behind"
+assert_report_wellformed "failed copy"
 
 fi  # end SUITE runs
 
