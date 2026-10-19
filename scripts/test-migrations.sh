@@ -1842,10 +1842,12 @@ run_migrate
 assert_rc 0; assert_out "result=nothing-to-do"; assert_out "target=none"
 assert_eq "$(legacy_dirs)" "" "no legacy folder created when nothing moves"
 
-hd "N08 a folder whose name fails the key rule is skipped and reported, never moved"
+hd "N08 a folder whose name fails the key rule is skipped and reported, never moved; 42 and T-1 are keys"
 mk_runs n08
 S="20260310T101010Z-12345678-1234-1234-1234-123456789abc"
-mkdir -p .marvin/runs/notes .marvin/runs/aos-7 .marvin/runs/AOS-1/sub ".marvin/runs/$S/AOS-5"
+mkdir -p .marvin/runs/notes .marvin/runs/aos-7 .marvin/runs/AOS-1/sub ".marvin/runs/$S/AOS-5" .marvin/runs/42 .marvin/runs/T-1
+printf 'gh\n' > .marvin/runs/42/20260107T000000Z-developer.md
+printf 't\n' > .marvin/runs/T-1/ledger.md
 printf 'n\n' > .marvin/runs/notes/x.md
 printf 'l\n' > .marvin/runs/aos-7/y.md
 printf 'r\n' > .marvin/runs/README.md
@@ -1867,6 +1869,8 @@ assert_eq "$(report_lines | grep -c '\.gitignore')" "0" "the runs .gitignore is 
 L=$(legacy_dirs)
 assert_gone ".marvin/runs/$L/notes"; assert_gone ".marvin/runs/$L/aos-7"
 assert_there ".marvin/runs/$L/AOS-1/ledger.md" "key folders still move"
+assert_body ".marvin/runs/$L/42/20260107T000000Z-developer.md" "gh" "a GitHub issue-number key folder moves"
+assert_body ".marvin/runs/$L/T-1/ledger.md" "t" "a one-letter-prefix key folder moves"
 assert_report_wellformed "skips"
 
 hd "N09 a target that git does not ignore refuses the run"

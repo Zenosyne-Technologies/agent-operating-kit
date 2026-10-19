@@ -3,8 +3,10 @@
 # Real repos in a temp dir: a Marvin project (main checkout) with a committed briefing.md, a session
 # worktree and an isolated agent worktree under .claude/worktrees/. --session-start (SS*): the
 # per-session folder, the symlink rule, seeding; --post-tool (PT*): the orchestrator's writes in a
-# worktree carried to the project; --subagent-stop (SA*): a sub-agent's named report moved to the
-# project; X1 outside Marvin / outside git / bad JSON, X2 a repo path with a space.
+# worktree carried to the project; --subagent-stop (SA*): a sub-agent's named report copied to the
+# project (the source stays; only the agent that carried a target overwrites it); --stop (ST*): the
+# orchestrator's Bash-made writes caught up at Stop; K* the key rule's refusal notice; O1 the file mode;
+# X1 outside Marvin / outside git / bad JSON, X2 a repo path with a space.
 # The mutation section reverts one guard at a time in a copy; the guard's fixture must then fail.
 # Run from anywhere: bash scripts/test-runs-sync.sh — exit 0 = all passed.
 set -uo pipefail
@@ -64,9 +66,14 @@ pt() {  # pt <script> <cwd> <file_path> [agent_id] — a Write's PostToolUse; an
   local a=""; [ -n "${4:-}" ] && a="\"agent_id\":\"$4\",\"agent_type\":\"marvin:developer\","
   run "$1" --post-tool "$(printf '{"session_id":"%s","transcript_path":"/x","cwd":"%s",%s"hook_event_name":"PostToolUse","tool_name":"Write","tool_input":{"file_path":"%s","content":"x"},"tool_response":{"success":true}}' "$SID" "$2" "$a" "$3")"
 }
-sa() {  # sa <script> <cwd> <agent transcript> [agent_type]
-  run "$1" --subagent-stop "$(printf '{"session_id":"%s","transcript_path":"/x","cwd":"%s","permission_mode":"default","agent_id":"%s","agent_type":"%s","hook_event_name":"SubagentStop","stop_hook_active":false,"agent_transcript_path":"%s","last_assistant_message":"done"}' "$SID" "$2" "$AID" "${4:-marvin:developer}" "$3")"
+sa() {  # sa <script> <cwd> <agent transcript> [agent_type] [agent_id] [stop_hook_active]
+  run "$1" --subagent-stop "$(printf '{"session_id":"%s","transcript_path":"/x","cwd":"%s","permission_mode":"default","agent_id":"%s","agent_type":"%s","hook_event_name":"SubagentStop","stop_hook_active":%s,"agent_transcript_path":"%s","last_assistant_message":"done"}' "$SID" "$2" "${5:-$AID}" "${4:-marvin:developer}" "${6:-false}" "$3")"
 }
+st() {  # st <script> <cwd> [session_id] [agent_id] — the main thread's Stop; an agent_id makes it a sub-agent's payload
+  local a=""; [ -n "${4:-}" ] && a="\"agent_id\":\"$4\",\"agent_type\":\"marvin:developer\","
+  run "$1" --stop "$(printf '{"session_id":"%s","transcript_path":"/x","cwd":"%s",%s"permission_mode":"default","hook_event_name":"Stop","stop_hook_active":false}' "${3:-$SID}" "$2" "$a")"
+}
+AID2=b8c0ee1e74270f09e
 brief() {  # brief <text> — $T, a transcript whose first user message (the brief) is <text>
   T="$WORK/agent.jsonl"
   printf '{"parentUuid":null,"isSidechain":true,"type":"user","message":{"role":"user","content":"%s"}}\n{"type":"assistant","message":{"content":[{"type":"text","text":"ok"}]}}\n' "$1" > "$T"
@@ -77,6 +84,11 @@ want_clash() {  # want_clash <local> <project> [<sidecar>]
   [ -z "${3:-}" ] || printf ' — differing copy saved as %s' "$(mh_q "$3")"
 }
 want_refusal() { printf 'Marvin run-state sync refused: %s — %s' "$1" "$(mh_q "$2")"; }
+sys_is() {  # sys_is <want> <label> — the hook printed {"systemMessage": <want>} (and nothing else of note)
+  local m; m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""
+  if [ "$m" = "$1" ]; then ok "$2"; else bad "$2 — systemMessage '$m', want '$1' (raw: $(printf '%s' "$OUT" | head -c 300))"; fi
+}
+mode_of() { ls -l -- "$1" 2>/dev/null | cut -c1-10; }   # mode_of <file> — the permission string, e.g. -rw-r--r--
 nsess() { local n=0 d; for d in "$RUNS"/*-"$SID"; do [ -d "$d" ] && n=$((n+1)); done; echo "$n"; }
 pt_clash_ok() {  # pt_clash_ok <local> <project> — the PostToolUse clash JSON: systemMessage and additionalContext
   local want m c e; want=$(want_clash "$1" "$2")
@@ -116,6 +128,10 @@ fx_PT8() { fresh; mkdir -p "$WORK/elsewhere" "$RUNS"; ln -s "$WORK/elsewhere" "$
            pt "$1" "$W" "$W/.marvin/runs/$S/AOS-1/$REP"; OUT="$OUT elsewhere:$(ls -A "$WORK/elsewhere" | wc -l | tr -d ' ')"; }
 fx_SA1() { fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; brief "Write your run report to .marvin/runs/$S/AOS-1/$REP and stop."; sa "$1" "$A" "$T"
            OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone) dst:$(cat "$RUNS/$S/AOS-1/$REP" 2>/dev/null)"; }
+fx_SA11() { fx_SA1 "$1"; lw "$A" "$S/AOS-1/$REP" 'report v2\n'; sa "$1" "$A" "$T" marvin:developer "$AID" true   # the gate's send-back, then the re-fire
+            OUT="$OUT project:$(cat "$RUNS/$S/AOS-1/$REP") side:$([ -e "$RUNS/$S/AOS-1/${REP%.md}.clash-$AID.md" ] && echo yes || echo no)"; }
+fx_SA12() { fx_SA1 "$1"; lw "$A" "$S/AOS-1/$REP" 'other agent\n'; sa "$1" "$A" "$T" marvin:developer "$AID2"   # another agent, the same path
+            OUT="$OUT project:$(cat "$RUNS/$S/AOS-1/$REP") side:$(cat "$RUNS/$S/AOS-1/${REP%.md}.clash-$AID2.md" 2>/dev/null)"; }
 fx_SA2() { fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; pw "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$A" "$T"
            OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
 SIDE="${REP%.md}.clash-$AID.md"
@@ -125,15 +141,28 @@ fx_SS1L() { fresh; ss "$1" "$W"; local n; for n in "$RUNS"/*-"$SID"; do n=${n##*
             OUT="$OUT status:$([ -z "$(git -C "$W" status --porcelain)" ] && echo clean || echo dirty)"; }
 fx_SA7() { fresh; pw "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$R" "$T"
            OUT="$OUT dst:$([ -e "$RUNS/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
-fx_SA8() { fresh; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pw "$S/AOS-1/ledger.md" 'r1\n'; brief "Read .marvin/runs/$S/AOS-1/ledger.md first."; sa "$1" "$W" "$T"
-           OUT="$OUT ledger:$([ -e "$W/.marvin/runs/$S/AOS-1/ledger.md" ] && echo kept || echo gone)"; }
+fx_SA8() { fresh; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pw "$S/AOS-1/ledger.md" 'r0\n'; brief "Read .marvin/runs/$S/AOS-1/ledger.md first."; sa "$1" "$W" "$T"
+           OUT="$OUT ledger:$([ -e "$W/.marvin/runs/$S/AOS-1/ledger.md" ] && echo kept || echo gone) project:$(cat "$RUNS/$S/AOS-1/ledger.md") clash:$(ls -A "$RUNS/$S/AOS-1" | grep -c clash)"; }
 fx_SA9() { fresh; printf 'secret\n' > "$WORK/secret"; mkdir -p "$A/.marvin/runs/$S/AOS-1"; ln -s "$WORK/secret" "$A/.marvin/runs/$S/AOS-1/$REP"
            brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$A" "$T"
            OUT="$OUT dst:$([ -e "$RUNS/$S/AOS-1/$REP" ] && echo yes || echo no) link:$([ -L "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
 fx_SA10() { fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$A" "$T" general-purpose
-            OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
+            OUT="$OUT dst:$([ -e "$RUNS/$S/AOS-1/$REP" ] && echo yes || echo no)"; }
 fx_X1M() { fresh; rm -rf "$R/.marvin" "$W/.marvin" "$A/.marvin"; lw "$A" "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"
-           sa "$1" "$A" "$T"; OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
+           sa "$1" "$A" "$T"; OUT="$OUT dst:$([ -e "$RUNS/$S/AOS-1/$REP" ] && echo yes || echo no)"; }
+fx_K1() { fresh; lw "$W" "$S/aos-1/$REP" 'x\n'; pt "$1" "$W" "$W/.marvin/runs/$S/aos-1/$REP"; OUT="$OUT carried:$([ -e "$RUNS/$S/aos-1/$REP" ] && echo yes || echo no)"; }
+fx_K2() { fresh; lw "$A" "$S/T1x/$REP" 'r\n'; brief "Report: .marvin/runs/$S/T1x/$REP"; sa "$1" "$A" "$T"; OUT="$OUT carried:$([ -e "$RUNS/$S/T1x/$REP" ] && echo yes || echo no)"; }
+fx_K3() { fresh; lw "$W" "$S/lower-1/ledger.md" 'r\n'; st "$1" "$W"; OUT="$OUT carried:$([ -e "$RUNS/$S/lower-1/ledger.md" ] && echo yes || echo no)"; }
+fx_K4() { fresh; pw "$S/aos-1/ledger.md" 'r\n'; ss "$1" "$W" "$SID" resume; OUT="$OUT seeded:$([ -e "$W/.marvin/runs/$S/aos-1/ledger.md" ] && echo yes || echo no)"; }
+fx_ST1() { fresh; mkdir -p "$W/.marvin/runs/$S/AOS-1"; printf '| 1 |\n' >> "$W/.marvin/runs/$S/AOS-1/ledger.md"; st "$1" "$W"
+           OUT="$OUT same:$(cmp -s "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md" && echo yes || echo no)"; }
+fx_ST2() { fresh; pw "$S/AOS-1/ledger.md" 'AAA\nBBB\n'; lw "$W" "$S/AOS-1/ledger.md" 'XXX\n'; st "$1" "$W"
+           OUT="$OUT project:$(tr '\n' ' ' < "$RUNS/$S/AOS-1/ledger.md")"; }
+fx_ST3() { fresh; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; st "$1" "$W" "$SID" "$AID"; OUT="$OUT carried:$([ -e "$RUNS/$S/AOS-1/ledger.md" ] && echo yes || echo no)"; }
+fx_ST4() { fresh; lw "$W" "20261019T090000Z-$SID2/AOS-1/ledger.md" 'other\n'; st "$1" "$W"
+           OUT="$OUT carried:$([ -e "$RUNS/20261019T090000Z-$SID2/AOS-1/ledger.md" ] && echo yes || echo no)"; }
+fx_O1() { fresh; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; (umask 022; pt "$1" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"); OUT="mode:$(mode_of "$RUNS/$S/AOS-1/ledger.md")"; }
+SID2=fedcba98-7654-3210-fedc-ba9876543210
 
 hd "SS1 briefing literal present: the session folder is created, .gitignore = *, the one line is printed"
 fresh; t0=$(date -u +%Y%m%dT%H%M%SZ); ss "$SYNC" "$W"; assert_rc 0; t1=$(date -u +%Y%m%dT%H%M%SZ)
@@ -222,16 +251,19 @@ fx_PT8 "$SYNC"; assert_rc 0; assert_only " elsewhere:0"
 fresh; mkdir -p "$WORK/elsewhere" "$W/.marvin/runs/$S"; ln -s "$WORK/elsewhere" "$W/.marvin/runs/$S/AOS-1"
 printf 'z\n' > "$WORK/elsewhere/$REP"; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/$REP"; silent_ok; gone "$RUNS/$S/AOS-1/$REP"   # a symlinked LOCAL key dir
 
-hd "SA1 an isolated agent's report: moved to the project, the source is gone"
-fx_SA1 "$SYNC"; assert_rc 0; assert_only " src:gone dst:report"
-if [ -z "$(git -C "$A" status --porcelain)" ]; then ok "agent worktree clean"; else bad "agent worktree dirty"; fi
+hd "SA1 an isolated agent's report: copied to the project, the source stays, the carry is recorded"
+fx_SA1 "$SYNC"; assert_rc 0; assert_only " src:kept dst:report"
+printf '*\n' > "$A/.marvin/runs/.gitignore"   # the agent's own writer rule (briefing.md item 11) bootstraps it
+if [ -z "$(git -C "$A" status --porcelain)" ]; then ok "agent worktree clean: the hook added nothing to it"; else bad "agent worktree dirty: $(git -C "$A" status --porcelain | head -3)"; fi
+holds "$RUNS/$S/AOS-1/.carried-$AID" "$S/AOS-1/$REP"   # the per-agent carried ledger, one relative path per line
+if git -C "$R" check-ignore -q "$RUNS/$S/AOS-1/.carried-$AID"; then ok "the carried ledger is git-ignored"; else bad "the carried ledger is not ignored"; fi
 fresh; lw "$A" "$S/AOS-1/$REP" 'abs\n'; brief "Write the report to $A/.marvin/runs/$S/AOS-1/$REP (absolute)."; sa "$SYNC" "$A" "$T"; silent_ok
-holds "$RUNS/$S/AOS-1/$REP" abs; gone "$A/.marvin/runs/$S/AOS-1/$REP"
+holds "$RUNS/$S/AOS-1/$REP" abs; there "$A/.marvin/runs/$S/AOS-1/$REP"
 fresh; mkdir -p "$A/sub"; lw "$A" "$S/adhoc/$REP" 'sub\n'; brief "Report \`.marvin/runs/$S/adhoc/$REP\`."; sa "$SYNC" "$A/sub" "$T"; silent_ok
-holds "$RUNS/$S/adhoc/$REP" sub; gone "$A/.marvin/runs/$S/adhoc/$REP"   # cwd a subdirectory; a back-quoted path
+holds "$RUNS/$S/adhoc/$REP" sub; there "$A/.marvin/runs/$S/adhoc/$REP"   # cwd a subdirectory; a back-quoted path
 
-hd "SA2 a report already identical in the project: the source is deleted"
-fx_SA2 "$SYNC"; assert_rc 0; assert_only " src:gone"
+hd "SA2 a report already identical in the project: nothing changes, nothing is recorded"
+fx_SA2 "$SYNC"; assert_rc 0; assert_only " src:kept"; gone "$RUNS/$S/AOS-1/.carried-$AID"
 
 hd "SA3 a differing project copy: clash, both kept"
 fx_SA3 "$SYNC"; assert_rc 0
@@ -252,29 +284,83 @@ fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; lw "$A" "AOS-1/$REP" 'flat\n'; brief 
 there "$A/.marvin/runs/$S/AOS-1/$REP"; there "$A/.marvin/runs/AOS-1/$REP"; gone "$RUNS"
 
 hd "SA5 a second fire (stop_hook_active): no change"
-fx_SA1 "$SYNC"; sa "$SYNC" "$A" "$T"; silent_ok; holds "$RUNS/$S/AOS-1/$REP" report
+fx_SA1 "$SYNC"; sa "$SYNC" "$A" "$T" marvin:developer "$AID" true; silent_ok; holds "$RUNS/$S/AOS-1/$REP" report
+holds "$RUNS/$S/AOS-1/.carried-$AID" "$S/AOS-1/$REP"   # recorded once, not twice
 
-hd "SA6 a non-isolated agent (cwd = the orchestrator's worktree): its named report is moved from there"
+hd "SA6 a non-isolated agent (cwd = the orchestrator's worktree): its named report is copied from there, identical"
 fresh; lw "$W" "$S/AOS-1/$REP" 'from-w\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$SYNC" "$W" "$T"; silent_ok
-holds "$RUNS/$S/AOS-1/$REP" from-w; gone "$W/.marvin/runs/$S/AOS-1/$REP"
+holds "$RUNS/$S/AOS-1/$REP" from-w; same "$W/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP"   # so the sweep's G9 passes
 
 hd "SA7 a non-isolated agent in the main checkout: the report stays where it is"
 fx_SA7 "$SYNC"; assert_rc 0; assert_only " dst:kept"
 
-hd "SA8 a mutable file the brief names (the ledger) is never moved off the orchestrator's checkout"
-fx_SA8 "$SYNC"; assert_rc 0; assert_only " ledger:kept"
+hd "SA8 a mutable file the brief names (the ledger) is never carried by SubagentStop: no copy, no clash"
+fx_SA8 "$SYNC"; assert_rc 0; assert_only " ledger:kept project:r0 clash:0"
 
 hd "SA9 a symlinked source report: not moved, nothing read through it"
 fx_SA9 "$SYNC"; assert_rc 0; assert_only " dst:no link:kept"; holds "$WORK/secret" secret
 
 hd "SA10 a non-marvin agent type: nothing"
-fx_SA10 "$SYNC"; assert_rc 0; assert_only " src:kept"
+fx_SA10 "$SYNC"; assert_rc 0; assert_only " dst:no"
 
-hd "SA11 a changed re-fire (stop_hook_active) after a first fire moved a version: the second lands as a sidecar"
-fx_SA1 "$SYNC"; lw "$A" "$S/AOS-1/$REP" 'report v2\n'
-run "$SYNC" --subagent-stop "$(printf '{"session_id":"%s","cwd":"%s","agent_id":"%s","agent_type":"marvin:developer","hook_event_name":"SubagentStop","stop_hook_active":true,"agent_transcript_path":"%s"}' "$SID" "$A" "$AID" "$T")"
-assert_rc 0; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
-holds "$RUNS/$S/AOS-1/$REP" report; holds "$RUNS/$S/AOS-1/$SIDE" 'report v2'; holds "$A/.marvin/runs/$S/AOS-1/$REP" 'report v2'
+hd "SA11 a changed re-fire by the SAME agent (the gate's send-back): its carried target is overwritten, no sidecar"
+fx_SA11 "$SYNC"; assert_rc 0; assert_only " project:report v2 side:no"; holds "$A/.marvin/runs/$S/AOS-1/$REP" 'report v2'
+
+hd "SA12 a DIFFERENT agent's differing write to a carried target: clash, sidecar tagged with its id, project kept"
+fx_SA12 "$SYNC"; assert_rc 0; OUT=${OUT% project:*}
+sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/${REP%.md}.clash-$AID2.md"
+holds "$RUNS/$S/AOS-1/$REP" report; holds "$RUNS/$S/AOS-1/${REP%.md}.clash-$AID2.md" 'other agent'
+fresh; lw "$A" "$S/AOS-1/$REP" 'one\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"   # no agent_id: nothing recorded, never overwritten
+run "$SYNC" --subagent-stop "$(printf '{"cwd":"%s","agent_type":"marvin:developer","hook_event_name":"SubagentStop","agent_transcript_path":"%s"}' "$A" "$T")"; silent_ok
+lw "$A" "$S/AOS-1/$REP" 'two\n'
+run "$SYNC" --subagent-stop "$(printf '{"cwd":"%s","agent_type":"marvin:developer","hook_event_name":"SubagentStop","agent_transcript_path":"%s"}' "$A" "$T")"
+holds "$RUNS/$S/AOS-1/$REP" one; if ls "$RUNS/$S/AOS-1" | grep -q '^\.carried-'; then bad "a carried ledger without an agent id"; else ok "no carried ledger without an agent id"; fi
+
+hd "ST1 --stop: an orchestrator ledger appended with >> (no Write/Edit, no PostToolUse) is carried at Stop"
+fx_ST1 "$SYNC"; assert_rc 0; assert_only " same:yes"
+printf '| 2 |\n' >> "$W/.marvin/runs/$S/AOS-1/ledger.md"; st "$SYNC" "$W"; silent_ok; same "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md"
+lw "$W" "$S/AOS-1/$REP" 'rep\n'; lw "$W" "$S/adhoc/build-brief.md" 'b1\n'; st "$SYNC" "$W"; silent_ok
+holds "$RUNS/$S/AOS-1/$REP" rep; holds "$RUNS/$S/adhoc/build-brief.md" b1
+lw "$W" "$S/adhoc/build-brief.md" 'b2\n'; st "$SYNC" "$W"; silent_ok; holds "$RUNS/$S/adhoc/build-brief.md" b2   # a build brief overwrites
+lw "$W" "$S/AOS-1/notes.md" 'n\n'; st "$SYNC" "$W"; silent_ok; gone "$RUNS/$S/AOS-1/notes.md"   # not a run-file name
+st "$SYNC" "$W"; silent_ok   # a second Stop: no change, no output
+
+hd "ST2 --stop: a diverged ledger clashes — the project copy is kept, one systemMessage"
+fx_ST2 "$SYNC"; assert_rc 0; OUT=${OUT% project:*}
+sys_is "$(want_clash "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md")" "the clash line"
+holds "$RUNS/$S/AOS-1/ledger.md" "$(printf 'AAA\nBBB')"
+lw "$W" "$S/AOS-1/$REP" 'mine\n'; pw "$S/AOS-1/$REP" 'theirs\n'; st "$SYNC" "$W"; holds "$RUNS/$S/AOS-1/$REP" theirs   # a differing timestamped file too
+
+hd "ST3 --stop: a sub-agent payload, the main checkout, another session's folder — nothing"
+fx_ST3 "$SYNC"; assert_rc 0; assert_only " carried:no"
+fresh; lw "$R" "$S/AOS-1/ledger.md" 'r1\n'; st "$SYNC" "$R"; silent_ok; gone "$RUNS/.gitignore"
+fx_ST4 "$SYNC"; assert_rc 0; assert_only " carried:no"
+
+hd "K1 the key rule: 42 and T-1 are carried; a layout path whose key fails gets a refusal notice in every mode"
+fresh; lw "$W" "$S/42/ledger.md" 'g\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/42/ledger.md"; silent_ok; holds "$RUNS/$S/42/ledger.md" g
+lw "$W" "$S/T-1/$REP" 't\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/T-1/$REP"; silent_ok; holds "$RUNS/$S/T-1/$REP" t
+lw "$A" "$S/42/$REP" 'a\n'; brief "Report: .marvin/runs/$S/42/$REP"; sa "$SYNC" "$A" "$T"; silent_ok; holds "$RUNS/$S/42/$REP" a
+fx_K1 "$SYNC"; assert_rc 0; OUT=${OUT% carried:*}
+w=$(want_refusal "key not allowed" "$W/.marvin/runs/$S/aos-1/$REP")
+m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""; c=$(printf '%s' "$OUT" | mh_get hookSpecificOutput.additionalContext) || c=""
+if [ "$m" = "$w" ] && [ "$c" = "$w" ]; then ok "post-tool: key not allowed notice"; else bad "post-tool notice '$m' / '$c', want '$w'"; fi
+gone "$RUNS/$S/aos-1/$REP"
+for k in A- 1a; do fresh; lw "$W" "$S/$k/ledger.md" 'x\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/$k/ledger.md"
+  sys_is "$(want_refusal "key not allowed" "$W/.marvin/runs/$S/$k/ledger.md")" "post-tool: $k refused with a notice"; gone "$RUNS/$S/$k"; done
+fx_K2 "$SYNC"; assert_rc 0; OUT=${OUT% carried:*}; sys_is "$(want_refusal "key not allowed" "$A/.marvin/runs/$S/T1x/$REP")" "subagent-stop: key not allowed notice"; gone "$RUNS/$S/T1x"
+fx_K3 "$SYNC"; assert_rc 0; OUT=${OUT% carried:*}; sys_is "$(want_refusal "key not allowed" "$W/.marvin/runs/$S/lower-1/ledger.md")" "stop: key not allowed notice"
+fx_K4 "$SYNC"; assert_rc 0; assert_only "$(want_line "$S")"$'\n'"$(want_refusal "key not allowed" "$RUNS/$S/aos-1") seeded:no"
+
+hd "O1 carried copies and sidecars get the umask's normal mode, not mktemp's 0600"
+probe=$(mktemp "$WORK/.probe.XXXXXX"); pm=$(mode_of "$probe"); rm -f "$probe"
+if [ "$pm" != "-rw-------" ]; then ok "this platform has no POSIX file modes ($pm): skipped"
+else
+  fx_O1 "$SYNC"; assert_only "mode:-rw-r--r--"
+  fresh; lw "$A" "$S/AOS-1/$REP" 'mine\n'; pw "$S/AOS-1/$REP" 'theirs\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; (umask 022; sa "$SYNC" "$A" "$T")
+  if [ "$(mode_of "$RUNS/$S/AOS-1/$SIDE")" = "-rw-r--r--" ]; then ok "sidecar mode -rw-r--r--"; else bad "sidecar mode $(mode_of "$RUNS/$S/AOS-1/$SIDE")"; fi
+  fresh; lw "$A" "$S/AOS-1/$REP" 'r\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; (umask 027; sa "$SYNC" "$A" "$T")
+  if [ "$(mode_of "$RUNS/$S/AOS-1/$REP")" = "-rw-r-----" ]; then ok "umask 027: -rw-r-----"; else bad "umask 027 gave $(mode_of "$RUNS/$S/AOS-1/$REP")"; fi
+fi
 
 hd "R1 a non-symlink refusal prints one notice (not ignored, unreadable); a symlink refusal stays silent"
 fresh; mkdir -p "$RUNS"; : > "$RUNS/.gitignore"; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; assert_rc 0
@@ -296,16 +382,18 @@ fi
 chmod 644 "$W/.marvin/runs/$S/AOS-1/$REP"; gone "$RUNS/$S/AOS-1/$REP"
 
 hd "X1 outside Marvin, outside git, malformed JSON: silent, exit 0, nothing written (each mode)"
-fx_X1M "$SYNC"; assert_rc 0; assert_only " src:kept"
+fx_X1M "$SYNC"; assert_rc 0; assert_only " dst:no"
 fresh; rm -rf "$R/.marvin" "$W/.marvin"; ss "$SYNC" "$W"; silent_ok; gone "$RUNS"
 lw "$W" "$S/AOS-1/ledger.md" 'r\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; silent_ok; gone "$RUNS"
+st "$SYNC" "$W"; silent_ok; gone "$RUNS"
 mkdir -p "$WORK/plain/.marvin/agents"; printf '%s\n' "$LIT" > "$WORK/plain/.marvin/agents/briefing.md"   # a Marvin tree outside git
 lw "$WORK/plain" "$S/AOS-1/ledger.md" 'r\n'; lw "$WORK/plain" "$S/AOS-1/$REP" 'r\n'
 ss "$SYNC" "$WORK/plain"; silent_ok; gone "$WORK/plain/.marvin/runs/.gitignore"
 pt "$SYNC" "$WORK/plain" "$WORK/plain/.marvin/runs/$S/AOS-1/ledger.md"; silent_ok
 brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$SYNC" "$WORK/plain" "$T"; silent_ok; there "$WORK/plain/.marvin/runs/$S/AOS-1/$REP"
+st "$SYNC" "$WORK/plain"; silent_ok
 fresh; lw "$W" "$S/AOS-1/ledger.md" 'r\n'; lw "$A" "$S/AOS-1/$REP" 'r\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"
-for m in --session-start --post-tool --subagent-stop; do
+for m in --session-start --post-tool --subagent-stop --stop; do
   run "$SYNC" "$m" ""; silent_ok
   run "$SYNC" "$m" "not json at all"; silent_ok
   run "$SYNC" "$m" "{\"session_id\":\"$SID\",\"hook_event_name\":\"x\",\"agent_type\":\"marvin:developer\",\"agent_transcript_path\":\"$T\",\"tool_input\":{\"file_path\":\"$W/.marvin/runs/$S/AOS-1/ledger.md\"}}"; silent_ok   # no cwd
@@ -323,7 +411,9 @@ ss "$SYNC" "$W"; assert_rc 0; name=""; for d in "$RUNS"/*-"$SID"; do [ -d "$d" ]
 case "$OUT" in "Marvin run folder: \"$RUNS/"*) ok "project folder printed quoted" ;; *) bad "not quoted: $OUT" ;; esac
 lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; silent_ok; same "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md"
 lw "$W" "$S/AOS-1/ledger.md" 'other\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; pt_clash_ok "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md"
-fx_SA1 "$SYNC"; assert_rc 0; assert_only " src:gone dst:report"
+fx_SA1 "$SYNC"; assert_rc 0; assert_only " src:kept dst:report"
+fx_ST1 "$SYNC"; assert_rc 0; assert_only " same:yes"
+fx_ST2 "$SYNC"; OUT=${OUT% project:*}; sys_is "$(want_clash "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md")" "stop: the clash line, quoted"
 fx_SA3 "$SYNC"; OUT=${OUT% src:*}; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
 same "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
 R="$WORK/repo"
@@ -353,27 +443,37 @@ mutation STAMPED fx_PT3 '    stamped) if [ -e "$dst" ] || [ -L "$dst" ]; then cm
                         '    if [ "$3" = yes ]; then mv -f -- "$tmp" "$2" 2>/dev/null; else mv -n -- "$tmp" "$2" 2>/dev/null; fi' '    mv -f -- "$tmp" "$2" 2>/dev/null'
 mutation SUBAGENT fx_PT4 '  mh_is_subagent_call && return 0' '  :' "project:no"
 mutation LAYOUT fx_PT5 '  case "$rel" in */*/*/*) return 1 ;; */*/*) ;; *) return 1 ;; esac' '  :' "carried:0"
-mutation LAYOUTSEG fx_PT5 '  is_session "$s" && is_key "$k" && kind "$b" >/dev/null || return 1' '  :' "carried:0"
+mutation LAYOUTSEG fx_PT5 '  is_session "$s" && kind "$b" >/dev/null || return 1' '  :' "carried:0"
+mutation KEYRULE fx_K1 '  is_key "$k" || return 4' '  :' "carried:no"
+mutation KEYNOTICE fx_K1 '  [ "$rc" -eq 4 ] && { refuse "key not allowed" "$pdir/${fp##*/}"; return 0; }' '  [ "$rc" -eq 4 ] && return 0' "key not allowed"
+mutation SAKEYNOTICE fx_K2 '    if [ "$rc" -eq 4 ]; then [ -f "$top/$p" ] && refuse "key not allowed" "$top/$p"; continue; fi' '    :' "key not allowed"
+mutation STKEYNOTICE fx_K3 '        if [ "$rc" -eq 4 ]; then refuse "key not allowed" "$f"; continue; fi' '        :' "key not allowed"
+mutation SEEDKEY fx_K4 '    is_key "${kd##*/}" || { refuse "key not allowed" "$kd"; continue; }' '    is_key "${kd##*/}" || continue' "key not allowed"
 mutation COMPLINK fx_PT8 '    seg=${r%%/*}; d="$d/$seg"; [ -L "$d" ] && return 1' '    seg=${r%%/*}; d="$d/$seg"' "elsewhere:0" \
                         '  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 2' '  :'   # git refuses a path beyond a symlink: the second layer
-mutation MOVE fx_SA1 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; continue; fi' '    if cmp -s "$src" "$dst"; then continue; fi' "src:gone"
-mutation COPY fx_SA1 '    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then put "$src" "$dst" no || { refuse "copy failed" "$dst"; continue; }; fi' '    :' "dst:report"
-mutation IDENTICAL fx_SA2 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; continue; fi' '    :' "src:gone"
+mutation COPY fx_SA1 '      put "$src" "$dst" no || { refuse "copy failed" "$dst"; continue; }' '      :' "dst:report"
+mutation CARRIED fx_SA11 '    if was_carried "$rel"; then put "$src" "$dst" yes && cmp -s "$src" "$dst" || refuse "copy failed" "$dst"; continue; fi' '    :' "project:report v2 side:no"
+mutation RECORD fx_SA11 '      cmp -s "$src" "$dst" && { carried "$rel"; continue; }' '      cmp -s "$src" "$dst" && continue' "project:report v2 side:no"
+mutation OTHER fx_SA12 '    if was_carried "$rel"; then put "$src" "$dst" yes && cmp -s "$src" "$dst" || refuse "copy failed" "$dst"; continue; fi' \
+                      '    if true; then put "$src" "$dst" yes && cmp -s "$src" "$dst" || refuse "copy failed" "$dst"; continue; fi' "project:report side:other agent"
+mutation LEDGERAID fx_SA12 'ledger_of() { [ -n "$AID" ] && printf '"'"'%s'"'"' "${1%/*}/.carried-$AID"; }' 'ledger_of() { printf '"'"'%s'"'"' "${1%/*}/.carried"; }' "project:report side:other agent"
+mutation STOPSCAN fx_ST1 '        [ "$rc" -eq 0 ] && carry_rel "$top" "$rel"' '        :' "same:yes"
+mutation STOPSUB fx_ST3 '  mh_is_subagent_call && return 0                          # main thread only' '  :' "carried:no"
+mutation STOPSID fx_ST4 '  for d in "$top/.marvin/runs"/*-"$sid"; do                # this session'"'"'s folder(s) in its own checkout' '  for d in "$top/.marvin/runs"/*; do' "carried:no"
+mutation FMODE fx_O1 '    chmod "$FMODE" "$tmp" 2>/dev/null   # mktemp made it 0600; a carried copy gets the normal mode' '    :' "mode:-rw-r--r--"
 mutation CLASHKEEP fx_SA3 '    clash "$src" "$dst" "$side"' '    rm -f -- "$src"' "src:kept"
 mutation SIDECAR fx_SA3 '    side=$(sidecar "$src" "$dst" "$tag") || side=""' '    side=""' "side:mine"
-mutation ROOT fx_SA7 '  [ "$(mh_path "$top")" = "$(mh_path "$MAIN")" ] && return 0   # the project itself: nothing to carry' '  :' "dst:kept" \
-                     '    [ "$src" -ef "$dst" ] && continue' '    :'
 IFS= read -r CAND_LINE <<'L' || true
-  cands=$(printf '%s\n' "$brief" | grep -oE "\.marvin/runs/$sre/(adhoc|$kre)/${MH_STAMP_RE#^}[A-Za-z0-9._-]*\.md" | sort -u)
+  cands=$(printf '%s\n' "$brief" | grep -oE "\.marvin/runs/$sre/[A-Za-z0-9._-]+/${MH_STAMP_RE#^}[A-Za-z0-9._-]*\.md" | sort -u)
 L
 IFS= read -r CAND_ANY <<'L' || true
-  cands=$(printf '%s\n' "$brief" | grep -oE "\.marvin/runs/$sre/(adhoc|$kre)/[A-Za-z0-9._-]*\.md" | sort -u)
+  cands=$(printf '%s\n' "$brief" | grep -oE "\.marvin/runs/$sre/[A-Za-z0-9._-]+/[A-Za-z0-9._-]*\.md" | sort -u)
 L
-mutation STAMPONLY fx_SA8 '    [ "$(kind "${rel##*/}")" = stamped ] || continue   # mutable files are the orchestrator'"'"'s own' '    :' "ledger:kept" \
+mutation STAMPONLY fx_SA8 '    [ "$(kind "${rel##*/}")" = stamped ] || continue   # mutable files are the orchestrator'"'"'s own' '    :' "clash:0" \
                         "$CAND_LINE" "$CAND_ANY"   # the candidate pattern is the first layer
 mutation SRCLINK fx_SA9 '    no_links "$top" "$rel" && [ -f "$src" ] || continue' '    [ -e "$src" ] || continue' "dst:no"
-mutation AGENTTYPE fx_SA10 "  printf '%s' \"\$atype\" | grep -Eq '^marvin:[a-z0-9-]+\$' || return 0" '  :' "src:kept"
-mutation MARVIN fx_X1M '  mh_is_marvin "$MAIN"' '  :' "src:kept" \
+mutation AGENTTYPE fx_SA10 "  printf '%s' \"\$atype\" | grep -Eq '^marvin:[a-z0-9-]+\$' || return 0" '  :' "dst:no"
+mutation MARVIN fx_X1M '  mh_is_marvin "$MAIN"' '  :' "dst:no" \
                        '  mh_is_marvin "$1" && no_links "$1" "" || return 1' '  :'
 
 printf '\n----\ntest-runs-sync: %d passed, %d failed\n' "$PASSED" "$FAILED"
