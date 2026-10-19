@@ -233,7 +233,7 @@ transcript "$T" 930 950; run "$HOOK" "$P" PostToolUse "$T"; assert_empty
 hd "F2 child at the rest point, no compaction yet: rest, keep the turn open (brief B2)"
 tfleet "$T" 0 930 950
 run "$HOOK" "$PC" PostToolUse "$T"; assert_rc0; assert_json
-assert_out "~950k tokens, at 95% of the 1000k context window — rest point: dispatch nothing new, write the handoff and reach a clean logical break (all work committed, tracker current, no sub-agent running); then keep to small steps and do NOT end your turn to wait — the host's auto-compact fires shortly (compaction 1 of 3); after it, resume from the handoff. Rules: .marvin/agents/fleet-child.md"
+assert_out "~950k tokens, at 95% of the 1000k context window — rest point: dispatch nothing new, write the handoff to the epic issue and reach a clean logical break (all work committed, tracker current, no sub-agent running); then keep to small steps and do NOT end your turn to wait — the host's auto-compact fires shortly (compaction 1 of 3); after it, resume from the handoff. Rules: .marvin/agents/fleet-child.md"
 assert_lacks "successor due"; assert_lacks "resting"; assert_lacks "session-budget.md"
 run "$HOOK" "$PC" UserPromptSubmit "$T"; assert_out "compaction 1 of 3"; assert_out "do NOT end your turn"
 tfleet "$T" 0 950 960; run "$HOOK" "$PC" PostToolUse "$T"; assert_rc0; assert_empty
@@ -316,6 +316,17 @@ tfleet "$T" 1 400; run "$HOOK" "$PM" PostToolUse "$T"; assert_rc0; assert_empty
 run "$HOOK" "$PM" UserPromptSubmit "$T"; assert_out "past the 400k soft budget"; assert_lacks "successor due"
 transcript "$T" 895 910; runenv DISABLE_COMPACT=1 "$PM" PostToolUse "$T"; assert_is "$(expect PostToolUse 910 'at 91% of the 1000k context window' "$X3")"
 
+hd "F12 child under DISABLE_AUTO_COMPACT=1: the cap still holds at level 3 — successor, not the /compact nudge"
+tfleet "$T" 3 895 910; sed 's/"trigger":"auto"/"trigger":"manual"/' "$T" > "$T.m" && mv "$T.m" "$T"  # /compact runs count too
+runenv DISABLE_AUTO_COMPACT=1 "$PC" PostToolUse "$T"; assert_rc0; assert_json
+assert_out "~910k tokens, at 91% of the 1000k context window — successor due: compaction cap reached (3 of 3) — write the handoff to the epic issue"
+assert_out "FLEET ABC-12 successor: compaction cap reached (3 of 3)"; assert_lacks "$X3"; assert_lacks "rest point"
+tfleet "$T" 3 800 850 870 895 910; runenv DISABLE_AUTO_COMPACT=1 "$PC" UserPromptSubmit "$T"; assert_json
+assert_count "successor due" 1; assert_out "compaction cap reached (3 of 3)"; assert_lacks "$X3"
+tfleet "$T" 2 895 910; runenv DISABLE_AUTO_COMPACT=1 "$PC" PostToolUse "$T"; assert_is "$(expect PostToolUse 910 'at 91% of the 1000k context window' "$X3")"
+tfleet "$T" 3 690 750; runenv DISABLE_AUTO_COMPACT=1 "$PC" PostToolUse "$T"; assert_out "$X2"; assert_lacks "successor due"
+tfleet "$T" 3 895 910; runenv DISABLE_AUTO_COMPACT=1 "$PM" PostToolUse "$T"; assert_out "$X3"; assert_lacks "successor due"
+
 # ── mutations: revert one line of the hook or the lib in a copy; the fixture's output must then change ─
 LIB="$SCRIPT_DIR/lib/marvin-hook-lib.sh"
 mutation() {  # mutation <name> <hook|lib> <exact line> <replacement> <project> <event> <transcript-ks | - = keep $T> [env]
@@ -369,5 +380,8 @@ hd "M13 PostToolUse post-compaction window widened to n ≤ 3 — F4 (400k → 8
 tfleet "$T" 1 400 850
 mutation lim hook '    lim=1; [ "$event" = UserPromptSubmit ] && lim=3' '    lim=3' "$PC" PostToolUse -
 
+hd "M14 the cap check skipped under DISABLE_AUTO_COMPACT — F12 (3 of 3 at 91 %) must catch it"
+tfleet "$T" 3 895 910
+mutation capauto hook '    if [ "$sc" = 4 ] || { [ "$off" = auto ] && [ "$lc" -ge 3 ]; }; then' '    if [ "$sc" = 4 ]; then' "$PC" PostToolUse - DISABLE_AUTO_COMPACT=1
 printf '\n----\ntest-context-budget: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
