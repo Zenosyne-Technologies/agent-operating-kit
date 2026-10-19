@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# marvin-hook-lib.sh — shared helpers for the marvin plugin's hook scripts (v0.38.0). Sourced, never run.
+# marvin-hook-lib.sh — shared helpers for the marvin plugin's hook scripts (v0.38.0+, extended for AOS-222). Sourced, never run.
 # Every helper is read-only and bounded, and fails SILENT: on any doubt it returns 1 with nothing usable
 # printed, so the calling hook stays quiet instead of acting on a parse failure. bash 3.2 + POSIX awk
 # (mawk-safe), no jq, no python. JSON always arrives on stdin, never through the environment (a 1 MiB
