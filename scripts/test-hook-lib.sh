@@ -243,6 +243,16 @@ F mh_since_compact "$C"; rc 0; eq ""
 boundary "$C"; F mh_since_compact "$C"; rc 0; eq ""
 : > "$C"; F mh_since_compact "$C"; rc 0; eq ""
 
+hd "C6 mh_since_compact reads at most 400 lines and 8 MB after the boundary: n saturates, k stays the first message's"
+C="$WORK/c6.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 77; for _i in $(seq 449); do amsg "$C" 50; done
+F mh_since_compact "$C"; rc 0; eq "400 77"
+C="$WORK/c6b.jsonl"; : > "$C"; boundary "$C"; pad=$(head -c 100000 /dev/zero | tr '\0' x)   # 100 lines of ~100 KB: ~10 MB after the boundary
+for _i in $(seq 100); do CMSG=$((CMSG+1))
+  printf '{"type":"assistant","message":{"id":"msg_c%d","content":[{"type":"text","text":"%s"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d}}}\n' "$CMSG" "$pad" $(( (60 + _i) * 1000 - 1000 )) >> "$C"
+done
+F mh_since_compact "$C"; rc 0
+if printf '%s' "$OUT" | grep -Eq '^([1-9]|[1-9][0-9]) 61$'; then ok "n < 100 (capped at 8 MB), k = first message ($OUT)"; else bad "got '$OUT', want '<n<100> 61'"; fi
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
@@ -304,11 +314,20 @@ f_crc()   { F mh_compactions "$WORK/none.jsonl"; }
 hd "ML15 compaction match loses the system type — C2 must catch it"
 mutlib cpat "MH_COMPACT_PAT='\"type\":\"system\",\"subtype\":\"compact_boundary\"'" "MH_COMPACT_PAT='\"subtype\":\"compact_boundary\"'" f_cpat
 hd "ML16 sidechain compactions counted — C3 must catch it"
-mutlib cside "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -vc '\"isSidechain\":true'" "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -c ''" f_cside
+mutlib cside "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -c ''" f_cside
 hd "ML17 compactions read only the 400-line tail — C1 must catch it"
-mutlib ctail "  grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -vc '\"isSidechain\":true'" "  tail -n 400 -- \"\$1\" | grep -F -- \"\$MH_COMPACT_PAT\" 2>/dev/null | grep -vc '\"isSidechain\":true'" f_ctail
+mutlib ctail "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" "  tail -n 400 -- \"\$1\" | LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" f_ctail
 hd "ML18 since_compact anchors on the FIRST compaction — C4 must catch it"
-mutlib clast "  ln=\$(grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | grep -v '\"isSidechain\":true' | head -n 1 | cut -d: -f1)" f_clast
+mutlib clast "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | head -n 1 | cut -d: -f1)" f_clast
+f_cside2() { local f="$WORK/cs2.jsonl"; : > "$f"; boundary "$f"; amsg "$f" 80; boundary "$f" true; amsg "$f" 90; F mh_since_compact "$f"; }
+hd "ML21 since_compact's boundary search counts a sidechain boundary — C4 must catch it"
+mutlib csb2 "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | cat | tail -n 1 | cut -d: -f1)" f_cside2
+f_ccap()  { F mh_since_compact "$WORK/c6.jsonl"; }
+f_ccapb() { F mh_since_compact "$WORK/c6b.jsonl"; }
+hd "ML22 since_compact reads past 400 lines after the boundary — C6 must catch it"
+mutlib ccap '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \' '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -c 8000000 \' f_ccap
+hd "ML23 since_compact reads past 8 MB after the boundary — C6 must catch it"
+mutlib ccapb '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \' '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 \' f_ccapb
 hd "ML19 since_compact reports the LAST message's size, not the first's — C4 must catch it"
 mutlib cfirst "  | awk \"\$MH_SIZES_AWK\" | awk 'NR == 1 { f = \$0 } END { if (NR) print NR, f }'" "  | awk \"\$MH_SIZES_AWK\" | awk '{ f = \$0 } END { if (NR) print NR, f }'" f_cfirst
 hd "ML20 unreadable file no longer rc 1 — C1 rc must catch it"

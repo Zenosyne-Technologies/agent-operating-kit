@@ -179,19 +179,21 @@ MH_COMPACT_PAT='"type":"system","subtype":"compact_boundary"'
 # when the file is unreadable.
 mh_compactions() {
   [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
-  grep -F -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | grep -vc '"isSidechain":true'
+  LC_ALL=C grep -F -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | LC_ALL=C grep -vc '"isSidechain":true'
   return 0
 }
 # mh_since_compact <transcript> — "<n> <k>": the messages after the LAST compaction and the context size (k)
 # of the first of them, sized exactly as mh_sizes does; nothing when there is no compaction or no message
-# after it. rc 1 only when the file is unreadable.
+# after it. rc 1 only when the file is unreadable. Only the first 400 lines / 8 MB after that compaction are
+# read (mh_sizes' caps, applied from the front), so n saturates at the window's message count — callers
+# need n exact only up to a few — and the cost stays flat however long the session runs afterwards.
 mh_since_compact() {
   [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
   local ln
-  ln=$(grep -nF -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | grep -v '"isSidechain":true' | tail -n 1 | cut -d: -f1)
+  ln=$(LC_ALL=C grep -nF -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | LC_ALL=C grep -v '"isSidechain":true' | tail -n 1 | cut -d: -f1)
   [ -n "$ln" ] || return 0
-  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null \
-  | grep '"type":"assistant"' | grep '"usage":{' \
+  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \
+  | LC_ALL=C grep '"type":"assistant"' | LC_ALL=C grep '"usage":{' \
   | awk "$MH_SIZES_AWK" | awk 'NR == 1 { f = $0 } END { if (NR) print NR, f }'
   return 0
 }
