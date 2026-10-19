@@ -12,7 +12,7 @@ You orchestrate ONE epic under a fleet master. Every routed event below has its 
 
 ## What differs from a solo session
 
-- You work on your epic branch in your own worktree: task branches cut from it and merge back into it, never into `develop`; merging into `develop`, releases and tags are the master's (`git-strategy.md`). You never start children; you still dispatch sub-agents.
+- You work on your epic branch in your own worktree; where your task branches are cut from and merge to, and who merges the epic into `develop`, cuts releases and tags, is `git-strategy.md`'s (fleet mode). You never start children; you still dispatch sub-agents.
 - You route the events below to the master as well as acting on them.
 - You follow the budget rule below instead of `session-budget.md`'s level-3 nudge.
 

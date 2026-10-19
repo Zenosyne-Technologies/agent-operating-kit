@@ -37,6 +37,8 @@ At level 3, say it plainly at the top of every reply until the user acts:
 
 Without the plugin's hook, check at milestone close and act on the same table.
 
+A fleet child or master follows its guide's rest rule (`fleet-child.md`, `fleet.md`) instead of this level-3 nudge; the hook emits the fleet messages.
+
 ## The handoff
 
 What the next session — or the compacted one — cannot rebuild from the repo, tracker or handbooks: work in flight (issue key, branch, the gate each task stands at), open decisions and blockers, every worktree you leave and whether it is safe to delete (`worktrees.md`), and the next step. Write noteworthy findings to `.marvin/MEMORY.md` before compaction — it is the continuity.

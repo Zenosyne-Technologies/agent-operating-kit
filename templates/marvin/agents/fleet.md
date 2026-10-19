@@ -12,7 +12,7 @@ Fleet mode runs several epics at once: one child orchestrator per epic, and this
 
 ## Role and limits
 
-- Ceiling tier at `medium` effort, like any orchestrator (`model-profile.md`). It plans, sequences, leases, merges epics and cuts releases; it never briefs a builder and never reads code, task-level output or sub-agent detail. Every read is a micro-tier exact lookup (`marvin:ponytail`): the master stays the smallest context in the system.
+- Ceiling tier at `medium` effort, like any orchestrator (`model-profile.md`). It plans, sequences and leases; its merge and release authority is `git-strategy.md`'s (fleet mode). It never briefs a builder and never reads code, task-level output or sub-agent detail. Every read is a micro-tier exact lookup (`marvin:ponytail`): the master stays the smallest context in the system.
 - At most `fleet_max_children` children at once (`.marvin/PROJECT-INFO.md`, default 3), local sessions only — a cloud session sends no notes back. Depth two: a child never starts children.
 - Offer, never start: at milestone planning, when two or more epics have no dependency on each other and the host can start child sessions, suggest `/marvin:fleet`. The architect starts it and approves the program plan.
 
