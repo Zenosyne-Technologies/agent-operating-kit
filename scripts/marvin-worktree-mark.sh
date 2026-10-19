@@ -11,21 +11,15 @@
 # <main checkout>/.claude/worktrees/agent-<agent_id>. A non-isolated agent's cwd is the orchestrator's
 # own checkout and is never marked. The marker is written once (temp file + mv -n) and never rewritten,
 # so the gate's re-fire (stop_hook_active) changes nothing. Hook mode: Marvin projects only, silent,
-# always exit 0, JSON read only through the hook lib. By hand: 0 marked or already marked ·
-# 1 refused · 2 usage. Paths print through mh_q.
+# always exit 0, JSON read only through the hook lib. By hand, the worktree must be one just made: a
+# worktree whose git admin dir was created over 60 minutes ago (its `commondir` file, written once by
+# `git worktree add`) is refused, so a mark never lands on a live desktop session's worktree. By hand:
+# 0 marked or already marked · 1 refused · 2 usage. Paths print through mh_q. The marker rule itself is
+# the hook lib's mh_is_marked, shared with the sweep.
 set -u
 . "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || exit 0
 
 USAGE="usage: marvin-worktree-mark.sh --subagent-stop | <worktree path>"
-
-# is_marked <worktree> — rc 0 when its marker is a regular file (not a symlink) whose first line is valid
-is_marked() {
-  local gd f
-  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) && [ -n "$gd" ] || return 1
-  f="$gd/marvin-owned"
-  [ ! -L "$f" ] && [ -f "$f" ] || return 1
-  head -n 1 -- "$f" 2>/dev/null | grep -Eq "$MH_MARKER_RE"
-}
 
 # write_marker <worktree> <owner> <agent id|-> — only when no file (or symlink) is there yet; rc 0 written
 write_marker() {
@@ -78,7 +72,7 @@ hook_mode() {
 refuse() { printf 'refused: %s — %s\n' "$(mh_q "$1")" "$2"; exit 1; }
 
 hand_mode() {
-  local arg="$1" a phys main here
+  local arg="$1" a phys main here gd age
   a=$arg; while [ "${#a}" -gt 1 ] && [ "${a%/}" != "$a" ]; do a=${a%/}; done
   [ -d "$a" ] || refuse "$arg" "not a directory"
   [ -L "$a" ] && refuse "$arg" "a symlink"
@@ -96,8 +90,10 @@ hand_mode() {
   linked_wt "$phys" || refuse "$arg" "not a linked worktree"
   gd=$(git -C "$phys" rev-parse --absolute-git-dir 2>/dev/null)
   [ -L "$gd/marvin-owned" ] && refuse "$arg" "its marker file is a symlink"
-  if is_marked "$phys"; then printf 'already marked: %s\n' "$(mh_q "$arg")"; exit 0; fi
+  if mh_is_marked "$phys"; then printf 'already marked: %s\n' "$(mh_q "$arg")"; exit 0; fi
   [ -e "$gd/marvin-owned" ] && refuse "$arg" "a marker file is there but its first line is not a valid marker"
+  age="$gd/commondir"; [ -f "$age" ] && [ ! -L "$age" ] || age=$gd   # written once at creation; the dir's mtime moves
+  [ -n "$(find "$age" -prune -mmin +60 2>/dev/null)" ] && refuse "$arg" "mark only a worktree you just created; its git admin dir is over 60 minutes old (a live session's worktree is never Marvin's)"
   write_marker "$phys" orchestrator - || refuse "$arg" "the marker could not be written"
   printf 'marked: %s\n' "$(mh_q "$arg")"
   exit 0

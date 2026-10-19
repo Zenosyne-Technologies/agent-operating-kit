@@ -200,6 +200,20 @@ re MH_MARKER_RE 'marvin-owned orchestrator - 20261019T101500Z'; eq match
 re MH_MARKER_RE 'marvin-owned marvin:Dev 0123abcd 20261019T101500Z'; eq no
 re MH_MARKER_RE 'marvin-owned orchestrator abc 20261019T101500Z'; eq no
 
+hd "L12 mh_is_marked / mh_marker_in: a regular-file marker whose FIRST line is valid (the sweep's and the marker's rule)"
+MK="$WORK/mk main"; mkdir -p "$MK" && git -C "$MK" init -q -b main . && git -C "$MK" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
+  && git -C "$MK" worktree add -q "$WORK/mk wt" -b mkwt 2>/dev/null
+MKGD=$(git -C "$WORK/mk wt" rev-parse --absolute-git-dir)
+GOOD='marvin-owned marvin:developer 0123abcd 20261019T101500Z'
+F mh_is_marked "$WORK/mk wt"; rc 1                                                  # no marker
+printf '%s\n' "$GOOD" > "$MKGD/marvin-owned"; F mh_is_marked "$WORK/mk wt"; rc 0
+F mh_marker_in "$MKGD"; rc 0
+printf 'junk\n%s\n' "$GOOD" > "$MKGD/marvin-owned"; F mh_is_marked "$WORK/mk wt"; rc 1   # valid, but not the first line
+printf '%s\n' "$GOOD" > "$WORK/goodmarker"; rm -f "$MKGD/marvin-owned"; ln -s "$WORK/goodmarker" "$MKGD/marvin-owned"
+f_mklink() { F mh_is_marked "$WORK/mk wt"; }
+f_mklink; rc 1                                                                         # a symlinked valid marker
+F mh_is_marked "$WORK/nowhere"; rc 1; F mh_marker_in ""; rc 1
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
@@ -228,6 +242,8 @@ mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
 hd "ML5 trailing-comment strip removed — L7 must catch it"
 mutlib cmt "    | sed -E 's/(^|[[:space:]]+)#.*\$//' \\" '    | cat \' f_cmt
 f_keynl() { isk $'AOS-1\nAOS-2'; }
+hd "ML8 a symlinked marker trusted — L12 must catch it"
+mutlib mklink '  [ -n "${1:-}" ] && [ ! -L "$f" ] && [ -f "$f" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$f" ] || return 1' f_mklink
 hd "ML7 the key rule's single-line guard removed — L9b must catch it"
 mutlib keynl "  case \"\${1:-}\" in *\$'\\n'*) return 1 ;; esac" '  :' f_keynl
 
