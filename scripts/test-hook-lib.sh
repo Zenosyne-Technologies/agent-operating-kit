@@ -213,6 +213,129 @@ printf '%s\n' "$GOOD" > "$WORK/goodmarker"; rm -f "$MKGD/marvin-owned"; ln -s "$
 f_mklink() { F mh_is_marked "$WORK/mk wt"; }
 f_mklink; rc 1                                                                         # a symlinked valid marker
 F mh_is_marked "$WORK/nowhere"; rc 1; F mh_marker_in ""; rc 1
+# ── fleet role marker and settings (fleet-mode) ───────────────────────────────────────────────────
+# fleet <root>… → OUT="<printed role>|<MH_FLEET_ROLE>|<MH_FLEET_EPIC>" and RC = mh_fleet_role's OWN status, both of
+# the LAST root. The roots are called in ONE shell in order (the globals do not survive a $( ) subshell, and the
+# earlier calls let a test see whether a no-marker call resets them). Stderr is collected in $WORK/fleet.err.
+fleet() {
+  : > "$WORK/fleet.err"
+  OUT=$( ( . "$LIBUSE"; for _r in "$@"; do mh_fleet_role "$_r" > "$WORK/fleet.out" 2>> "$WORK/fleet.err"; echo $? > "$WORK/fleet.rc"; done
+           printf '%s|%s|%s' "$(cat "$WORK/fleet.out")" "$MH_FLEET_ROLE" "$MH_FLEET_EPIC" ) 2>&1 )
+  RC=$(cat "$WORK/fleet.rc")
+}
+mkrepo() { rm -rf "$1"; mkdir -p "$1"; git -C "$1" init -q; }
+gdir()   { ( cd "$1" && cd "$(git rev-parse --git-dir)" && pwd -P ); }
+
+hd "F1 a role=child marker in the private git dir prints child and sets MH_FLEET_EPIC"
+mkrepo "$WORK/f1"; printf 'role=child\nepic=ABC-12\n' > "$(gdir "$WORK/f1")/marvin-fleet"
+fleet "$WORK/f1"; rc 0; eq "child|child|ABC-12"
+printf 'role=master\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; rc 0; eq "master|master|"
+printf 'role=child\nepic=bad key\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; eq "child|child|"
+printf 'role=child\r\nepic=ABC-12\r\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; eq "child|child|ABC-12"
+
+hd "F1b the marker lives in one worktree's private git dir; the main checkout reads nothing"
+mkrepo "$WORK/f1b"; git -C "$WORK/f1b" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i
+git -C "$WORK/f1b" worktree add -q "$WORK/f1b-wt" -b wt 2>/dev/null
+printf 'role=child\nepic=XY-7\n' > "$(gdir "$WORK/f1b-wt")/marvin-fleet"
+fleet "$WORK/f1b-wt"; rc 0; eq "child|child|XY-7"
+fleet "$WORK/f1b"; rc 0; eq "||"
+
+hd "F2 no marker is empty output, rc 0"
+mkrepo "$WORK/f2"; fleet "$WORK/f2"; rc 0; eq "||"
+hd "F2b a call that finds no marker resets MH_FLEET_ROLE and MH_FLEET_EPIC set by the call before"
+printf 'role=child\nepic=ABC-12\n' > "$(gdir "$WORK/f1")/marvin-fleet"
+fleet "$WORK/f1" "$WORK/f2"; rc 0; eq "||"
+fleet "$WORK/f1" "$WORK/f5"; rc 0; eq "||"
+fleet "$WORK/f2" "$WORK/f1"; rc 0; eq "child|child|ABC-12"
+
+hd "F3 a marker that is a symlink is never followed"
+mkrepo "$WORK/f3"; printf 'role=child\nepic=ABC-12\n' > "$WORK/f3-real"; ln -s "$WORK/f3-real" "$(gdir "$WORK/f3")/marvin-fleet"
+fleet "$WORK/f3"; rc 0; eq "||"
+
+hd "F4 an unknown role or an empty marker is empty output"
+mkrepo "$WORK/f4"; printf 'role=admiral\nepic=ABC-12\n' > "$(gdir "$WORK/f4")/marvin-fleet"
+fleet "$WORK/f4"; rc 0; eq "||"
+: > "$(gdir "$WORK/f4")/marvin-fleet"; fleet "$WORK/f4"; rc 0; eq "||"
+
+hd "F5 a root that is not a git repo is empty output, rc 0, nothing on stderr"
+mkdir -p "$WORK/f5"; fleet "$WORK/f5"; rc 0; eq "||"
+fleet "$WORK/f5-missing"; rc 0; eq "||"
+if [ ! -s "$WORK/fleet.err" ]; then ok "no stderr"; else bad "stderr: $(head -c 80 "$WORK/fleet.err")"; fi
+
+fprobe() { OUT=$( ( . "$LIBUSE"; mh_fleet_init "$1"; printf '%s %s %s' "$MH_FLEET_MAX_CHILDREN" "$MH_FLEET_MAX_COMPACTIONS" "$MH_FLEET_RESTART_PCT" ) 2>&1 ); RC=$?; }
+hd "S1 fleet_max_compactions: 0–9, else 3"
+fprobe ""; eq "3 3 33"
+for v in abc -1 99 10; do fprobe "fleet_max_compactions: $v"; eq "3 3 33"; done
+fprobe "fleet_max_compactions: 0"; eq "3 0 33"
+fprobe "fleet_max_compactions: 9   # cap"; eq "3 9 33"
+
+hd "S2 fleet_restart_max_pct: 1–99, else 33"
+for v in 0 100 x -5 007x; do fprobe "fleet_restart_max_pct: $v"; eq "3 3 33"; done
+fprobe "fleet_restart_max_pct: 50"; eq "3 3 50"
+fprobe "fleet_restart_max_pct: 08"; eq "3 3 8"
+
+hd "S3 fleet_max_children: 1–9, else 3"
+for v in 0 12 a; do fprobe "fleet_max_children: $v"; eq "3 3 33"; done
+fprobe "fleet_max_children: 2"; eq "2 3 33"
+fprobe "fleet_max_children: 9
+fleet_max_compactions: 1
+fleet_restart_max_pct: 99"; eq "9 1 99"
+
+# ── compaction metrics from the transcript (fleet-mode) ───────────────────────────────────────────
+# amsg <file> <k> appends one assistant message of context size k (thousands); boundary <file> [sidechain] appends a
+# compaction line. mh_compactions / mh_since_compact are read through F (OUT = stdout+stderr, RC = their own status).
+CMSG=0
+amsg() { CMSG=$((CMSG+1))
+  printf '{"type":"assistant","message":{"id":"msg_c%d","content":[{"type":"thinking","thinking":"hm"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d,"output_tokens":50}}}\n' "$CMSG" $(( $2 * 1000 - 1000 )) >> "$1"; }
+boundary() { printf '{"type":"system","subtype":"compact_boundary","isSidechain":%s,"compactMetadata":{"trigger":"auto","preTokens":990000}}\n' "${2:-false}" >> "$1"; }
+
+hd "C1 mh_compactions counts main-thread compaction lines over the whole file"
+C="$WORK/c1.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 120; boundary "$C"; amsg "$C" 130
+F mh_compactions "$C"; rc 0; eq 2
+: > "$C"; amsg "$C" 100; F mh_compactions "$C"; rc 0; eq 0
+: > "$C"; boundary "$C"; for _i in $(seq 450); do amsg "$C" 50; done   # the boundary is far outside any 400-line tail
+F mh_compactions "$C"; rc 0; eq 1
+F mh_compactions "$WORK/none.jsonl"; rc 1
+F mh_compactions ""; rc 1
+
+hd "C2 compaction text quoted in a tool result, or without the system type, is not a compaction"
+C="$WORK/c2.jsonl"; : > "$C"
+printf '{"type":"user","message":{"content":[{"type":"tool_result","content":"{\\"type\\":\\"system\\",\\"subtype\\":\\"compact_boundary\\"}"}]}}\n' >> "$C"
+printf '{"type":"user","subtype":"compact_boundary","message":{"content":"x"}}\n' >> "$C"
+F mh_compactions "$C"; rc 0; eq 0
+boundary "$C"; F mh_compactions "$C"; rc 0; eq 1
+
+hd "C3 a sub-agent (sidechain) compaction is not the main thread's"
+C="$WORK/c3.jsonl"; : > "$C"; boundary "$C" true; F mh_compactions "$C"; rc 0; eq 0
+boundary "$C"; F mh_compactions "$C"; rc 0; eq 1
+
+hd "C4 mh_since_compact: messages after the LAST compaction, and the size of the first of them"
+C="$WORK/c4.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 120; amsg "$C" 130
+F mh_since_compact "$C"; rc 0; eq "2 120"
+: > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 700; boundary "$C"; amsg "$C" 150; amsg "$C" 160; amsg "$C" 170
+F mh_since_compact "$C"; rc 0; eq "3 150"
+: > "$C"; boundary "$C"; amsg "$C" 80; boundary "$C" true; amsg "$C" 90   # a sidechain boundary does not reset the count
+F mh_since_compact "$C"; rc 0; eq "2 80"
+# one message over several lines is one message, last line's size (as mh_sizes)
+: > "$C"; boundary "$C"; amsg "$C" 100; CMSG=$((CMSG-1)); amsg "$C" 110; amsg "$C" 120
+F mh_since_compact "$C"; rc 0; eq "2 110"
+F mh_since_compact "$WORK/none.jsonl"; rc 1
+
+hd "C5 mh_since_compact prints nothing without a compaction or without a message after it"
+C="$WORK/c5.jsonl"; : > "$C"; amsg "$C" 100; amsg "$C" 200
+F mh_since_compact "$C"; rc 0; eq ""
+boundary "$C"; F mh_since_compact "$C"; rc 0; eq ""
+: > "$C"; F mh_since_compact "$C"; rc 0; eq ""
+
+hd "C6 mh_since_compact reads at most 400 lines and 8 MB after the boundary: n saturates, k stays the first message's"
+C="$WORK/c6.jsonl"; : > "$C"; amsg "$C" 900; boundary "$C"; amsg "$C" 77; for _i in $(seq 449); do amsg "$C" 50; done
+F mh_since_compact "$C"; rc 0; eq "400 77"
+C="$WORK/c6b.jsonl"; : > "$C"; boundary "$C"; pad=$(head -c 100000 /dev/zero | tr '\0' x)   # 100 lines of ~100 KB: ~10 MB after the boundary
+for _i in $(seq 100); do CMSG=$((CMSG+1))
+  printf '{"type":"assistant","message":{"id":"msg_c%d","content":[{"type":"text","text":"%s"}],"usage":{"input_tokens":2,"cache_creation_input_tokens":998,"cache_read_input_tokens":%d}}}\n' "$CMSG" "$pad" $(( (60 + _i) * 1000 - 1000 )) >> "$C"
+done
+F mh_since_compact "$C"; rc 0
+if printf '%s' "$OUT" | grep -Eq '^([1-9]|[1-9][0-9]) 61$'; then ok "n < 100 (capped at 8 MB), k = first message ($OUT)"; else bad "got '$OUT', want '<n<100> 61'"; fi
 
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
@@ -241,10 +364,62 @@ hd "ML4 depth guard removed — J7 must catch it"
 mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
 hd "ML5 trailing-comment strip removed — L7 must catch it"
 mutlib cmt "    | sed -E 's/(^|[[:space:]]+)#.*\$//' \\" '    | cat \' f_cmt
+f_fsym()  { fleet "$WORK/f3"; }
+f_frole() { printf 'role=admiral\nepic=ABC-12\n' > "$(gdir "$WORK/f4")/marvin-fleet"; fleet "$WORK/f4"; }
+f_fepic() { printf 'role=child\nepic=bad key\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; }
+f_fpct()  { fprobe "fleet_restart_max_pct: 100"; }
+hd "ML7 symlink guard on the fleet marker removed — F3 must catch it"
+mutlib fsym '  [ ! -L "$mk" ] && [ -f "$mk" ] || return 0' '  [ -f "$mk" ] || return 0' f_fsym
+hd "ML8 role allow-list opened to any value — F4 must catch it"
+mutlib frole '    master) MH_FLEET_ROLE=master; echo master ;;' '    ?*) MH_FLEET_ROLE=$role; echo "$role" ;;' f_frole
+f_fnogit() { fleet "$WORK/f5"; }
+f_fnomk()  { fleet "$WORK/f2"; }
+f_fvar()   { printf 'role=child\nepic=ABC-12\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1"; }
+f_freset() { printf 'role=child\nepic=ABC-12\n' > "$(gdir "$WORK/f1")/marvin-fleet"; fleet "$WORK/f1" "$WORK/f2"; }
+hd "ML11 not-a-repo guard returns 1 — F5 rc must catch it"
+mutlib fnogit '  gd=$(git -C "$root" rev-parse --git-dir 2>/dev/null) || return 0' '  gd=$(git -C "$root" rev-parse --git-dir 2>/dev/null) || return 1' f_fnogit
+hd "ML12 no-marker guard returns 1 — F2 rc must catch it"
+mutlib fnomk '  [ ! -L "$mk" ] && [ -f "$mk" ] || return 0' '  [ ! -L "$mk" ] && [ -f "$mk" ] || return 1' f_fnomk
+hd "ML13 MH_FLEET_ROLE no longer set for a child — F1 must catch it"
+mutlib fvar '      MH_FLEET_ROLE=child; echo child ;;' '      echo child ;;' f_fvar
+hd "ML14 globals no longer reset per call — F2b must catch it"
+mutlib freset '  MH_FLEET_ROLE=; MH_FLEET_EPIC=' '  :' f_freset
+hd "ML9 epic key shape check removed — F1 must catch it"
+mutlib fepic "      if printf '%s' \"\$epic\" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+\$'; then MH_FLEET_EPIC=\$epic; fi" '      MH_FLEET_EPIC=$epic' f_fepic
+hd "ML10 restart-percentage upper bound removed — S2 must catch it"
+mutlib fpct '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' '  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi' f_fpct
+f_cpat()  { F mh_compactions "$WORK/c2.jsonl"; }
+f_cside() { F mh_compactions "$WORK/c3.jsonl"; }
+f_ctail() { F mh_compactions "$WORK/c1.jsonl"; }
+f_cm()    { local f="$WORK/cm.jsonl"; : > "$f"; amsg "$f" 900; boundary "$f"; amsg "$f" 700; boundary "$f"; amsg "$f" 150; amsg "$f" 160; F mh_since_compact "$f"; }
+f_clast() { f_cm; }
+f_cfirst() { f_cm; }
+f_crc()   { F mh_compactions "$WORK/none.jsonl"; }
+hd "ML15 compaction match loses the system type — C2 must catch it"
+mutlib cpat "MH_COMPACT_PAT='\"type\":\"system\",\"subtype\":\"compact_boundary\"'" "MH_COMPACT_PAT='\"subtype\":\"compact_boundary\"'" f_cpat
+hd "ML16 sidechain compactions counted — C3 must catch it"
+mutlib cside "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -c ''" f_cside
+hd "ML17 compactions read only the 400-line tail — C1 must catch it"
+mutlib ctail "  LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" "  tail -n 400 -- \"\$1\" | LC_ALL=C grep -F -- \"\$MH_COMPACT_PAT\" 2>/dev/null | LC_ALL=C grep -vc '\"isSidechain\":true'" f_ctail
+hd "ML18 since_compact anchors on the FIRST compaction — C4 must catch it"
+mutlib clast "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | head -n 1 | cut -d: -f1)" f_clast
+f_cside2() { local f="$WORK/cs2.jsonl"; : > "$f"; boundary "$f"; amsg "$f" 80; boundary "$f" true; amsg "$f" 90; F mh_since_compact "$f"; }
+hd "ML21 since_compact's boundary search counts a sidechain boundary — C4 must catch it"
+mutlib csb2 "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | LC_ALL=C grep -v '\"isSidechain\":true' | tail -n 1 | cut -d: -f1)" "  ln=\$(LC_ALL=C grep -nF -- \"\$MH_COMPACT_PAT\" \"\$1\" 2>/dev/null | cat | tail -n 1 | cut -d: -f1)" f_cside2
+f_ccap()  { F mh_since_compact "$WORK/c6.jsonl"; }
+f_ccapb() { F mh_since_compact "$WORK/c6b.jsonl"; }
+hd "ML22 since_compact reads past 400 lines after the boundary — C6 must catch it"
+mutlib ccap '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \' '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -c 8000000 \' f_ccap
+hd "ML23 since_compact reads past 8 MB after the boundary — C6 must catch it"
+mutlib ccapb '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \' '  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 \' f_ccapb
+hd "ML19 since_compact reports the LAST message's size, not the first's — C4 must catch it"
+mutlib cfirst "  | awk \"\$MH_SIZES_AWK\" | awk 'NR == 1 { f = \$0 } END { if (NR) print NR, f }'" "  | awk \"\$MH_SIZES_AWK\" | awk '{ f = \$0 } END { if (NR) print NR, f }'" f_cfirst
+hd "ML20 unreadable file no longer rc 1 — C1 rc must catch it"
+mutlib crc '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 0' f_crc
 f_keynl() { isk $'AOS-1\nAOS-2'; }
-hd "ML8 a symlinked marker trusted — L12 must catch it"
+hd "ML24 a symlinked marker trusted — L12 must catch it"
 mutlib mklink '  [ -n "${1:-}" ] && [ ! -L "$f" ] && [ -f "$f" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$f" ] || return 1' f_mklink
-hd "ML7 the key rule's single-line guard removed — L9b must catch it"
+hd "ML25 the key rule's single-line guard removed — L9b must catch it"
 mutlib keynl "  case \"\${1:-}\" in *\$'\\n'*) return 1 ;; esac" '  :' f_keynl
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"

@@ -84,6 +84,43 @@ hd "S10 nothing from the message or brief is echoed"
 brief "ZQX-BRIEF-MARK WORKTREE:"
 run "$GATE" "$P" "$(stop_in marvin:developer "ZQX-MSG-MARK \" \\")"; assert_json; assert_no "ZQX-MSG-MARK"; assert_no "ZQX-BRIEF-MARK"
 
+hd "S11 marvin:codex (the Codex forwarder) is gated like every persona — the ^marvin: matcher covers it"
+brief "Lane review. FINAL MESSAGE: CODEX verdict line, TRACKER:, GUARDRAILS:. Run report: .marvin/runs/AOS-1/x-codex.md"
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: FAIL (review)
+src/a.ts:3 — token not verified [FAIL] new mech: src/a.ts#verify
+TRACKER: none
+GUARDRAILS: NONE")"; assert_rc0; assert_empty
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: unavailable not-logged-in")"; assert_json; assert_out '"decision":"block"'; assert_out "TRACKER:"; assert_out "GUARDRAILS:"
+run "$GATE" "$P" "$(stop_in marvin:codex "CODEX: unavailable not-logged-in" true)"; assert_empty
+
+hd "S12 marvin:codex's output check (the node one-liner in agents/codex.md) passes the lane schema, rejects the rest"
+SN=$(sed -n "s/.*node -e '\(.*\)' <base>\.out <base>\.json <lane>.*/\1/p" "$SCRIPT_DIR/../agents/codex.md")
+if [ -z "$SN" ]; then bad "one-liner not found in agents/codex.md — harness is stale"
+elif ! command -v node >/dev/null 2>&1; then ok "node absent — one-liner fixtures skipped"
+else
+  case "$SN" in *"'"*) bad "one-liner holds a single quote (breaks its shell quoting)" ;; *) ok "one-liner free of single quotes" ;; esac
+  cx() {  # cx <lane> <rawOutput> <want>
+    python3 -c 'import json,sys; print(json.dumps({"storedJob":{"result":{"rawOutput":sys.argv[1]}}}))' "$2" > "$WORK/cx.out"
+    rm -f "$WORK/cx.json"; OUT=$(node -e "$SN" "$WORK/cx.out" "$WORK/cx.json" "$1" 2>&1)
+    if [ "$OUT" = "$3" ]; then ok "$1 → $3"; else bad "$1: got '$OUT', want $3 for: $(printf '%s' "$2" | head -c 90)"; fi
+  }
+  G='{"verdict":"needs-attention","summary":"s","findings":[{"severity":"high","title":"t","tag":"new","mech":"a#b","dod_item":"none"}],"next_steps":[]}'
+  cx review "$G" parsed; cx design "$G" parsed; cx security "$(printf '```json\n%s\n```' "$G")" parsed
+  cx plan '{"verdict":"approve","brief_verdict":"brief-ok","summary":"s","findings":[],"memo":"","next_steps":[]}' parsed
+  cx diagnose '{"hypotheses":[{"cause":"c","confidence":0.5}],"suggested_approach":"a"}' parsed
+  cx build-micro '{"changed_files":["a.ts"],"notes":"DoD 1: met"}' parsed
+  cx review '{"verdict":"approved","summary":"s","findings":"none","next_steps":[]}' invalid-output
+  cx review '{"verdict":"approve","summary":"s","findings":null,"next_steps":[]}' invalid-output
+  cx review '{"verdict":"approve","summary":"s","findings":[{"severity":"blocker","title":"t","tag":"new","mech":"m","dod_item":"none"}],"next_steps":[]}' invalid-output
+  cx review '{"verdict":"approve","summary":"s","findings":[{"severity":"low","title":"t","tag":"new","mech":"m"}],"next_steps":[]}' invalid-output
+  cx review '{"verdict":"approve","summary":"s","findings":[],"next_steps":"none"}' invalid-output
+  cx review 'Looks fine to me.' invalid-output
+  cx plan '{"verdict":"approve","summary":"s","findings":[],"next_steps":[]}' invalid-output
+  cx diagnose '{"hypotheses":[{"evidence":"e"}],"suggested_approach":"a"}' invalid-output
+  cx build '{"changed_files":"a.ts","notes":"x"}' invalid-output
+  cx bogus "$G" invalid-output
+fi
+
 hd "R1 SubagentStart injects the rules for a marvin persona"
 run "$RULES" "$P" "$(start_in marvin:developer-small "$P")"; assert_rc0; assert_json
 assert_out '"hookEventName":"SubagentStart"'; assert_out "Marvin sub-agent rules"; assert_out "TRACKER:"; assert_out "never create, move or delete a git tag"

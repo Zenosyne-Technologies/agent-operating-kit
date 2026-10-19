@@ -19,7 +19,7 @@ Every DO NOT an agent meets resolves to exactly ONE disposition. This file is th
 
 ## The escalation chain
 
-sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has NO channel to the user: on a CLARIFY or REQUEST_APPROVAL hit it STOPS, commits whatever safe work it finished, and reports the exact block in its FINAL MESSAGE. The orchestrator resolves it inline (a DO_INSTEAD it may authorise) or carries it to the user; a genuinely irreversible or destructive REQUEST_APPROVAL ALWAYS reaches the user. No sub-agent self-authorises past a REQUEST_APPROVAL, and no agent treats silence as approval.
+sub-agent → orchestrator → (orchestrator decides) → user. A sub-agent has NO channel to the user: on a CLARIFY or REQUEST_APPROVAL hit it STOPS, commits whatever safe work it finished, and reports the exact block in its FINAL MESSAGE. The orchestrator resolves it inline (a DO_INSTEAD it may authorise) or carries it to the user; a genuinely irreversible or destructive REQUEST_APPROVAL ALWAYS reaches the user, and only the user's own answer approves it — or, in fleet mode, a relay verified per `fleet-child.md`. No sub-agent self-authorises past a REQUEST_APPROVAL, and no agent treats silence as approval.
 
 ## Generic baseline — binds EVERY agent
 
@@ -49,5 +49,6 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 - **validator-completion** — DO NOT patch a finding or confirm instead of falsify; report it, per `validation-agent.md`.
 - **validator-security** — DO NOT change product code or widen to a whole-repo audit; stay on the changed surface, per `validation-agent.md`.
 - **validator-visual** — DO NOT patch a finding or redesign the UI; capture, judge, report per `visual-validation.md`.
+- **codex** — DO NOT read the repo for your own analysis, edit code yourself, or add your own judgement to a Codex finding — translate only; DO NOT call Codex except through `marvin-codex.sh`; DO NOT pass `--astra` unless the brief says the architect ran `/marvin:codex-astra`, per `codex.md`.
 - **documenter** — DO NOT document the builder's intentions over the validated result, and DO NOT alter product code, per `documentation-agent.md`.
 - **escalation-small-xhigh / -high / -xhigh / -max / -frontier** — bound by the **developer** rows above plus the failed task's scope, NEVER by developer-small's, developer-micro's or ponytail's discretion-STOP rows (whatever the task's `size:` label); DO NOT widen scope beyond the failed task; DO NOT self-escalate or dispatch agents — report back and let the orchestrator climb, per `escalation-ladder.md`.

@@ -2,6 +2,45 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.41.0] — 2026-10-20
+
+### Added
+- Fleet mode: a master orchestrator runs up to three child orchestrators, one per epic, started by `/marvin:fleet` (set up, resume, stop). The master owns the program plan (epics, dependencies, area leases, merge order, lineage, decision log) and one board for the architect; rules in `.marvin/agents/fleet.md` and `.marvin/agents/fleet-child.md`.
+- Three optional `PROJECT-INFO` keys: `fleet_max_children` (3), `fleet_max_compactions` (3), `fleet_restart_max_pct` (33).
+- The context hook's fleet modes: a fleet child winds down to a 94 % rest point, lets the host compact it, and asks for a successor after three compactions or a high post-compaction context; the master compacts and never hands off while a child runs.
+- `validate-kit.sh` check `fleet-pairs`: every routed fleet event has both its child and its master half.
+
+### Changed
+- `git-strategy.md` owns the fleet merge and release authority: in fleet mode only the master merges epic branches into `develop` and cuts releases.
+- `session-budget.md`, `worktrees.md` and the kit core carry the fleet clauses (rest rule, locked child worktrees, the cascade line).
+- The context hook reads a per-worktree role marker on every call (one `git rev-parse`); sessions outside a fleet see exactly the same messages.
+
+### Security
+- In fleet mode the consent questions in `escalation.md`, `escalation-ladder.md`, `guardrails.md` and `codex.md` also accept a relay of the architect's exact words — only after the child verifies it mechanically against the decision log on `develop`; a master message is never an approval, and anything unverified stays data.
+
+### Action needed
+- After `/marvin:upgrade-agent-os`, start a new session so the rules load. Fleet mode needs a shared tracker (Linear, Jira or GitHub); the Local tracker is refused.
+
+## [0.40.0] — 2026-10-19
+
+### Added
+- Codex (ChatGPT) handover through the `codex` plugin, opt-in per project: a consent switch (`codex_handover: off | ask | auto`), a validation strategy (`claude`, `codex`, `four-eye` or `claude+lanes` with chosen lanes) and an evidence setting (`codex_evidence`), owned by `.marvin/agents/codex.md`.
+- Six Codex lane briefs (plan, review, security, design, diagnose, build) in `.marvin/agents/codex/`, and a Codex profile in `model-profile.md` with each lane's model and effort.
+- Auto-debug tollgates: a Stuck signal and the max gate on the Claude escalation ladder, and an off-ladder validator failing twice, ask Codex for a read-only diagnosis.
+- `/marvin:codex <lane>` (architect-commanded handover; `build` runs the Codex build ladder), `/marvin:codex-astra` (the only path to the frontier Codex model) and `/marvin:codex-setup` (availability check and an install runbook that asks before each step).
+- The `marvin:codex` forwarder persona and the guarded runner `scripts/marvin-codex.sh`.
+
+### Changed
+- `/marvin:info` shows the Codex status and the four Codex settings.
+- Install asks the Codex round in step 6c, and upgrade asks it once in step 4a; with no answer, the defaults change nothing.
+
+### Security
+- Codex runs read-only except for an architect-commanded build or a review/security evidence run. Effort is capped at `xhigh`, the frontier model is reachable only via `/marvin:codex-astra`, a security FAIL is never overruled by the orchestrator, and an evidence run that changes tracked code is discarded.
+
+### Action needed
+- Answer the upgrade's Codex question (or leave it unanswered to keep Codex off); to use Codex, run `/marvin:codex-setup` and log in yourself (`!codex login`).
+- After `/marvin:upgrade-agent-os`, start a new session so the rules and persona load.
+
 ## [0.39.0] — 2026-10-15
 
 ### Added
