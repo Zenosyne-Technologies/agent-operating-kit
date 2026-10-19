@@ -43,14 +43,23 @@ jobs:
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
   windows:
-    # Git Bash on windows-latest: the hooks are bash scripts; first run pending (cannot be verified before a push).
+    # Git Bash on windows-latest: the hooks are bash scripts. First run pending (cannot be verified before a push).
+    continue-on-error: true   # until its first green run — then remove this line
     runs-on: windows-latest
     defaults:
       run:
         shell: bash
+    env:
+      MSYS: winsymlinks:nativestrict   # real symlinks (the runner is admin); the symlink-refusal fixtures need them
     steps:
-      - name: Keep LF line endings (a CRLF-mangled bash script fails)
-        run: git config --global core.autocrlf false
+      - name: Point TMPDIR at the runner temp, in Git Bash form
+        # Without this /tmp (MSYS, under the Git install) and the C:/... paths git and the runner report are
+        # different spellings of different directories; the marker and sweep fixtures compare physical paths.
+        run: echo "TMPDIR=$(cygpath -u "$RUNNER_TEMP")" >> "$GITHUB_ENV"
+      - name: Keep LF line endings and native symlinks (a CRLF-mangled bash script fails)
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.symlinks true
       - uses: actions/checkout@v4
       - name: Run worktree sweep tests
         run: bash scripts/test-worktree-sweep.sh

@@ -34,6 +34,7 @@
 - [The discipline stack](#the-discipline-stack)
 - [Contributing](#contributing)
 - [Inventory](#inventory)
+- [Windows](#windows)
 - [Portability notes](#portability-notes)
 
 ## What you get
@@ -318,7 +319,7 @@ scripts/plan-claude-md-split.sh      read-only planner for the one-time v0.33.0 
 scripts/claude-core-history/        every always-loaded core the kit shipped at a tag (v0.22.0–v0.32.0) — the planner's reference set
 scripts/test-claude-md-split.sh      planner fixtures P1–P8 plus inline mutation checks (CI runs it too)
 scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md briefs over a version range by category, Action needed first (backs /marvin:whats-new)
-scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ only worktrees Marvin marked as its own, behind the scope check and nine keep guards (G1–G9) (backs the SessionStart sweep and /marvin:clean-worktrees; `worktree_sweep` on | check | off)
+scripts/marvin-worktree-sweep.sh     removes the Marvin-marked finished agent worktrees under .claude/worktrees/ unless a scope check or one of nine keep guards (G1–G9) holds; backs the SessionStart sweep and /marvin:clean-worktrees (`worktree_sweep` on | check | off)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
 scripts/marvin-worktree-mark.sh      writes the Marvin-owned marker (git admin dir `marvin-owned`) for a marvin:* agent's isolation worktree on SubagentStop, or by hand for one the orchestrator made
@@ -418,7 +419,7 @@ templates/
 
 ## Windows
 
-The hooks and helper scripts are bash scripts, so on Windows they need Git for Windows (Git Bash) on the machine; the Claude Code desktop app and the CLI both run them through it. Install Git for Windows with its default "Git from the command line and also from 3rd-party software" option, keep line endings as LF for this plugin's files (`core.autocrlf=false`; a CRLF-mangled bash script fails), and install the plugin as in Manual install. The path-handling code (`mh_path` in `scripts/lib/marvin-hook-lib.sh`) treats `C:\x\y`, `C:/x/y` and `/c/x/y` as one path, so the marker, sweep and run-state comparisons hold across the spellings Git Bash and the desktop app produce. A `windows-latest` CI job (Git Bash, `core.autocrlf=false` set before checkout) runs the worktree-sweep, session-hook, hook-library, ticket-lint, worktree-marker and run-state-sync suites; that job is added and its first run is pending, so Windows support is untested until it has gone green once.
+The hooks and helper scripts are bash scripts, so on Windows they need Git for Windows (Git Bash) on the machine; they are written to run through it, from the Claude Code desktop app or the CLI. Install Git for Windows with its default "Git from the command line and also from 3rd-party software" option, keep line endings as LF for this plugin's files (`core.autocrlf=false`; a CRLF-mangled bash script fails), and install the plugin as in Manual install. The path-handling code (`mh_path` in `scripts/lib/marvin-hook-lib.sh`) is intended to equate `C:\x\y`, `C:/x/y` and `/c/x/y` so the marker, sweep and run-state comparisons hold across the spellings Git Bash and the desktop app produce; that is untested on Windows until the CI job below is green. A `windows-latest` CI job (Git Bash, `core.autocrlf=false` set before checkout) runs the worktree-sweep, session-hook, hook-library, ticket-lint, worktree-marker and run-state-sync suites; that job is added and its first run is pending, so Windows support is untested until it has gone green once (the job is non-blocking until then). A `.gitattributes` pins `*.sh` and `hooks/*.json` to LF, so a clone with `core.autocrlf=true` still gets working scripts.
 
 ## Portability notes
 

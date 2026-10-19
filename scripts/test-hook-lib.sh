@@ -62,7 +62,7 @@ J '{"enabledPlugins":{"a@m":true,"b@m":false,"c@m":{"x":1}},"other":1}' members 
 eq "$(printf 'a@m\ttrue\nb@m\tfalse')"
 
 hd "J9 a 1 MiB string decodes in one pass, in under 10 s"
-big=$(python3 -c 'import json; print(json.dumps({"m": "ab\n" * 350000}))')
+big=$(awk 'BEGIN { printf "{\"m\": \""; for (i = 0; i < 350000; i++) printf "ab\\n"; print "\"}" }')   # no python dependency
 SECONDS=0; J "$big" get m; t=$SECONDS; rc 0
 if [ "${#OUT}" -ge 1049990 ]; then ok "length ${#OUT}"; else bad "decoded length ${#OUT}"; fi
 if [ "$t" -lt 10 ]; then ok "took ${t}s"; else bad "took ${t}s"; fi
