@@ -8,7 +8,9 @@
 # One suite per migration script, each selected by `use_migration <version>`, which points
 # every helper — the script path AND the report's fence text and record grammar — at that
 # script: `T*` fixtures pin scripts/migrate-v0.21.0.sh, `R*` fixtures pin
-# scripts/migrate-v0.35.0.sh. `--only <version>` runs one suite (mutate-migrations.sh uses it).
+# scripts/migrate-v0.35.0.sh, and `N*` fixtures pin scripts/marvin-runs-migrate.sh (suite `runs`:
+# the run-state move into the per-session layout, AOS-237). `--only <version|runs>` runs one
+# suite (mutate-migrations.sh uses it).
 #
 # The migration MOVES files and REPORTS; it never reads or writes file content. A whole class
 # of defects (substring rewriting eating URLs, `.bak` siblings, code fences, prose) is gone by
@@ -16,7 +18,7 @@
 # invariant, pinned in TC1: after any run, every byte of every file is either where it was or
 # at its new path — nothing is edited, and CLAUDE.md is never touched at all.
 #
-# Run from anywhere: bash scripts/test-migrations.sh [--only 0.21.0|0.35.0] [--repeat-timing N]
+# Run from anywhere: bash scripts/test-migrations.sh [--only 0.21.0|0.35.0|runs] [--repeat-timing N]
 # Exit 0 = all assertions pass.
 set -uo pipefail
 
@@ -47,10 +49,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --repeat-timing) REPEAT_TIMING="$2"; shift 2;;
     --only) ONLY="$2"; shift 2;;
-    *) printf 'usage: test-migrations.sh [--only <version>] [--repeat-timing N]\n' >&2; exit 2;;
+    *) printf 'usage: test-migrations.sh [--only <version|runs>] [--repeat-timing N]\n' >&2; exit 2;;
   esac
 done
-case "$ONLY" in ""|0.21.0|0.35.0) ;; *) printf 'test-migrations: no suite for version %s\n' "$ONLY" >&2; exit 2;; esac
+case "$ONLY" in ""|0.21.0|0.35.0|runs) ;; *) printf 'test-migrations: no suite for version %s\n' "$ONLY" >&2; exit 2;; esac
 want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 PASSED=0; FAILED=0; CURRENT=""
@@ -84,6 +86,11 @@ use_migration() {
   MIGRATE="$SCRIPT_DIR/migrate-v$v.sh"
   SELF="migrate-v$v"
   case "$v" in
+    runs)
+      # Not a release migration: the run-state move is keyed by its script, not a version.
+      MIGRATE="$SCRIPT_DIR/marvin-runs-migrate.sh"; SELF="marvin-runs-migrate"
+      RECORD_GRAMMAR="^(---- (marvin-runs-migrate|end marvin-runs-migrate) report ----|(encoding|mode|target|moved|kept-older|duplicates|deferred|skipped|result)=.*|(moved|kept-older|duplicate|deferred|skipped|symlink|refused): .*)\$"
+      COUNT_KEYS="moved:moved kept-older:kept-older duplicates:duplicate deferred:deferred skipped:skipped";;
     0.21.0)
       RECORD_GRAMMAR="^(---- (migrate-v$vre|end migrate-v$vre) report ----|(version|encoding|mode|renamed|declined|collisions|failures|staged|committed|result)=.*|(renamed|declined|collision|failure|symlink|repo-state|references-to-update|directory-emptied): .*)\$"
       COUNT_KEYS="renamed:renamed declined:declined collisions:collision failures:failure";;
@@ -1542,6 +1549,421 @@ while [ "$rep" -le "$REPEAT_TIMING" ]; do
 done
 
 fi  # end SUITE v0.35.0
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+# SUITE runs — scripts/marvin-runs-migrate.sh (fixtures N*)
+# The run-state move (AOS-237): flat `.marvin/runs/<KEY|adhoc>/` folders — in the main checkout
+# and in every worktree under `.claude/worktrees/` — move into ONE legacy session folder,
+# `<main>/.marvin/runs/<UTC>-00000000-0000-0000-0000-000000000000/<KEY|adhoc>/`. Ignored state
+# only: it stages nothing, edits nothing, and refuses the whole run on any guard.
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+if want runs; then
+use_migration runs
+
+NIL=00000000-0000-0000-0000-000000000000
+NL_CHAR=$'\n'
+mk_runs() {  # mk_runs <dir> — a committed Marvin project with flat run state in its main checkout
+  require_workdir
+  local d="$WORK/$1"
+  rm -rf "$d"; mkdir -p "$d"; cd "$d" || exit 1
+  git init -q .
+  git config user.email test@example.com
+  git config user.name "kit test"
+  git config commit.gpgsign false
+  mkdir -p .marvin/agents src
+  printf -- '---\nkit_version: 0.39.0\n---\n' > .marvin/PROJECT-INFO.md
+  printf 'console.log(1)\n' > src/app.js
+  printf '%s\n' '.marvin/runs/' '.claude/worktrees/' > .gitignore
+  git add -- . >/dev/null
+  git commit -qm "v0.39.0 install"
+  mkdir -p .marvin/runs/AOS-1 .marvin/runs/adhoc
+  printf '*\n' > .marvin/runs/.gitignore
+  printf '| round |\n| 1 | main |\n' > .marvin/runs/AOS-1/ledger.md
+  printf 'developer report\n' > .marvin/runs/AOS-1/20260101T000000Z-developer.md
+  printf 'a look-up\n' > .marvin/runs/adhoc/20260102T000000Z-ponytail.md
+  touch -t 202601010000 .marvin/runs/AOS-1/ledger.md
+}
+mk_wt() {  # mk_wt <name> — a worktree under .claude/worktrees/ holding its own flat run state
+  local w=".claude/worktrees/$1"
+  git worktree add -q "$w" -b "wt-$(printf '%s' "$1" | tr ' ' '-')" >/dev/null 2>&1 || { bad "fixture: worktree $1"; return 1; }
+  mkdir -p "$w/.marvin/runs/AOS-2"
+  printf 'validator report from %s\n' "$1" > "$w/.marvin/runs/AOS-2/20260103T000000Z-validator-$1.md"
+}
+legacy_dirs()  { local d; for d in .marvin/runs/*-"$NIL"; do [ -d "$d" ] && printf '%s\n' "${d##*/}"; done; return 0; }
+norm_runs()    { sed -E "s/[0-9]{8}T[0-9]{6}Z-$NIL/<UTC>-nil/g"; }
+tree_sum()     { find "$1" -type f -exec cksum {} + 2>/dev/null | LC_ALL=C sort; }
+content_set()  { find . -path ./.git -prune -o -type f -exec cksum {} + | awk '{print $1" "$2}' | LC_ALL=C sort -u; }
+file_count()   { find . -path ./.git -prune -o -type f -print | wc -l | tr -d ' '; }
+assert_gone()  { if [ -e "$1" ] || [ -L "$1" ]; then bad "gone: $1${2:+ — $2}"; else ok "gone: $1${2:+ — $2}"; fi; }
+assert_there() { [ -f "$1" ] && [ ! -L "$1" ]; chk $? "present: $1${2:+ — $2}"; }
+assert_body()  { assert_eq "$(cat -- "$1" 2>/dev/null)" "$2" "$1 holds the expected bytes${3:+ — $3}"; }
+assert_runs_refused() {  # $1 = context — exit 1, result=refused, no move records, well-formed
+  assert_rc 1 "$1"
+  assert_out "result=refused"
+  assert_eq "$(report_lines | grep -c '^moved: ')" "0" "no moved records — $1"
+  assert_eq "$(report_lines | grep -c '^kept-older: ')" "0" "no kept-older records — $1"
+  assert_report_wellformed "$1"
+}
+LEDGER_MAIN=$(printf '| round |\n| 1 | main |')
+
+hd "N01 --check changes nothing and prints exactly the real run's records"
+mk_runs n01; mk_wt wt1
+before=$(snapshot)
+run_migrate --check
+assert_rc 0 "--check"
+assert_eq "$(snapshot)" "$before" "every file byte-identical before/after --check (worktrees and ignored run state included)"
+assert_eq "$(legacy_dirs)" "" "--check created no legacy folder"
+assert_out "mode=check"
+assert_out "result=done"
+assert_out "moved=4"
+assert_report_wellformed "--check plan"
+check_rep=$(report_lines | norm_runs | grep -v '^mode=')
+run_migrate
+assert_rc 0 "the real run"
+L=$(legacy_dirs)
+printf '%s' "$L" | grep -Eq "^[0-9]{8}T[0-9]{6}Z-$NIL\$"
+chk $? "one legacy folder <UTC>-<nil UUID> was created (got '$L')"
+assert_eq "$(report_lines | norm_runs | grep -v '^mode=')" "$check_rep" "the real run's report equals the --check report but for mode="
+assert_out "mode=apply"
+assert_out "target=.marvin/runs/$L"
+assert_out "moved: .marvin/runs/AOS-1/20260101T000000Z-developer.md -> .marvin/runs/$L/AOS-1/20260101T000000Z-developer.md"
+assert_out "moved: .marvin/runs/AOS-1/ledger.md -> .marvin/runs/$L/AOS-1/ledger.md"
+assert_out "moved: .marvin/runs/adhoc/20260102T000000Z-ponytail.md -> .marvin/runs/$L/adhoc/20260102T000000Z-ponytail.md"
+assert_out "moved: .claude/worktrees/wt1/.marvin/runs/AOS-2/20260103T000000Z-validator-wt1.md -> .marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt1.md"
+assert_body ".marvin/runs/$L/AOS-1/ledger.md" "$LEDGER_MAIN" "moved byte for byte"
+assert_gone .marvin/runs/AOS-1/ledger.md "the source is removed once its copy verified"
+assert_gone .claude/worktrees/wt1/.marvin/runs/AOS-2/20260103T000000Z-validator-wt1.md
+assert_there .marvin/runs/.gitignore "the runs .gitignore is never moved"
+assert_gone ".marvin/runs/$L/.gitignore"
+assert_clean "nothing staged, nothing dirtied"
+assert_eq "$(git rev-list --count HEAD)" "1" "nothing committed"
+assert_report_wellformed "real run"
+
+hd "N02 a symlink at any component refuses the whole run — nothing moved"
+n02_refused() {  # n02_refused <label> <symlink record path> <outside dir>
+  local out_before
+  out_before=$(tree_sum "$3")
+  before=$(snapshot)
+  run_migrate
+  assert_runs_refused "$1"
+  assert_out "symlink: $2"
+  assert_eq "$(snapshot)" "$before" "nothing changed — $1"
+  assert_eq "$(tree_sum "$3")" "$out_before" "the link's target is untouched — $1"
+  run_migrate --check
+  assert_rc 1 "--check predicts the refusal — $1"
+  assert_out "symlink: $2"
+}
+# (a) the project's .marvin/runs
+mk_runs n02a; mkdir -p "$WORK/n02a-out"
+mv .marvin/runs/AOS-1 .marvin/runs/adhoc .marvin/runs/.gitignore "$WORK/n02a-out/"
+rmdir .marvin/runs; ln -s "$WORK/n02a-out" .marvin/runs
+n02_refused "project .marvin/runs" ".marvin/runs" "$WORK/n02a-out"
+run_migrate --defer-flat
+assert_rc 1 "--defer-flat still guards the target .marvin/runs"
+assert_out "symlink: .marvin/runs"
+# (b) the project's .marvin
+mk_runs n02b; mv .marvin "$WORK/n02b-out"; ln -s "$WORK/n02b-out" .marvin
+n02_refused "project .marvin" ".marvin" "$WORK/n02b-out"
+run_migrate --defer-flat
+assert_rc 1 "--defer-flat still guards the target .marvin"
+assert_out "symlink: .marvin"
+# (c) a source worktree's .marvin
+mk_runs n02c; mk_wt wt1
+mv .claude/worktrees/wt1/.marvin "$WORK/n02c-out"; ln -s "$WORK/n02c-out" .claude/worktrees/wt1/.marvin
+n02_refused "worktree .marvin" ".claude/worktrees/wt1/.marvin" "$WORK/n02c-out"
+# (d) a source worktree's .marvin/runs
+mk_runs n02d; mk_wt wt1
+mv .claude/worktrees/wt1/.marvin/runs "$WORK/n02d-out"; ln -s "$WORK/n02d-out" .claude/worktrees/wt1/.marvin/runs
+n02_refused "worktree .marvin/runs" ".claude/worktrees/wt1/.marvin/runs" "$WORK/n02d-out"
+# (e) a key folder
+mk_runs n02e; mkdir -p "$WORK/n02e-out"; printf 'outside\n' > "$WORK/n02e-out/20260104T000000Z-x.md"
+ln -s "$WORK/n02e-out" .marvin/runs/AOS-9
+n02_refused "key folder" ".marvin/runs/AOS-9" "$WORK/n02e-out"
+# (f) a run file
+mk_runs n02f; mkdir -p "$WORK/n02f-out"; printf 'outside\n' > "$WORK/n02f-out/r.md"
+ln -s "$WORK/n02f-out/r.md" .marvin/runs/AOS-1/20260105T000000Z-linked.md
+n02_refused "run file" ".marvin/runs/AOS-1/20260105T000000Z-linked.md" "$WORK/n02f-out"
+# (g) the legacy target folder
+mk_runs n02g; mkdir -p "$WORK/n02g-out"
+ln -s "$WORK/n02g-out" ".marvin/runs/20260301T000000Z-$NIL"
+n02_refused "legacy folder" ".marvin/runs/20260301T000000Z-$NIL" "$WORK/n02g-out"
+# (h) a key folder inside the reused legacy folder
+mk_runs n02h; mkdir -p "$WORK/n02h-out" ".marvin/runs/20260301T000000Z-$NIL"
+ln -s "$WORK/n02h-out" ".marvin/runs/20260301T000000Z-$NIL/AOS-1"
+n02_refused "target key folder" ".marvin/runs/20260301T000000Z-$NIL/AOS-1" "$WORK/n02h-out"
+# (i) a target file
+mk_runs n02i; mkdir -p "$WORK/n02i-out" ".marvin/runs/20260301T000000Z-$NIL/adhoc"; printf 'outside\n' > "$WORK/n02i-out/t.md"
+ln -s "$WORK/n02i-out/t.md" ".marvin/runs/20260301T000000Z-$NIL/adhoc/20260102T000000Z-ponytail.md"
+n02_refused "target file" ".marvin/runs/20260301T000000Z-$NIL/adhoc/20260102T000000Z-ponytail.md" "$WORK/n02i-out"
+
+hd "N03 an immutable report already at its target and differing is a duplicate: the source stays"
+mk_runs n03
+L="20260301T000000Z-$NIL"
+mkdir -p ".marvin/runs/$L/AOS-1" ".marvin/runs/$L/adhoc"
+printf 'the copy already migrated\n' > ".marvin/runs/$L/AOS-1/20260101T000000Z-developer.md"
+cp -p .marvin/runs/adhoc/20260102T000000Z-ponytail.md ".marvin/runs/$L/adhoc/"
+run_migrate
+assert_rc 0
+assert_out "duplicate: .marvin/runs/AOS-1/20260101T000000Z-developer.md (differs from .marvin/runs/$L/AOS-1/20260101T000000Z-developer.md)"
+assert_body .marvin/runs/AOS-1/20260101T000000Z-developer.md "developer report" "the differing source stays"
+assert_body ".marvin/runs/$L/AOS-1/20260101T000000Z-developer.md" "the copy already migrated" "the existing target is kept"
+assert_out "moved: .marvin/runs/adhoc/20260102T000000Z-ponytail.md -> .marvin/runs/$L/adhoc/20260102T000000Z-ponytail.md"
+assert_gone .marvin/runs/adhoc/20260102T000000Z-ponytail.md "an identical source is removed (its bytes are at the target)"
+assert_body ".marvin/runs/$L/adhoc/20260102T000000Z-ponytail.md" "a look-up"
+assert_out "duplicates=1"
+assert_eq "$(legacy_dirs)" "$L" "the existing legacy folder is reused"
+assert_report_wellformed "duplicate"
+# (b) two sources, no target: the main checkout's copy lands, the differing worktree copy stays
+mk_runs n03b; mk_wt wt1
+mkdir -p .claude/worktrees/wt1/.marvin/runs/AOS-1
+printf 'a different developer report\n' > .claude/worktrees/wt1/.marvin/runs/AOS-1/20260101T000000Z-developer.md
+run_migrate
+assert_rc 0
+L=$(legacy_dirs)
+assert_body ".marvin/runs/$L/AOS-1/20260101T000000Z-developer.md" "developer report" "the first source lands"
+assert_body .claude/worktrees/wt1/.marvin/runs/AOS-1/20260101T000000Z-developer.md "a different developer report" "the differing second source stays"
+assert_out "duplicate: .claude/worktrees/wt1/.marvin/runs/AOS-1/20260101T000000Z-developer.md (differs from .marvin/runs/$L/AOS-1/20260101T000000Z-developer.md)"
+assert_report_wellformed "duplicate between sources"
+
+hd "N04 diverged ledger.md / build-brief*.md copies: the newer wins, every older one is kept as <stem>.older-<n>.md"
+mk_runs n04; mk_wt wt1
+W=.claude/worktrees/wt1/.marvin/runs/AOS-1
+mkdir -p "$W"
+printf '| round |\n| 1 | main |\n| 2 | wt1 |\n' > "$W/ledger.md"; touch -t 202602010000 "$W/ledger.md"
+printf 'brief v2\n' > .marvin/runs/AOS-1/build-brief-api.md; touch -t 202602010000 .marvin/runs/AOS-1/build-brief-api.md
+printf 'brief v1\n' > "$W/build-brief-api.md";                touch -t 202601010000 "$W/build-brief-api.md"
+run_migrate
+assert_rc 0
+L=$(legacy_dirs); T=".marvin/runs/$L/AOS-1"
+assert_body "$T/ledger.md" "$(printf '| round |\n| 1 | main |\n| 2 | wt1 |')" "the newer ledger (the worktree's) wins"
+assert_body "$T/ledger.older-1.md" "$LEDGER_MAIN" "the older ledger is kept beside it"
+assert_out "moved: $W/ledger.md -> $T/ledger.md"
+assert_out "kept-older: .marvin/runs/AOS-1/ledger.md -> $T/ledger.older-1.md"
+assert_body "$T/build-brief-api.md" "brief v2" "the newer build brief (the main checkout's) wins"
+assert_body "$T/build-brief-api.older-1.md" "brief v1"
+assert_out "kept-older: $W/build-brief-api.md -> $T/build-brief-api.older-1.md"
+assert_out "kept-older=2"
+assert_eq "$(report_lines | grep -c '^duplicate: ')" "0" "a mutable file is never a duplicate"
+assert_gone .marvin/runs/AOS-1/ledger.md; assert_gone "$W/ledger.md"; assert_gone "$W/build-brief-api.md"
+assert_report_wellformed "ledger merge"
+# (b) a target and an older-1 already there: the displaced target and the older source take fresh numbers
+mk_runs n04b; mk_wt wt1
+L="20260301T000000Z-$NIL"; T=".marvin/runs/$L/AOS-1"; W=.claude/worktrees/wt1/.marvin/runs/AOS-1
+mkdir -p "$T" "$W"
+printf 'cur\n' > "$T/ledger.md"; touch -t 202601150000 "$T/ledger.md"
+printf 'ancient\n' > "$T/ledger.older-1.md"
+printf 'new\n' > "$W/ledger.md"; touch -t 202602010000 "$W/ledger.md"
+run_migrate
+assert_rc 0
+assert_body "$T/ledger.md" "new" "the newest copy wins"
+assert_body "$T/ledger.older-1.md" "ancient" "an existing older copy is never overwritten"
+assert_body "$T/ledger.older-2.md" "cur" "the displaced target is kept"
+assert_body "$T/ledger.older-3.md" "$LEDGER_MAIN" "the older source is kept"
+assert_out "kept-older: $T/ledger.md -> $T/ledger.older-2.md"
+assert_out "kept-older: .marvin/runs/AOS-1/ledger.md -> $T/ledger.older-3.md"
+assert_out "moved: $W/ledger.md -> $T/ledger.md"
+assert_report_wellformed "ledger merge onto an existing target"
+
+hd "N05 --defer <worktree> leaves that worktree untouched and reports it deferred"
+mk_runs n05; mk_wt wt1; mk_wt wt2
+wt1_before=$(tree_sum .claude/worktrees/wt1)
+run_migrate --defer .claude/worktrees/wt1
+assert_rc 0
+assert_out "deferred: .claude/worktrees/wt1 — open session"
+assert_out "deferred=1"
+assert_eq "$(tree_sum .claude/worktrees/wt1)" "$wt1_before" "the deferred worktree is byte-identical"
+assert_eq "$(report_lines | grep -c 'worktrees/wt1/')" "0" "no record names a file in the deferred worktree"
+L=$(legacy_dirs)
+assert_there ".marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt2.md" "the other worktree moved"
+assert_gone .marvin/runs/AOS-1/20260101T000000Z-developer.md "the main checkout moved"
+assert_report_wellformed "deferral"
+# the same worktree under an absolute (possibly non-physical) spelling is the same worktree
+mk_runs n05b; mk_wt wt1
+wt1_before=$(tree_sum .claude/worktrees/wt1)
+run_migrate --defer "$WORK/n05b/.claude/worktrees/wt1/"
+assert_rc 0 "an absolute spelling is accepted"
+assert_out "deferred: .claude/worktrees/wt1 — open session"
+assert_eq "$(tree_sum .claude/worktrees/wt1)" "$wt1_before" "and the worktree is untouched"
+# usage errors: exit 2, nothing changed
+mk_runs n05c; mk_wt wt1
+before=$(snapshot)
+run_migrate --defer src;                 assert_rc 2 "--defer of a directory that is not a worktree"
+run_migrate --defer "$WORK/n05c-nowhere"; assert_rc 2 "--defer of a missing path"
+run_migrate --defer .;                   assert_rc 2 "--defer of the main checkout (that is --defer-flat)"
+run_migrate --defer;                     assert_rc 2 "--defer without a path"
+run_migrate --bogus;                     assert_rc 2 "an unknown flag"
+run_migrate . .;                         assert_rc 2 "two repository paths"
+mkdir -p "$WORK/n05-norepo"
+run_migrate "$WORK/n05-norepo";          assert_rc 2 "not a git work tree"
+assert_eq "$(snapshot)" "$before" "no usage error changed anything"
+
+hd "N06 --defer-flat leaves the main checkout's flat folders untouched"
+mk_runs n06; mk_wt wt1
+flat_before=$( { tree_sum .marvin/runs/AOS-1; tree_sum .marvin/runs/adhoc; } )
+run_migrate --defer-flat
+assert_rc 0
+assert_out "deferred: .marvin/runs — open session"
+assert_eq "$( { tree_sum .marvin/runs/AOS-1; tree_sum .marvin/runs/adhoc; } )" "$flat_before" "the main checkout's flat folders are byte-identical"
+assert_eq "$(report_lines | grep -c '^moved: \.marvin/runs/')" "0" "no record moves a main-checkout file"
+L=$(legacy_dirs)
+assert_there ".marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt1.md" "the worktree still moved"
+assert_report_wellformed "flat deferral"
+
+hd "N07 a re-run is result=nothing-to-do and changes nothing"
+mk_runs n07; mk_wt wt1
+run_migrate
+assert_rc 0; assert_out "result=done"
+L=$(legacy_dirs)
+before=$(snapshot)
+run_migrate
+assert_rc 0 "the re-run"
+assert_out "result=nothing-to-do"
+assert_out "moved=0"
+assert_out "target=.marvin/runs/$L"
+assert_eq "$(snapshot)" "$before" "the re-run changed nothing"
+assert_report_wellformed "re-run"
+run_migrate --check
+assert_rc 0; assert_out "result=nothing-to-do"
+# no run state at all: nothing to do, and no legacy folder is invented
+mk_runs n07b; rm -rf .marvin/runs/AOS-1 .marvin/runs/adhoc
+run_migrate
+assert_rc 0; assert_out "result=nothing-to-do"; assert_out "target=none"
+assert_eq "$(legacy_dirs)" "" "no legacy folder created when nothing moves"
+
+hd "N08 a folder whose name fails the key rule is skipped and reported, never moved"
+mk_runs n08
+S="20260310T101010Z-12345678-1234-1234-1234-123456789abc"
+mkdir -p .marvin/runs/notes .marvin/runs/aos-7 .marvin/runs/AOS-1/sub ".marvin/runs/$S/AOS-5"
+printf 'n\n' > .marvin/runs/notes/x.md
+printf 'l\n' > .marvin/runs/aos-7/y.md
+printf 'r\n' > .marvin/runs/README.md
+printf 's\n' > .marvin/runs/AOS-1/sub/z.md
+printf 'per-session ledger\n' > ".marvin/runs/$S/AOS-5/ledger.md"
+run_migrate
+assert_rc 0
+assert_out "skipped: .marvin/runs/notes (not a key folder)"
+assert_out "skipped: .marvin/runs/aos-7 (not a key folder)"
+assert_out "skipped: .marvin/runs/README.md (not a key folder)"
+assert_out "skipped: .marvin/runs/AOS-1/sub (not a run file)"
+assert_out "skipped=4"
+assert_body .marvin/runs/notes/x.md "n" "skipped folders stay"
+assert_body .marvin/runs/aos-7/y.md "l"
+assert_body .marvin/runs/AOS-1/sub/z.md "s"
+assert_body ".marvin/runs/$S/AOS-5/ledger.md" "per-session ledger" "a per-session folder is never a source"
+assert_eq "$(report_lines | grep -c "$S")" "0" "a per-session folder is not reported"
+assert_eq "$(report_lines | grep -c '\.gitignore')" "0" "the runs .gitignore is neither moved nor reported"
+L=$(legacy_dirs)
+assert_gone ".marvin/runs/$L/notes"; assert_gone ".marvin/runs/$L/aos-7"
+assert_there ".marvin/runs/$L/AOS-1/ledger.md" "key folders still move"
+assert_report_wellformed "skips"
+
+hd "N09 a target that git does not ignore refuses the run"
+mk_runs n09
+printf '%s\n' '.claude/worktrees/' > .gitignore
+git commit -qam "stop ignoring run state"
+rm -f .marvin/runs/.gitignore
+before=$(snapshot)
+run_migrate
+assert_runs_refused "target not ignored"
+report_lines | grep -Eq "^refused: not ignored by git: \.marvin/runs/[0-9]{8}T[0-9]{6}Z-$NIL/AOS-1/ledger\.md — "
+chk $? "the refusal names the unignored target"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+assert_eq "$(legacy_dirs)" "" "no legacy folder created"
+run_migrate --check
+assert_rc 1 "--check predicts it"
+
+hd "N10 a tracked source file refuses the run"
+mk_runs n10
+git add -f -- .marvin/runs/AOS-1/20260101T000000Z-developer.md
+git commit -qm "a run report committed by mistake"
+before=$(snapshot)
+run_migrate
+assert_runs_refused "tracked source"
+assert_out "refused: tracked by git: .marvin/runs/AOS-1/20260101T000000Z-developer.md"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+assert_eq "$(legacy_dirs)" "" "no legacy folder created"
+assert_tracked .marvin/runs/AOS-1/20260101T000000Z-developer.md "still tracked, still in place"
+
+hd "N11 a repository path with a space"
+mk_runs "n11 dir/my repo"; mk_wt "wt one"
+D="$WORK/n11 dir/my repo"
+cd / || exit 1
+run_migrate "$D"
+cd "$D" || exit 1
+assert_rc 0 "run from outside, with the repo path as the argument"
+L=$(legacy_dirs)
+assert_there ".marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt one.md" "the worktree with a space moved"
+assert_gone ".claude/worktrees/wt one/.marvin/runs/AOS-2/20260103T000000Z-validator-wt one.md"
+assert_there ".marvin/runs/$L/AOS-1/ledger.md"
+assert_out "moved: \".claude/worktrees/wt one/.marvin/runs/AOS-2/20260103T000000Z-validator-wt one.md\" -> \".marvin/runs/$L/AOS-2/20260103T000000Z-validator-wt one.md\""
+assert_report_wellformed "space in the path"
+# a hostile run-file name: a newline cannot forge a record, it is encoded on its own line
+mk_runs n11b
+printf 'h\n' > ".marvin/runs/AOS-1/20260106T000000Z-a${NL_CHAR}moved: forged -> x.md"
+run_migrate
+assert_rc 0 "a newline in a run-file name"
+assert_no_record "moved: forged -> x.md"
+assert_report_wellformed "hostile name"
+assert_eq "$(find .marvin/runs/AOS-1 -type f 2>/dev/null | wc -l | tr -d ' ')" "0" "the hostile file moved too"
+mk_runs "n11 dir/my repo"; mk_wt "wt one"
+run_migrate --defer "$D/.claude/worktrees/wt one" "$D"
+assert_rc 0 "--defer of a worktree with a space"
+assert_out "deferred: \".claude/worktrees/wt one\" — open session"
+assert_there ".claude/worktrees/wt one/.marvin/runs/AOS-2/20260103T000000Z-validator-wt one.md" "deferred, untouched"
+
+hd "N12 content invariant: every byte is either at its source or at its target"
+mk_runs n12; mk_wt wt1; mk_wt wt2
+mkdir -p .claude/worktrees/wt1/.marvin/runs/AOS-1 .claude/worktrees/wt1/.marvin/runs/notes .claude/worktrees/wt2/.marvin/runs/AOS-1 .claude/worktrees/wt2/.marvin/runs/adhoc
+printf '| round |\n| 1 | main |\n| 2 | wt1 |\n' > .claude/worktrees/wt1/.marvin/runs/AOS-1/ledger.md
+touch -t 202602010000 .claude/worktrees/wt1/.marvin/runs/AOS-1/ledger.md
+printf 'scratch\n' > .claude/worktrees/wt1/.marvin/runs/notes/s.md
+cp -p .marvin/runs/AOS-1/20260101T000000Z-developer.md .claude/worktrees/wt2/.marvin/runs/AOS-1/
+printf 'another look-up\n' > .claude/worktrees/wt2/.marvin/runs/adhoc/20260102T000000Z-ponytail.md
+before=$(content_set); n_before=$(file_count)
+run_migrate
+assert_rc 0
+assert_out "duplicates=1"
+assert_eq "$(content_set)" "$before" "the set of file contents is unchanged — nothing edited, lost or invented"
+assert_eq "$(file_count)" "$((n_before - 1))" "exactly one file fewer: the byte-identical copy that was deduplicated"
+assert_report_wellformed "content invariant"
+
+hd "N13 a deferred worktree moves on a later run into the SAME legacy folder"
+mk_runs n13; mk_wt wt1
+run_migrate --defer .claude/worktrees/wt1
+assert_rc 0
+L1=$(legacy_dirs)
+sleep 1   # a fresh name would now carry a later timestamp
+run_migrate
+assert_rc 0 "the later run"
+assert_eq "$(legacy_dirs)" "$L1" "exactly one legacy folder, the first run's"
+assert_out "target=.marvin/runs/$L1"
+assert_there ".marvin/runs/$L1/AOS-2/20260103T000000Z-validator-wt1.md" "the formerly deferred worktree joined it"
+assert_report_wellformed "reuse"
+# more than one legacy folder: refused
+mk_runs n13b
+mkdir -p ".marvin/runs/20260301T000000Z-$NIL" ".marvin/runs/20260302T000000Z-$NIL"
+before=$(snapshot)
+run_migrate
+assert_runs_refused "two legacy folders"
+assert_out "refused: more than one legacy folder"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+# a legacy name that is not a folder, and a target that is not a regular file: refused up front
+mk_runs n13c
+printf 'x\n' > ".marvin/runs/20260301T000000Z-$NIL"
+before=$(snapshot)
+run_migrate
+assert_runs_refused "a legacy name that is a file"
+assert_out "refused: a legacy name that is not a folder: .marvin/runs/20260301T000000Z-$NIL"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+mk_runs n13d
+mkdir -p ".marvin/runs/20260301T000000Z-$NIL/AOS-1/ledger.md"
+before=$(snapshot)
+run_migrate
+assert_runs_refused "a target that is a folder"
+assert_out "refused: a target that is not a regular file: .marvin/runs/20260301T000000Z-$NIL/AOS-1/ledger.md"
+assert_eq "$(snapshot)" "$before" "nothing changed"
+
+fi  # end SUITE runs
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 hd "T28 the suite refuses to run without a scratch directory"
