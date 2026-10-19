@@ -42,3 +42,25 @@ jobs:
         run: bash scripts/test-ticket-lint.sh
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
+  windows:
+    # Git Bash on windows-latest: the hooks are bash scripts; first run pending (cannot be verified before a push).
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Keep LF line endings (a CRLF-mangled bash script fails)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - name: Run worktree sweep tests
+        run: bash scripts/test-worktree-sweep.sh
+      - name: Run SessionStart hook tests
+        run: bash scripts/test-session-hook.sh
+      - name: Run hook library tests
+        run: bash scripts/test-hook-lib.sh
+      - name: Run ticket lint tests
+        run: bash scripts/test-ticket-lint.sh
+      - name: Run worktree marker tests
+        run: bash scripts/test-worktree-mark.sh
+      - name: Run run-state sync tests
+        run: bash scripts/test-runs-sync.sh
