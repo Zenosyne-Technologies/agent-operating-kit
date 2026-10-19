@@ -38,3 +38,5 @@ jobs:
         run: bash scripts/test-ticket-lint.sh
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
+      - name: Run codex handover tests
+        run: bash scripts/test-codex.sh

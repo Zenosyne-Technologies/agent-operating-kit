@@ -49,5 +49,6 @@ Owned elsewhere — cited, never restated: git beyond a commit, tagging above al
 - **validator-completion** — DO NOT patch a finding or confirm instead of falsify; report it, per `validation-agent.md`.
 - **validator-security** — DO NOT change product code or widen to a whole-repo audit; stay on the changed surface, per `validation-agent.md`.
 - **validator-visual** — DO NOT patch a finding or redesign the UI; capture, judge, report per `visual-validation.md`.
+- **codex** — DO NOT read the repo for your own analysis, edit code yourself, or add your own judgement to a Codex finding — translate only; DO NOT call Codex except through `marvin-codex.sh`; DO NOT pass `--astra` unless the brief says the architect ran `/marvin:codex-astra`, per `codex.md`.
 - **documenter** — DO NOT document the builder's intentions over the validated result, and DO NOT alter product code, per `documentation-agent.md`.
 - **escalation-small-xhigh / -high / -xhigh / -max / -frontier** — bound by the **developer** rows above plus the failed task's scope, NEVER by developer-small's, developer-micro's or ponytail's discretion-STOP rows (whatever the task's `size:` label); DO NOT widen scope beyond the failed task; DO NOT self-escalate or dispatch agents — report back and let the orchestrator climb, per `escalation-ladder.md`.

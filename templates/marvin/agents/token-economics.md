@@ -32,7 +32,7 @@ By ROLE, not model — the orchestrator runs on the heavy tier's model (`escalat
 | main session (`kind = 0`, `agent` NULL) | orchestrator |
 | `marvin:developer` · `marvin:researcher` · `marvin:validator-*` | heavy |
 | `marvin:escalation-*` | ladder (per rung from `events.agent`: small-xhigh · high · xhigh · max · frontier) |
-| `marvin:developer-small` · `marvin:documenter` | small |
+| `marvin:developer-small` · `marvin:documenter` · `marvin:codex` | small |
 | `marvin:ponytail` · `marvin:developer-micro` | micro |
 
 Any other agent falls back to the tier its model prefix maps to — the prefix → tier list is `model-profile.md`'s.

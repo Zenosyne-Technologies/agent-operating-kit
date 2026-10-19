@@ -2,6 +2,26 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.40.0] — 2026-10-19
+
+### Added
+- Codex (ChatGPT) handover through the `codex` plugin, opt-in per project: a consent switch (`codex_handover: off | ask | auto`), a validation strategy (`claude`, `codex`, `four-eye` or `claude+lanes` with chosen lanes) and an evidence setting (`codex_evidence`), owned by `.marvin/agents/codex.md`.
+- Six Codex lane briefs (plan, review, security, design, diagnose, build) in `.marvin/agents/codex/`, and a Codex profile in `model-profile.md` with each lane's model and effort.
+- Auto-debug tollgates: a Stuck signal and the max gate on the Claude escalation ladder, and an off-ladder validator failing twice, ask Codex for a read-only diagnosis.
+- `/marvin:codex <lane>` (architect-commanded handover; `build` runs the Codex build ladder), `/marvin:codex-astra` (the only path to the frontier Codex model) and `/marvin:codex-setup` (availability check and an install runbook that asks before each step).
+- The `marvin:codex` forwarder persona and the guarded runner `scripts/marvin-codex.sh`.
+
+### Changed
+- `/marvin:info` shows the Codex status and the four Codex settings.
+- Install asks the Codex round in step 6c, and upgrade asks it once in step 4a; with no answer, the defaults change nothing.
+
+### Security
+- Codex runs read-only except for an architect-commanded build or a review/security evidence run. Effort is capped at `xhigh`, the frontier model is reachable only via `/marvin:codex-astra`, a security FAIL is never overruled by the orchestrator, and an evidence run that changes tracked code is discarded.
+
+### Action needed
+- Answer the upgrade's Codex question (or leave it unanswered to keep Codex off); to use Codex, run `/marvin:codex-setup` and log in yourself (`!codex login`).
+- After `/marvin:upgrade-agent-os`, start a new session so the rules and persona load.
+
 ## [0.39.0] — 2026-10-15
 
 ### Added
