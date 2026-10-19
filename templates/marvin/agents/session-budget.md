@@ -37,7 +37,7 @@ At level 3, say it plainly at the top of every reply until the user acts:
 
 Without the plugin's hook, check at milestone close and act on the same table.
 
-A fleet child or master follows its guide's rest rule (`fleet-child.md`, `fleet.md`) instead of this level-3 nudge; the hook emits the fleet messages.
+A fleet child or master follows its guide's rest rule (`fleet-child.md`, `fleet.md`) instead of this level-3 nudge, and writes its handoff where its guide says; the hook emits the fleet messages.
 
 ## The handoff
 
