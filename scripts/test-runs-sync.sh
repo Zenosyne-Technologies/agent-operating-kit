@@ -72,7 +72,11 @@ brief() {  # brief <text> — $T, a transcript whose first user message (the bri
   printf '{"parentUuid":null,"isSidechain":true,"type":"user","message":{"role":"user","content":"%s"}}\n{"type":"assistant","message":{"content":[{"type":"text","text":"ok"}]}}\n' "$1" > "$T"
 }
 want_line() { printf 'Marvin run folder: %s/ — write run files under %s/ in your own checkout; hooks carry them to the project.' "$(mh_q "$RUNS/$1")" "$(mh_q ".marvin/runs/$1")"; }
-want_clash() { printf 'Marvin run-state clash: %s differs from %s — both kept; reconcile before the next dispatch.' "$(mh_q "$1")" "$(mh_q "$2")"; }
+want_clash() {  # want_clash <local> <project> [<sidecar>]
+  printf 'Marvin run-state clash: %s differs from %s — both kept; reconcile before the next dispatch.' "$(mh_q "$1")" "$(mh_q "$2")"
+  [ -z "${3:-}" ] || printf ' — differing copy saved as %s' "$(mh_q "$3")"
+}
+want_refusal() { printf 'Marvin run-state sync refused: %s — %s' "$1" "$(mh_q "$2")"; }
 nsess() { local n=0 d; for d in "$RUNS"/*-"$SID"; do [ -d "$d" ] && n=$((n+1)); done; echo "$n"; }
 pt_clash_ok() {  # pt_clash_ok <local> <project> — the PostToolUse clash JSON: systemMessage and additionalContext
   local want m c e; want=$(want_clash "$1" "$2")
@@ -82,8 +86,8 @@ pt_clash_ok() {  # pt_clash_ok <local> <project> — the PostToolUse clash JSON:
   if [ "$m" = "$want" ]; then ok "systemMessage is the clash line"; else bad "systemMessage '$m', want '$want' (raw: $(printf '%s' "$OUT" | head -c 300))"; fi
   if [ "$c" = "$want" ] && [ "$e" = PostToolUse ]; then ok "additionalContext is the clash line"; else bad "additionalContext '$c' / event '$e'"; fi
 }
-sa_clash_ok() {
-  local want m; want=$(want_clash "$1" "$2")
+sa_clash_ok() {  # sa_clash_ok <local> <project> [<sidecar>]
+  local want m; want=$(want_clash "$1" "$2" "${3:-}")
   m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""
   if [ "$m" = "$want" ]; then ok "systemMessage is the clash line"; else bad "systemMessage '$m', want '$want' (raw: $(printf '%s' "$OUT" | head -c 300))"; fi
 }
@@ -114,8 +118,11 @@ fx_SA1() { fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; brief "Write your run repo
            OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone) dst:$(cat "$RUNS/$S/AOS-1/$REP" 2>/dev/null)"; }
 fx_SA2() { fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; pw "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$A" "$T"
            OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
+SIDE="${REP%.md}.clash-$AID.md"
 fx_SA3() { fresh; lw "$A" "$S/AOS-1/$REP" 'mine\n'; pw "$S/AOS-1/$REP" 'theirs\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$A" "$T"
-           OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone) dst:$(cat "$RUNS/$S/AOS-1/$REP")"; }
+           OUT="$OUT src:$([ -e "$A/.marvin/runs/$S/AOS-1/$REP" ] && echo kept || echo gone) dst:$(cat "$RUNS/$S/AOS-1/$REP") side:$(cat "$RUNS/$S/AOS-1/$SIDE" 2>/dev/null)"; }
+fx_SS1L() { fresh; ss "$1" "$W"; local n; for n in "$RUNS"/*-"$SID"; do n=${n##*/}; done; lw "$W" "$n/AOS-1/ledger.md" 'r1\n'
+            OUT="$OUT status:$([ -z "$(git -C "$W" status --porcelain)" ] && echo clean || echo dirty)"; }
 fx_SA7() { fresh; pw "$S/AOS-1/$REP" 'report\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$1" "$R" "$T"
            OUT="$OUT dst:$([ -e "$RUNS/$S/AOS-1/$REP" ] && echo kept || echo gone)"; }
 fx_SA8() { fresh; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pw "$S/AOS-1/ledger.md" 'r1\n'; brief "Read .marvin/runs/$S/AOS-1/ledger.md first."; sa "$1" "$W" "$T"
@@ -135,7 +142,11 @@ if [ "$(nsess)" = 1 ] && printf '%s' "$name" | grep -Eq "$MH_SESSION_RE"; then o
 holds "$RUNS/.gitignore" '*'
 assert_only "$(want_line "$name")"
 if git -C "$R" check-ignore -q "$RUNS/$name/AOS-1/x.md"; then ok "the folder is git-ignored"; else bad "the folder is not ignored"; fi
-if [ -z "$(git -C "$W" status --porcelain)" ]; then ok "session worktree stays clean"; else bad "worktree dirtied: $(git -C "$W" status --porcelain | head -3)"; fi
+holds "$W/.marvin/runs/.gitignore" '*'   # the local checkout is bootstrapped too, seeding or not
+lw "$W" "$name/AOS-1/ledger.md" 'r1\n'; lw "$W" "$name/AOS-1/$REP" 'rep\n'
+if [ -z "$(git -C "$W" status --porcelain)" ]; then ok "local run files leave the session worktree clean"; else bad "worktree dirtied: $(git -C "$W" status --porcelain | head -3)"; fi
+fx_SS1L "$SYNC"; assert_only "$(want_line "$(cd "$RUNS" && ls -d *-"$SID")") status:clean"
+fresh; mkdir -p "$W/.marvin/runs"; ln -s "$WORK/nowhere" "$W/.marvin/runs/.gitignore"; ss "$SYNC" "$W"; assert_rc 0; gone "$WORK/nowhere"   # local symlink: refused
 ss "$SYNC" "$R" "$SID" compact; assert_rc 0; assert_only "$(want_line "$name")"   # from the main checkout, on compact: the same folder
 
 hd "SS2 briefing literal absent: nothing created, silent"
@@ -221,8 +232,17 @@ fx_SA2 "$SYNC"; assert_rc 0; assert_only " src:gone"
 
 hd "SA3 a differing project copy: clash, both kept"
 fx_SA3 "$SYNC"; assert_rc 0
-OUT=${OUT% src:*}; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP"
+OUT=${OUT% src:*}; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
 holds "$A/.marvin/runs/$S/AOS-1/$REP" mine; holds "$RUNS/$S/AOS-1/$REP" theirs
+same "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"   # the differing source survives the worktree's removal
+sa "$SYNC" "$A" "$T"; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"   # re-fire: the identical sidecar is reused
+gone "$RUNS/$S/AOS-1/${SIDE%.md}-2.md"
+lw "$A" "$S/AOS-1/$REP" 'third\n'; sa "$SYNC" "$A" "$T"; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/${SIDE%.md}-2.md"
+holds "$RUNS/$S/AOS-1/${SIDE%.md}-2.md" third; holds "$RUNS/$S/AOS-1/$SIDE" mine   # a differing sidecar is never overwritten
+fresh; lw "$A" "$S/AOS-1/$REP" 'mine\n'; pw "$S/AOS-1/$REP" 'theirs\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"
+run "$SYNC" --subagent-stop "$(printf '{"cwd":"%s","agent_type":"marvin:developer","hook_event_name":"SubagentStop","agent_transcript_path":"%s"}' "$A" "$T")"
+nside=$(ls "$RUNS/$S/AOS-1" | grep -cE '^20261019T101600Z-developer\.clash-[0-9]{8}T[0-9]{6}Z\.md$')
+if [ "$nside" = 1 ]; then ok "no agent_id: the sidecar is tagged with the UTC time"; else bad "UTC-tagged sidecars: $nside ($(ls "$RUNS/$S/AOS-1"))"; fi
 
 hd "SA4 a brief naming no layout path: nothing"
 fresh; lw "$A" "$S/AOS-1/$REP" 'report\n'; lw "$A" "AOS-1/$REP" 'flat\n'; brief "Report: .marvin/runs/AOS-1/$REP (flat layout)."; sa "$SYNC" "$A" "$T"; silent_ok
@@ -246,6 +266,31 @@ fx_SA9 "$SYNC"; assert_rc 0; assert_only " dst:no link:kept"; holds "$WORK/secre
 
 hd "SA10 a non-marvin agent type: nothing"
 fx_SA10 "$SYNC"; assert_rc 0; assert_only " src:kept"
+
+hd "SA11 a changed re-fire (stop_hook_active) after a first fire moved a version: the second lands as a sidecar"
+fx_SA1 "$SYNC"; lw "$A" "$S/AOS-1/$REP" 'report v2\n'
+run "$SYNC" --subagent-stop "$(printf '{"session_id":"%s","cwd":"%s","agent_id":"%s","agent_type":"marvin:developer","hook_event_name":"SubagentStop","stop_hook_active":true,"agent_transcript_path":"%s"}' "$SID" "$A" "$AID" "$T")"
+assert_rc 0; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
+holds "$RUNS/$S/AOS-1/$REP" report; holds "$RUNS/$S/AOS-1/$SIDE" 'report v2'; holds "$A/.marvin/runs/$S/AOS-1/$REP" 'report v2'
+
+hd "R1 a non-symlink refusal prints one notice (not ignored, unreadable); a symlink refusal stays silent"
+fresh; mkdir -p "$RUNS"; : > "$RUNS/.gitignore"; lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; assert_rc 0
+m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""; c=$(printf '%s' "$OUT" | mh_get hookSpecificOutput.additionalContext) || c=""
+w=$(want_refusal "not ignored" "$RUNS/$S/AOS-1/ledger.md")
+if [ "$m" = "$w" ] && [ "$c" = "$w" ]; then ok "post-tool: not ignored notice"; else bad "post-tool notice '$m' / '$c', want '$w'"; fi
+gone "$RUNS/$S/AOS-1/ledger.md"
+lw "$A" "$S/AOS-1/$REP" 'r\n'; brief "Report: .marvin/runs/$S/AOS-1/$REP"; sa "$SYNC" "$A" "$T"; assert_rc 0
+m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""; w=$(want_refusal "not ignored" "$RUNS/$S/AOS-1/$REP")
+if [ "$m" = "$w" ]; then ok "subagent-stop: not ignored notice"; else bad "subagent-stop notice '$m', want '$w'"; fi
+there "$A/.marvin/runs/$S/AOS-1/$REP"
+fresh; lw "$W" "$S/AOS-1/$REP" 'r\n'; chmod 000 "$W/.marvin/runs/$S/AOS-1/$REP"
+if [ -r "$W/.marvin/runs/$S/AOS-1/$REP" ]; then ok "running as root: the unreadable case cannot be built (skipped)"
+else
+  pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/$REP"; m=$(printf '%s' "$OUT" | mh_get systemMessage) || m=""
+  w=$(want_refusal unreadable "$W/.marvin/runs/$S/AOS-1/$REP")
+  if [ "$m" = "$w" ]; then ok "post-tool: unreadable notice"; else bad "unreadable notice '$m', want '$w'"; fi
+fi
+chmod 644 "$W/.marvin/runs/$S/AOS-1/$REP"; gone "$RUNS/$S/AOS-1/$REP"
 
 hd "X1 outside Marvin, outside git, malformed JSON: silent, exit 0, nothing written (each mode)"
 fx_X1M "$SYNC"; assert_rc 0; assert_only " src:kept"
@@ -276,7 +321,8 @@ case "$OUT" in "Marvin run folder: \"$RUNS/"*) ok "project folder printed quoted
 lw "$W" "$S/AOS-1/ledger.md" 'r1\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; silent_ok; same "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md"
 lw "$W" "$S/AOS-1/ledger.md" 'other\n'; pt "$SYNC" "$W" "$W/.marvin/runs/$S/AOS-1/ledger.md"; pt_clash_ok "$W/.marvin/runs/$S/AOS-1/ledger.md" "$RUNS/$S/AOS-1/ledger.md"
 fx_SA1 "$SYNC"; assert_rc 0; assert_only " src:gone dst:report"
-fx_SA3 "$SYNC"; OUT=${OUT% src:*}; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP"
+fx_SA3 "$SYNC"; OUT=${OUT% src:*}; sa_clash_ok "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
+same "$A/.marvin/runs/$S/AOS-1/$REP" "$RUNS/$S/AOS-1/$SIDE"
 R="$WORK/repo"
 
 # ── mutations: each reverts one guard in a copy (with the hook lib beside it); its fixture must then fail ──
@@ -292,12 +338,13 @@ mutation() {  # mutation <name> <fixture-fn> <exact script line> <replacement> <
 hd "M mutations"
 mutation LITERAL fx_SS2 '  [ ! -L "$b" ] && [ -f "$b" ] && grep -Fq -- "$LITERAL" "$b" 2>/dev/null || return 0' '  :' "runs:no"
 mutation REUSE fx_SS3 '    [ -d "$d" ] && [ ! -L "$d" ] && is_session "${d##*/}" && { name=${d##*/}; break; }' '    :' "count:1"
-mutation SEED fx_SS4 '  [ "$(mh_path "$top")" = "$(mh_path "$MAIN")" ] || seed "$top" "$name"' '  :' "seeded:yes"
+mutation SEED fx_SS4 '    seed "$top" "$name"' '    :' "seeded:yes"
+mutation LOCALIGNORE fx_SS1L '    bootstrap "$top"' '    :' "status:clean"
 mutation SEEDKEEP fx_SS4B '      [ -e "$dst" ] || [ -L "$dst" ] && continue' '      :' "local:mine" \
                           '    if [ "$3" = yes ]; then mv -f -- "$tmp" "$2" 2>/dev/null; else mv -n -- "$tmp" "$2" 2>/dev/null; fi' '    mv -f -- "$tmp" "$2" 2>/dev/null'
 mutation RUNSLINK fx_SS5 '  [ -L "$d" ] && return 1; d="$d/runs"; [ -L "$d" ] && return 1' '  [ -L "$d" ] && return 1; d="$d/runs"' "elsewhere:0" \
                          '  [ -L "$runs" ] && return 1' '  :'
-mutation IGNORED fx_SS7 '  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 1' '  :' "count:0"
+mutation IGNORED fx_SS7 '  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 2' '  :' "count:0"
 mutation PREFIX fx_PT2 '               is_prefix "$dst" "$src" || { clash "$src" "$dst"; return 0; }' '    :' "project:AAA BBB"
 mutation STAMPED fx_PT3 '    stamped) if [ -e "$dst" ] || [ -L "$dst" ]; then cmp -s "$src" "$dst" || clash "$src" "$dst"; return 0; fi' '    stamped) :' "project:one" \
                         '    if [ "$3" = yes ]; then mv -f -- "$tmp" "$2" 2>/dev/null; else mv -n -- "$tmp" "$2" 2>/dev/null; fi' '    mv -f -- "$tmp" "$2" 2>/dev/null'
@@ -305,11 +352,12 @@ mutation SUBAGENT fx_PT4 '  mh_is_subagent_call && return 0' '  :' "project:no"
 mutation LAYOUT fx_PT5 '  case "$rel" in */*/*/*) return 1 ;; */*/*) ;; *) return 1 ;; esac' '  :' "carried:0"
 mutation LAYOUTSEG fx_PT5 '  is_session "$s" && is_key "$k" && kind "$b" >/dev/null || return 1' '  :' "carried:0"
 mutation COMPLINK fx_PT8 '    seg=${r%%/*}; d="$d/$seg"; [ -L "$d" ] && return 1' '    seg=${r%%/*}; d="$d/$seg"' "elsewhere:0" \
-                        '  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 1' '  :'   # git refuses a path beyond a symlink: the second layer
-mutation MOVE fx_SA1 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; else clash "$src" "$dst"; fi' '    cmp -s "$src" "$dst" || clash "$src" "$dst"' "src:gone"
-mutation COPY fx_SA1 '    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then put "$src" "$dst" no || continue; fi' '    :' "dst:report"
-mutation IDENTICAL fx_SA2 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; else clash "$src" "$dst"; fi' '    :' "src:gone"
-mutation CLASHKEEP fx_SA3 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; else clash "$src" "$dst"; fi' '    rm -f -- "$src"' "src:kept"
+                        '  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 2' '  :'   # git refuses a path beyond a symlink: the second layer
+mutation MOVE fx_SA1 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; continue; fi' '    if cmp -s "$src" "$dst"; then continue; fi' "src:gone"
+mutation COPY fx_SA1 '    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then put "$src" "$dst" no || { refuse "copy failed" "$dst"; continue; }; fi' '    :' "dst:report"
+mutation IDENTICAL fx_SA2 '    if cmp -s "$src" "$dst"; then rm -f -- "$src"; continue; fi' '    :' "src:gone"
+mutation CLASHKEEP fx_SA3 '    clash "$src" "$dst" "$side"' '    rm -f -- "$src"' "src:kept"
+mutation SIDECAR fx_SA3 '    side=$(sidecar "$src" "$dst" "$tag") || side=""' '    side=""' "side:mine"
 mutation ROOT fx_SA7 '  [ "$(mh_path "$top")" = "$(mh_path "$MAIN")" ] && return 0   # the project itself: nothing to carry' '  :' "dst:kept" \
                      '    [ "$src" -ef "$dst" ] && continue' '    :'
 IFS= read -r CAND_LINE <<'L' || true
@@ -323,7 +371,7 @@ mutation STAMPONLY fx_SA8 '    [ "$(kind "${rel##*/}")" = stamped ] || continue 
 mutation SRCLINK fx_SA9 '    no_links "$top" "$rel" && [ -f "$src" ] || continue' '    [ -e "$src" ] || continue' "dst:no"
 mutation AGENTTYPE fx_SA10 "  printf '%s' \"\$atype\" | grep -Eq '^marvin:[a-z0-9-]+\$' || return 0" '  :' "src:kept"
 mutation MARVIN fx_X1M '  mh_is_marvin "$MAIN"' '  :' "src:kept" \
-                       '  mh_is_marvin "$top" || return 1' '  :'
+                       '  mh_is_marvin "$1" && no_links "$1" "" || return 1' '  :'
 
 printf '\n----\ntest-runs-sync: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

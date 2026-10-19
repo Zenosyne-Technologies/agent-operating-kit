@@ -15,7 +15,14 @@
 # applies the run-state symlink rule: no symlinked component under .marvin/, .marvin/runs/.gitignore = *
 # bootstrapped, and refused when git check-ignore says the target is not ignored. ledger.md overwrites the
 # project copy only when that copy is a byte prefix of the local one; a timestamped name is copied only when
-# absent. Anything else that differs is a clash: both copies are kept and one line names them.
+# absent. Anything else that differs is a clash: both copies are kept and one line names them; on SubagentStop
+# the differing source is ALSO saved beside the target as <stem>.clash-<agent_id>[-<n>].md (never overwriting),
+# since Claude Code deletes a clean agent worktree right after the hook. A refused carry that is not a
+# symlink refusal (those stay silent) prints one line: `Marvin run-state sync refused: <why> — <path>`, <why>
+# one of not ignored | unreadable | copy failed.
+# Only --session-start is gated on the briefing.md literal: it creates the session folder and tells the
+# orchestrator to use it. The other two need no gate — they act only on exact per-session layout paths, which
+# a project still on the flat layout never writes, so such a project is untouched by construction.
 #
 # Clash channel — probed 2026-10-19 (CLI 2.1.289, claude -p with a sub-agent): on PostToolUse a
 # {"systemMessage"} is shown to the user only, plain stdout reaches no one, and hookSpecificOutput.
@@ -30,7 +37,7 @@ USAGE="usage: marvin-runs-sync.sh --session-start | --post-tool | --subagent-sto
 LITERAL='.marvin/runs/<session>/'   # the installed briefing.md carries it once the project is on this layout
 NL='
 '
-CLASHES=""
+NOTES=""   # clash and refusal lines, printed once at the end of a hook mode
 
 # phys_top <dir> — the physical top level of the checkout holding <dir>
 phys_top() {
@@ -82,20 +89,35 @@ no_links() {
   return 0
 }
 
+# bootstrap <top> — <top>/.marvin/runs exists and holds .gitignore = * (written once, never through a link).
+# rc 0 ready · 1 refused (not Marvin, or a symlink: silent) · 3 a write failed
+bootstrap() {
+  local runs="$1/.marvin/runs"
+  mh_is_marvin "$1" && no_links "$1" "" || return 1
+  [ -L "$runs/.gitignore" ] && return 1
+  mkdir -p -- "$runs" 2>/dev/null || return 3
+  [ -L "$runs" ] && return 1
+  [ -e "$runs/.gitignore" ] || (set -C; printf '*\n' > "$runs/.gitignore") 2>/dev/null || return 3
+  return 0
+}
+
 # ready <top> <dir rel under .marvin/runs> [<name>] — the run-state symlink rule before a write under
 # <top>/.marvin/runs: refuse a symlinked component, bootstrap .gitignore = *, refuse when the target is not
-# ignored, then make the directory
+# ignored, then make the directory. rc 0 ready · 1 symlink or not Marvin · 2 not ignored · 3 a write failed
 ready() {
   local top="$1" runs="$1/.marvin/runs" rel="$2${3:+/$3}"
-  mh_is_marvin "$top" || return 1
   no_links "$top" "$rel" || return 1
-  [ -L "$runs/.gitignore" ] && return 1
-  mkdir -p -- "$runs" 2>/dev/null || return 1
-  [ -L "$runs" ] && return 1
-  [ -e "$runs/.gitignore" ] || (set -C; printf '*\n' > "$runs/.gitignore") 2>/dev/null || return 1
-  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 1
-  mkdir -p -- "$runs/$2" 2>/dev/null || return 1
-  no_links "$top" "$rel"
+  bootstrap "$top" || return $?
+  git -C "$top" check-ignore -q -- "$runs/$rel" 2>/dev/null || return 2
+  mkdir -p -- "$runs/$2" 2>/dev/null || return 3
+  no_links "$top" "$rel" || return 1
+}
+
+# refuse <why> <path> — note a non-symlink refusal; gate <rc> <path> — rc 0 only when ready said 0
+refuse() { NOTES="${NOTES:+$NOTES$NL}Marvin run-state sync refused: $1 — $(mh_q "$2")"; }
+gate() {
+  case "$1" in 0) return 0 ;; 2) refuse "not ignored" "$2" ;; 3) refuse "copy failed" "$2" ;; esac
+  return 1
 }
 
 # put <src> <dst> <overwrite: yes|no> — atomic: a temp file beside <dst>, then one rename
@@ -118,8 +140,27 @@ is_prefix() {
   head -c "$n" -- "$2" | cmp -s - "$1"
 }
 
-clash() {
-  CLASHES="${CLASHES:+$CLASHES$NL}Marvin run-state clash: $(mh_q "$1") differs from $(mh_q "$2") — both kept; reconcile before the next dispatch."
+clash() {  # clash <local> <project> [<sidecar>]
+  local side=""; [ -n "${3:-}" ] && side=" — differing copy saved as $(mh_q "$3")"
+  NOTES="${NOTES:+$NOTES$NL}Marvin run-state clash: $(mh_q "$1") differs from $(mh_q "$2") — both kept; reconcile before the next dispatch.$side"
+}
+
+# sidecar <src> <dst> <tag> — save the differing <src> beside <dst> as <stem>.clash-<tag>.md, else -<n> for
+# n = 2..50: an identical one already there is reused, a differing or symlinked one is never overwritten.
+# Prints the sidecar path; rc 1 when none could be written.
+sidecar() {
+  local stem=${2%.md} n=1 p
+  while [ "$n" -le 50 ]; do
+    p="$stem.clash-$3.md"; [ "$n" -gt 1 ] && p="$stem.clash-$3-$n.md"
+    if [ -e "$p" ] || [ -L "$p" ]; then
+      [ ! -L "$p" ] && cmp -s "$1" "$p" && { printf '%s' "$p"; return 0; }
+    else
+      git -C "$MAIN" check-ignore -q -- "$p" 2>/dev/null && put "$1" "$p" no && cmp -s "$1" "$p" || return 1
+      printf '%s' "$p"; return 0
+    fi
+    n=$((n + 1))
+  done
+  return 1
 }
 jstr() {  # jstr <text> — a JSON string literal (the text is mh_q-encoded paths plus fixed words)
   printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{ printf "%s%s", (NR > 1 ? "\\n" : ""), $0 }')"
@@ -130,13 +171,13 @@ carry() {
   local src="$1" dst="$2"
   case "$3" in
     stamped) if [ -e "$dst" ] || [ -L "$dst" ]; then cmp -s "$src" "$dst" || clash "$src" "$dst"; return 0; fi
-             put "$src" "$dst" no || return 0
+             put "$src" "$dst" no || { refuse "copy failed" "$dst"; return 0; }
              cmp -s "$src" "$dst" || clash "$src" "$dst" ;;
     mutable) cmp -s "$src" "$dst" && return 0
              if [ "${dst##*/}" = ledger.md ] && [ -e "$dst" ]; then
                is_prefix "$dst" "$src" || { clash "$src" "$dst"; return 0; }
              fi
-             put "$src" "$dst" yes ;;
+             put "$src" "$dst" yes || refuse "copy failed" "$dst" ;;
   esac
 }
 
@@ -158,7 +199,10 @@ session_start() {
   [ -n "$name" ] || name="$(date -u +%Y%m%dT%H%M%SZ)-$sid"
   is_session "$name" || return 0
   ready "$MAIN" "$name" || return 0
-  [ "$(mh_path "$top")" = "$(mh_path "$MAIN")" ] || seed "$top" "$name"
+  if [ "$(mh_path "$top")" != "$(mh_path "$MAIN")" ]; then   # the local checkout: its run files stay ignored
+    bootstrap "$top"
+    seed "$top" "$name"
+  fi
   printf 'Marvin run folder: %s/ — write run files under %s/ in your own checkout; hooks carry them to the project.\n' \
     "$(mh_q "$RUNS/$name")" "$(mh_q ".marvin/runs/$name")"
 }
@@ -182,6 +226,12 @@ seed() {
 
 post_tool() {
   mh_read_stdin || return 0
+  pt_carry
+  [ -n "$NOTES" ] || return 0
+  printf '{"systemMessage":%s,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":%s}}\n' "$(jstr "$NOTES")" "$(jstr "$NOTES")"
+}
+
+pt_carry() {
   local fp cwd pdir top rel src dst
   fp=$(printf '%s' "$MH_IN" | mh_get tool_input.file_path) && [ -n "$fp" ] || return 0
   fp=$(mh_path "$fp") || return 0
@@ -195,20 +245,22 @@ post_tool() {
   rel=$(layout_rel "$top" "$pdir/${fp##*/}") || return 0
   src="$top/.marvin/runs/$rel"; dst="$RUNS/$rel"
   no_links "$top" "$rel" && [ -f "$src" ] || return 0
-  ready "$MAIN" "${rel%/*}" "${rel##*/}" || return 0
+  [ -r "$src" ] || { refuse unreadable "$src"; return 0; }
+  ready "$MAIN" "${rel%/*}" "${rel##*/}"; gate $? "$dst" || return 0
   [ "$src" -ef "$dst" ] && return 0
   carry "$src" "$dst" "$(kind "${rel##*/}")"
-  [ -n "$CLASHES" ] || return 0
-  printf '{"systemMessage":%s,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":%s}}\n' "$(jstr "$CLASHES")" "$(jstr "$CLASHES")"
 }
 
 subagent_stop() {
   mh_read_stdin || return 0
-  local cwd atype tp top brief cands sre kre p rel src dst
+  local cwd atype tp aid tag top brief cands sre kre p rel src dst side
   cwd=$(printf '%s' "$MH_IN" | mh_get cwd) && [ -n "$cwd" ] && [ -d "$cwd" ] || return 0
   atype=$(printf '%s' "$MH_IN" | mh_get agent_type) || return 0
   printf '%s' "$atype" | grep -Eq '^marvin:[a-z0-9-]+$' || return 0
   tp=$(printf '%s' "$MH_IN" | mh_get agent_transcript_path) && [ -n "$tp" ] || return 0
+  aid=$(printf '%s' "$MH_IN" | mh_get agent_id) || aid=""
+  case "$aid" in *"$NL"*) aid="" ;; esac
+  if printf '%s' "$aid" | grep -Eq '^[0-9a-f]{8,40}$'; then tag=$aid; else tag=$(date -u +%Y%m%dT%H%M%SZ); fi
   top=$(phys_top "$cwd") || return 0
   project_of "$top" || return 0
   [ "$(mh_path "$top")" = "$(mh_path "$MAIN")" ] && return 0   # the project itself: nothing to carry
@@ -221,15 +273,18 @@ subagent_stop() {
     [ "$(kind "${rel##*/}")" = stamped ] || continue   # mutable files are the orchestrator's own
     src="$top/.marvin/runs/$rel"; dst="$RUNS/$rel"
     no_links "$top" "$rel" && [ -f "$src" ] || continue
-    ready "$MAIN" "${rel%/*}" "${rel##*/}" || continue
+    [ -r "$src" ] || { refuse unreadable "$src"; continue; }
+    ready "$MAIN" "${rel%/*}" "${rel##*/}"; gate $? "$dst" || continue
     [ "$src" -ef "$dst" ] && continue
-    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then put "$src" "$dst" no || continue; fi
-    if cmp -s "$src" "$dst"; then rm -f -- "$src"; else clash "$src" "$dst"; fi
+    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then put "$src" "$dst" no || { refuse "copy failed" "$dst"; continue; }; fi
+    if cmp -s "$src" "$dst"; then rm -f -- "$src"; continue; fi
+    side=$(sidecar "$src" "$dst" "$tag") || side=""
+    clash "$src" "$dst" "$side"
   done <<EOF
 $cands
 EOF
-  [ -n "$CLASHES" ] || return 0
-  printf '{"systemMessage":%s}\n' "$(jstr "$CLASHES")"
+  [ -n "$NOTES" ] || return 0
+  printf '{"systemMessage":%s}\n' "$(jstr "$NOTES")"
 }
 
 case "${1:-}" in
