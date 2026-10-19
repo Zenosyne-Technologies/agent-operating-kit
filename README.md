@@ -201,6 +201,8 @@ It never writes a file, never blocks the session, and always exits 0 — includi
 
 **Codex validation (v0.40.0).** OpenAI's Codex can take validation lanes beside or instead of Claude, diagnose a stuck task, or build on the architect's request. Four `.marvin/PROJECT-INFO.md` keys set it — `codex_handover` (`off` by default), `validation_strategy`, `codex_lanes`, `codex_evidence` — and `.marvin/agents/codex.md` owns what they mean. Install asks them (upgrade too, once, when they are missing); `/marvin:codex`, `/marvin:codex-astra` and `/marvin:codex-setup` are the architect's own entry points. When Codex is not ready, the work runs on Claude.
 
+**Fleet mode (v0.41.0).** For parallel epics, `/marvin:fleet` turns the session into a master orchestrator that starts one child orchestrator per epic (up to `fleet_max_children`, default 3) in locked worktrees, keeps the program plan with area leases and a decision log, and posts one board with every epic and every question waiting on you. You answer epic questions in each child; the master merges epics into `develop` and cuts releases. Children compact up to three times before a successor takes over. Needs a shared tracker (Linear, Jira or GitHub); without child sessions it runs as a manual fleet. Rules: `.marvin/agents/fleet.md`, `.marvin/agents/fleet-child.md`.
+
 ## PM tools
 
 The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
