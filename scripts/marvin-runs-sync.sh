@@ -8,8 +8,11 @@
 #   --subagent-stop   SubagentStop ^marvin:: each timestamped report the agent's brief names that sits in the
 #                     agent's checkout is COPIED to the project; the source is never deleted (the gate may send
 #                     the agent back to rewrite it, and Claude Code deletes an isolated worktree itself)
-#   --stop            Stop, main thread only: the --post-tool rules for EVERY layout-shaped file under this
-#                     session's folder in its own checkout — the catch-up for writes made through Bash (`>>`)
+#   --stop            Stop, main thread only: the --post-tool rules for every MUTABLE layout file (ledger.md,
+#                     build-brief*.md) under this session's folder in its own checkout, carried only into a
+#                     project <session>/<KEY>/ that already exists — the catch-up for writes made through Bash
+#                     (`>>`). It never creates a key folder (a prune stays done) and never copies a timestamped
+#                     report (SubagentStop carries those, and must record them as its own)
 #
 # The project run folder is <main checkout>/.marvin/runs (mh_runs_root), the ONLY copy readers use. A file is
 # carried only when it is exactly <checkout>/.marvin/runs/<session>/<KEY|adhoc>/<name> (MH_SESSION_RE,
@@ -308,9 +311,12 @@ stop_mode() {
       [ -d "$kd" ] && [ ! -L "$kd" ] || continue
       for f in "$kd"/*; do
         [ -f "$f" ] && [ ! -L "$f" ] || continue
+        [ "$(kind "${f##*/}")" = mutable ] || continue   # timestamped reports are SubagentStop's
         rel=$(layout_rel "$top" "$f"); rc=$?
         if [ "$rc" -eq 4 ]; then refuse "key not allowed" "$f"; continue; fi
-        [ "$rc" -eq 0 ] && carry_rel "$top" "$rel"
+        [ "$rc" -eq 0 ] || continue
+        [ -d "$RUNS/${rel%/*}" ] && [ ! -L "$RUNS/${rel%/*}" ] || continue   # never (re)create a key folder: a prune stays done
+        carry_rel "$top" "$rel"
       done
     done
   done
