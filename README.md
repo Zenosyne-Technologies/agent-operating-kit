@@ -310,7 +310,7 @@ scripts/marvin-session-start.sh      SessionStart hook body: version-drift check
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
 scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
-scripts/validate-kit.sh              nineteen-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              twenty-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -379,6 +379,8 @@ templates/
     security.md                    secrets, dependency vetting, and security-surface discipline
     token-economics.md             telemetry contract — cost queries, pricing rule, context sidecar
     worktrees.md                   agent worktree location, push cadence, the sweep's when/what, WORKTREE: handover line
+    fleet.md                       fleet master — program plan and decision log, leases, starting and locking a child, doorbells and the board, the receiving half of every routed event, epic merges, successors
+    fleet-child.md                 fleet child — the doorbell line, the sending half of every routed event, relay verification, shared files, the compaction budget, the epic merge gate
     tidying.md                     Docker labels, naming, who removes what and when, the backstop sweep, binary logging off for throwaway databases
     user-updates.md                orchestrator-to-user message formats — emoji legend, shipped table, issue callout, Next / Open questions tail
     handbooks.md                   three-audience Obsidian handbook system — page format, discovery by sources, index rule
