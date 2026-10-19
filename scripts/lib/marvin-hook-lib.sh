@@ -276,7 +276,7 @@ MH_MARKER_RE='^marvin-owned (marvin:[a-z0-9-]+|orchestrator) ([0-9a-f]{8,40}|-) 
 
 # mh_path <path> — one comparable spelling of a path: C:\x\y, C:/x/y and /c/x/y all become /c/x/y.
 # Only a drive-letter path is rewritten (cygpath -u when present, else pure bash); POSIX paths pass
-# through unchanged. rc 1 on an empty input.
+# through unchanged. Runs of `/` are squeezed to one. rc 1 on an empty input.
 mh_path() {
   local p="${1:-}" d r
   [ -n "$p" ] || return 1
@@ -288,31 +288,40 @@ mh_path() {
         d=$(printf '%s' "${p%%:*}" | tr 'A-Z' 'a-z')
         r=${p#?:}; r=${r//\\//}
         p="/$d$r"
-      fi ;;
+      fi
+      while :; do case "$p" in *//*) p=${p//\/\//\/} ;; *) break ;; esac; done ;;   # squeeze // runs: cygpath and the fallback agree
   esac
   printf '%s' "$p"
 }
 
-# mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting: the value
-# lower-cased when it is in the allowed list; absent, empty or not allowed → <default>. A value that is
-# present but not allowed also sets the global MH_MODE_INVALID to it (reset to empty on every call), so a
-# caller can name the typo. Call it WITHOUT a command substitution when MH_MODE_INVALID is wanted.
-MH_MODE_INVALID=""
+# mh_is_key <name> — rc 0 when the name is a ticket key (MH_KEY_RE) or exactly `adhoc`: the whole key rule.
+mh_is_key() { [ "${1:-}" = adhoc ] || printf '%s' "${1:-}" | grep -Eq "$MH_KEY_RE"; }
+
+# mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting. Prints the
+# resolved value and sets the global MH_MODE to it: the value lower-cased when it is in the allowed list;
+# absent, empty or not allowed → <default>. A value that is present but not allowed also sets the global
+# MH_MODE_INVALID to it as written (original case, trimmed); both globals are reset on every call. A
+# command substitution hides globals from the caller, so to read MH_MODE_INVALID call
+# `mh_mode "$fm" key "a b" a >/dev/null; mode=$MH_MODE`.
+MH_MODE=""; MH_MODE_INVALID=""
 mh_mode() {
-  local v w
-  MH_MODE_INVALID=""
-  v=$(mh_fm_value "$1" "$2" | tr 'A-Z' 'a-z')
-  if [ -z "$v" ]; then printf '%s' "$4"; return 0; fi
-  for w in $3; do
-    [ "$v" = "$w" ] && { printf '%s' "$v"; return 0; }
-  done
-  MH_MODE_INVALID=$v
-  printf '%s' "$4"
+  local raw l
+  MH_MODE_INVALID=""; MH_MODE=$4
+  raw=$(mh_fm_value "$1" "$2")
+  if [ -n "$raw" ]; then
+    l=$(printf '%s' "$raw" | tr 'A-Z' 'a-z')
+    case "$l" in
+      *[[:space:]]*) MH_MODE_INVALID=$raw ;;
+      *) case " $3 " in *" $l "*) MH_MODE=$l ;; *) MH_MODE_INVALID=$raw ;; esac ;;
+    esac
+  fi
+  printf '%s' "$MH_MODE"
 }
 
 # mh_runs_root <any checkout dir> — <main checkout>/.marvin/runs, physical. The git common dir is the
 # main checkout's .git from a linked worktree too, so every checkout resolves to the one runs folder.
-# rc 1 for a bare repo, a non-repo, a git too old for --path-format, or a common dir that is not <main>/.git.
+# rc 1 for a bare repo, a non-repo, a git too old for --path-format, or a common dir that is not
+# <main>/.git — a separate-git-dir or submodule checkout therefore has no run state (rc 1), by design.
 mh_runs_root() {
   local d="${1:-}" c m
   [ -n "$d" ] && [ -d "$d" ] || return 1

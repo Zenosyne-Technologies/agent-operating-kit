@@ -135,19 +135,32 @@ F mh_path 'C:/Work/x'; rc 0; eq "/c/Work/x"
 F mh_path '/c/Work/x'; rc 0; eq "/c/Work/x"
 F mh_path '/private/tmp/x'; rc 0; eq "/private/tmp/x"
 F mh_path 'c:\x\y'; rc 0; eq "/c/x/y"
+F mh_path 'C:\Work\\a b'; rc 0; eq "/c/Work/a b"
+F mh_path 'C://Work//x'; rc 0; eq "/c/Work/x"
 F mh_path ''; rc 1
 
 hd "L9 mh_mode: lower-cased when allowed; absent/empty -> default; invalid -> default + MH_MODE_INVALID"
-mode() { OUT=$( ( . "$LIBUSE"; v=$(mh_mode "$1" worktree_sweep "off on dry-run" "$2"); echo "$v|inv=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; }   # mode <fm> <default>
+mode() { OUT=$( ( . "$LIBUSE"; mh_mode "$1" worktree_sweep "off on dry-run" "$2" >/dev/null; echo "$MH_MODE|inv=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; }   # mode <fm> <default>
 mode $'worktree_sweep: OFF' on; rc 0; eq "off|inv="
 mode $'other: 1' on; rc 0; eq "on|inv="
 mode $'worktree_sweep:' on; rc 0; eq "on|inv="
 mode $'worktree_sweep: on # c' off; rc 0; eq "on|inv="
 mode $'worktree_sweep: "Dry-Run"' on; rc 0; eq "dry-run|inv="
-# MH_MODE_INVALID is set in the calling shell (no command substitution) and reset on the next call
+mode $'worktree_sweep: Bogus' on; rc 0; eq "on|inv=Bogus"
+mode $'worktree_sweep: bogus' off; rc 0; eq "off|inv=bogus"
+mode $'worktree_sweep: on off' off; rc 0; eq "off|inv=on off"
+# the printed value matches MH_MODE; both globals are reset on the next call
 OUT=$( ( . "$LIBUSE"; mh_mode $'worktree_sweep: bogus' worktree_sweep "off on" on >/dev/null; a=$MH_MODE_INVALID
-         v=$(mh_mode $'worktree_sweep: bogus' worktree_sweep "off on" on); mh_mode $'worktree_sweep: off' worktree_sweep "off on" on >/dev/null
-         echo "$v|a=$a|after=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; rc 0; eq "on|a=bogus|after="
+         v=$(mh_mode $'worktree_sweep: off' worktree_sweep "off on" on); mh_mode $'worktree_sweep: off' worktree_sweep "off on" on >/dev/null
+         echo "$v|$MH_MODE|a=$a|after=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; rc 0; eq "off|off|a=bogus|after="
+
+hd "L9b mh_is_key: a ticket key or exactly adhoc"
+isk() { OUT=$( ( . "$LIBUSE"; mh_is_key "$1" && echo yes || echo no ) 2>&1); RC=$?; }
+isk adhoc; eq yes
+isk AOS-1; eq yes
+isk aos-1; eq no
+isk adhoc2; eq no
+isk ""; eq no
 
 hd "L10 mh_runs_root: the main checkout's physical .marvin/runs, from any linked worktree"
 RR="$WORK/rr main"; mkdir -p "$RR" && git -C "$RR" init -q -b main . && git -C "$RR" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
@@ -159,6 +172,8 @@ mkdir -p "$RR/sub dir"; F mh_runs_root "$RR/sub dir"; rc 0; eq "$PHYS/.marvin/ru
 git init -q --bare "$WORK/rr.git"; F mh_runs_root "$WORK/rr.git"; rc 1; eq ""
 mkdir -p "$WORK/notrepo"; F mh_runs_root "$WORK/notrepo"; rc 1; eq ""
 F mh_runs_root ""; rc 1
+# a separate-git-dir checkout (common dir is not <main>/.git) has no run state
+git init -q --separate-git-dir "$WORK/rr sep.gitdir" "$WORK/rr sep" >/dev/null 2>&1; F mh_runs_root "$WORK/rr sep"; rc 1; eq ""
 
 hd "L11 layout regexes: session folder, key, stamp, marker"
 re() { OUT=$( ( . "$LIBUSE"; printf '%s' "$2" | grep -Eq "${!1}" && echo match || echo no ) 2>&1); RC=$?; }   # re <CONST> <value>
