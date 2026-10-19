@@ -242,13 +242,14 @@ mh_fleet_init() {
   if [ -n "$m" ] && [ "$((10#$m))" -le 9 ]; then MH_FLEET_MAX_COMPACTIONS=$((10#$m)); fi
   if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi
 }
-# mh_fleet_role <root> — prints child | master | nothing; sets MH_FLEET_EPIC (child only, else empty; read
-# it from the calling shell, not from inside $( )). The marker is <this worktree's private git dir>/marvin-fleet:
-# lines role=child|master and epic=<KEY>. Never followed if a symlink; first 4 KiB only; read-only, silent,
-# rc 0 always — a hook never blocks.
+# mh_fleet_role <root> — prints child | master | nothing, and sets the globals MH_FLEET_ROLE (child | master |
+# empty) and MH_FLEET_EPIC (child only, else empty); both are reset on every call. Call it in the main shell
+# (`mh_fleet_role "$root" >/dev/null`) and read the variables — inside $( ) they are lost. The marker is
+# <this worktree's private git dir>/marvin-fleet: lines role=child|master and epic=<KEY>. Never followed if a
+# symlink; first 4 KiB only; read-only, silent, rc 0 always — a hook never blocks.
 mh_fleet_role() {
   local root="$1" gd mk body role epic
-  MH_FLEET_EPIC=
+  MH_FLEET_ROLE=; MH_FLEET_EPIC=
   gd=$(git -C "$root" rev-parse --git-dir 2>/dev/null) || return 0
   [ -n "$gd" ] || return 0
   case "$gd" in /*) ;; *) gd="$root/$gd" ;; esac
@@ -260,8 +261,8 @@ mh_fleet_role() {
     child)
       epic=$(printf '%s\n' "$body" | sed -nE 's/^epic=//p' | head -n 1)
       if printf '%s' "$epic" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+$'; then MH_FLEET_EPIC=$epic; fi
-      echo child ;;
-    master) echo master ;;
+      MH_FLEET_ROLE=child; echo child ;;
+    master) MH_FLEET_ROLE=master; echo master ;;
   esac
   return 0
 }
