@@ -270,6 +270,14 @@ lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-li
 if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
 else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
 
+# ── 20. runs-layout: the briefing template carries the per-session run layout literal. The SessionStart
+# run-state hook (marvin-runs-sync.sh --session-start) creates a project's session folder only when the
+# installed briefing.md carries it, so a template that lost it would silently switch every install back
+# to the flat, checkout-local layout (AOS-224).
+BR=templates/marvin/agents/briefing.md
+if grep -qF '.marvin/runs/<session>/' "$BR" 2>/dev/null; then pass runs-layout
+else fail runs-layout "$BR lacks the per-session layout literal .marvin/runs/<session>/ (the run-state hook gates on it)"; fi
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
