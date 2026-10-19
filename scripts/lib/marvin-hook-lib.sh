@@ -270,7 +270,7 @@ mh_q() {
 # Layout regexes (ERE, for grep -E / [[ =~ ]]) — the single owner of the run-state names (AOS-222).
 # MH_KEY_RE matches a ticket key ONLY; the literal folder name `adhoc` is checked separately by callers.
 MH_SESSION_RE='^[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}$'                                   # a session folder
-MH_KEY_RE='^[A-Z][A-Z0-9]+-[0-9]+$'                                                   # a ticket key (not `adhoc`)
+MH_KEY_RE='^([A-Z][A-Z0-9]*-[0-9]+|[0-9]+)$'                                         # a ticket key or a GitHub issue number (not `adhoc`)
 MH_STAMP_RE='^[0-9]{8}T[0-9]{6}Z-'                                                    # a timestamped run file
 MH_MARKER_RE='^marvin-owned (marvin:[a-z0-9-]+|orchestrator) ([0-9a-f]{8,40}|-) [0-9]{8}T[0-9]{6}Z$'   # a worktree marker line
 
@@ -295,7 +295,11 @@ mh_path() {
 }
 
 # mh_is_key <name> — rc 0 when the name is a ticket key (MH_KEY_RE) or exactly `adhoc`: the whole key rule.
-mh_is_key() { [ "${1:-}" = adhoc ] || printf '%s' "${1:-}" | grep -Eq "$MH_KEY_RE"; }
+# A single-line string only: grep matches line by line, so a name holding a newline is refused up front.
+mh_is_key() {
+  case "${1:-}" in *$'\n'*) return 1 ;; esac
+  [ "${1:-}" = adhoc ] || printf '%s' "${1:-}" | grep -Eq "$MH_KEY_RE"
+}
 
 # mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting. Prints the
 # resolved value and sets the global MH_MODE to it: the value lower-cased when it is in the allowed list;

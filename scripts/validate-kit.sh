@@ -243,7 +243,7 @@ import json
 want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh", "marvin-runs-sync.sh --session-start"],
         "PostToolUse": ["marvin-context-budget.sh", "marvin-runs-sync.sh --post-tool"],
         "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
-        "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
+        "Stop": ["marvin-update-gate.sh", "marvin-runs-sync.sh --stop"], "SubagentStart": ["marvin-subagent-rules.sh"],
         "SubagentStop": ["marvin-subagent-gate.sh", "marvin-worktree-mark.sh", "marvin-runs-sync.sh --subagent-stop"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
 matcher = {"SubagentStart": "^marvin:", "SubagentStop": "^marvin:", "marvin-brief-lint.sh": "Agent|Task",
            "marvin-docker-lint.sh": "Bash", "marvin-runs-sync.sh --post-tool": "Write|Edit|MultiEdit",
@@ -277,6 +277,17 @@ else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable
 BR=templates/marvin/agents/briefing.md
 if grep -qF '.marvin/runs/<session>/' "$BR" 2>/dev/null; then pass runs-layout
 else fail runs-layout "$BR lacks the per-session layout literal .marvin/runs/<session>/ (the run-state hook gates on it)"; fi
+
+# ── 21. run-patterns: the prune allowlist in briefing.md item 11 quotes the hook lib's session and key
+# regexes verbatim. The orchestrator validates prune targets by the briefing's copy and the hooks carry by
+# the lib's, so a copy that drifted would prune what the hooks never carry, or refuse what they do (AOS-224).
+rp=""
+for c in MH_SESSION_RE MH_KEY_RE; do
+  v=$(sed -nE "s/^$c='([^']*)'.*/\\1/p" scripts/lib/marvin-hook-lib.sh)
+  if [ -z "$v" ]; then rp="$rp $c unreadable in marvin-hook-lib.sh;"
+  elif ! grep -qF -- "\`$v\`" "$BR" 2>/dev/null; then rp="$rp $BR lacks $c \`$v\` verbatim;"; fi
+done
+[ -z "$rp" ] && pass run-patterns || fail run-patterns "${rp# }"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

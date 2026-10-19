@@ -161,6 +161,13 @@ isk AOS-1; eq yes
 isk aos-1; eq no
 isk adhoc2; eq no
 isk ""; eq no
+isk 42; eq yes                     # a GitHub issue number
+isk T-1; eq yes                    # a one-letter prefix
+isk A-; eq no
+isk 1a; eq no
+isk -1; eq no
+isk $'AOS-1\nAOS-2'; eq no         # single-line only: grep would match line by line
+isk $'42\n'; eq no
 
 hd "L10 mh_runs_root: the main checkout's physical .marvin/runs, from any linked worktree"
 RR="$WORK/rr main"; mkdir -p "$RR" && git -C "$RR" init -q -b main . && git -C "$RR" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
@@ -182,7 +189,10 @@ re MH_SESSION_RE 20261019T101500Z-short; eq no
 re MH_KEY_RE AOS-222; eq match
 re MH_KEY_RE adhoc; eq no
 re MH_KEY_RE aos-222; eq no
-re MH_KEY_RE A-1; eq no
+re MH_KEY_RE A-1; eq match
+re MH_KEY_RE 42; eq match
+re MH_KEY_RE A-; eq no
+re MH_KEY_RE 1a; eq no
 re MH_STAMP_RE 20261019T101500Z-note.md; eq match
 re MH_STAMP_RE note.md; eq no
 re MH_MARKER_RE 'marvin-owned marvin:developer-small 0123abcd 20261019T101500Z'; eq match
@@ -217,6 +227,9 @@ hd "ML4 depth guard removed — J7 must catch it"
 mutlib deep '  if (d > 64) fail()' '  if (d > 100000) fail()' f_deep
 hd "ML5 trailing-comment strip removed — L7 must catch it"
 mutlib cmt "    | sed -E 's/(^|[[:space:]]+)#.*\$//' \\" '    | cat \' f_cmt
+f_keynl() { isk $'AOS-1\nAOS-2'; }
+hd "ML7 the key rule's single-line guard removed — L9b must catch it"
+mutlib keynl "  case \"\${1:-}\" in *\$'\\n'*) return 1 ;; esac" '  :' f_keynl
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

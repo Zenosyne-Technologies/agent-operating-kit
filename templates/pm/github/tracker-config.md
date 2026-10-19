@@ -14,6 +14,10 @@ Kit target hierarchy: milestone container → feature grouping → work item →
 
 **Milestone** (native, created via `gh api repos/{{GITHUB_REPO}}/milestones`) → **Epic** = a parent issue with sub-issues (`gh api` sub-issue endpoints where available; task-list fallback where the plan doesn't have sub-issues) → **Issue** → task-list items. No virtual constructs needed.
 
+## Issue key
+
+The kit's `<KEY>` for a GitHub issue is its bare number — `42`, never `#42` or `owner/repo#42`: the run folder `.marvin/runs/<session>/42/`, its ledger, and every commit prefix (`42: …`) use it, matching `briefing.md` item 11's key rule.
+
 ## Native field usage
 
 - Sev labels are canonical, with NO native mirror — GitHub has no priority field; do not invent one.
