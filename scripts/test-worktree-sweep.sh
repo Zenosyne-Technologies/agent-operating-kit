@@ -3,7 +3,8 @@
 # Real repos in a temp dir: a bare origin, a clone carrying .marvin/ (PROJECT-INFO worktree_sweep: on),
 # and agent worktrees under .claude/worktrees/, each MARKED as Marvin's unless the fixture says
 # otherwise. One fixture per keep-guard (G1–G9) asserting its NAMED reason (git's own refusal must not
-# mask a missing guard), removal fixtures, scope (marked only), the worktree_sweep mode, --check, --hook.
+# mask a missing guard), removal fixtures, scope (marked only), the worktree_sweep mode, --check, --hook,
+# and the report-only --at-risk mode (AR*: G8/G9 conditions on EVERY worktree under .claude/worktrees/).
 # A fixture whose real output is silent appends a `state: kept|gone` line, so a mutation can be judged.
 # The mutation section reverts each guard line in a copy; the guard's fixture must then fail.
 # Run from anywhere: bash scripts/test-worktree-sweep.sh — exit 0 = all passed.
@@ -103,6 +104,10 @@ fx_G8a() { envwt e8a; echo S=1 > "$WT/e8a/.env"; echo S=1 > "$R/.env"; echo log 
 fx_G8b() { envwt e8b; echo S=1 > "$WT/e8b/.env.local"; echo S=2 > "$R/.env.local"; age "$WT/e8b"; sweep "$1"; state "$WT/e8b"; }
 fx_G8c() { envwt e8c; echo S=1 > "$WT/e8c/.env"; age "$WT/e8c"; sweep "$1"; state "$WT/e8c"; }
 fx_G8d() { envwt e8d; mkdir -p "$WT/e8d/app" "$R/app"; echo S=1 > "$WT/e8d/app/.env"; echo S=2 > "$R/app/.env"; age "$WT/e8d"; sweep "$1"; state "$WT/e8d"; }
+fx_G8n() {  # a wholly ignored dependency folder is never descended into: its .env files are not G8's
+  envwt e8n; printf '.env\n.env.*\nnode_modules/\n.venv\n' > "$WT/e8n/.gitignore"; git -C "$WT/e8n" commit -qam deps; merge_into develop e8n
+  mkdir -p "$WT/e8n/node_modules/x" "$WT/e8n/.venv/lib"; echo S=1 > "$WT/e8n/node_modules/x/.env"; echo S=1 > "$WT/e8n/.venv/lib/.env.local"
+  age "$WT/e8n"; sweep "$1"; state "$WT/e8n"; }
 S9=20261019T120000Z-0123abcd-0123-4567-89ab-0123456789ab
 runwt() {  # runwt <name> — a marked, merged worktree holding an ignored run file .marvin/runs/$S9/K-1/x.md
   fresh; mkwt "$1" develop; work "$WT/$1" "$1"; merge_into develop "$1"
@@ -113,6 +118,15 @@ runwt() {  # runwt <name> — a marked, merged worktree holding an ignored run f
 fx_G9()  { runwt g9; age "$WT/g9"; sweep "$1"; state "$WT/g9"; }                       # not in the project
 fx_G9c() { runwt g9c; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo other > "$R/.marvin/runs/$S9/K-1/x.md"; age "$WT/g9c"; sweep "$1"; state "$WT/g9c"; }  # differs
 fx_G9b() { runwt g9b; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/x.md"; age "$WT/g9b"; sweep "$1"; state "$WT/g9b"; }  # identical
+fx_G9g() { runwt g9g; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/x.md"   # only .marvin/runs/.gitignore differs
+           printf '*\n# local\n' > "$WT/g9g/.marvin/runs/.gitignore"; age "$WT/g9g"; sweep "$1" "${@:2}"; state "$WT/g9g"; }
+fx_SC3() {  # an UNMARKED worktree that is prunable, and one whose directory is gone: skipped, no prune advice
+  fresh; local n; for n in up um; do git -C "$R" worktree add -q -b "$n" "$WT/$n" develop; done
+  rm -f "$WT/up/.git"; rm -rf "$WT/um"; sweep "$1"; }
+fx_AR1() {  # --at-risk: an UNMARKED worktree whose ignored .env differs from the main checkout's is listed
+  envwt ar1; rm -f "$(git -C "$WT/ar1" rev-parse --absolute-git-dir)/marvin-owned"; echo S=1 > "$WT/ar1/.env"; echo S=2 > "$R/.env"; sweep "$1" --at-risk; state "$WT/ar1"; }
+fx_AR2() {  # --at-risk: unmarked run state the project lacks is listed (G9)
+  runwt ar2; rm -f "$(git -C "$WT/ar2" rev-parse --absolute-git-dir)/marvin-owned"; sweep "$1" --at-risk; state "$WT/ar2"; }
 fx_SC1() { fresh; git -C "$R" worktree add -q -b sc1 "$WT/sc1" develop; work "$WT/sc1" sc1; merge_into develop sc1; age "$WT/sc1"; sweep "$1" "${@:2}"; state "$WT/sc1"; }
 fx_SC2() {  # a malformed marker, a valid line that is not the first, a symlinked valid marker: all unmarked
   local n gd; fresh; printf '%s\n' "$MARKLINE" > "$WORK/goodmarker"
@@ -231,7 +245,7 @@ OUT=$(cd "$WORK/plain" && CLAUDE_PROJECT_DIR="$WORK/plain" bash "$SWEEP" </dev/n
 hd "U1 an unknown option is a usage error"
 sweep "$SWEEP" --bogus; assert_rc 2; assert_out "usage"
 
-SKIP1="skipped: 1 worktree(s) not created by Marvin — left to the app"
+SKIP1="skipped: 1 worktree(s) not marked by Marvin — left to the app"
 hd "SC1 an unmarked, clean, landed, idle worktree is out of scope: kept, one skipped line by hand, silent in --hook"
 fx_SC1 "$SWEEP"; assert_rc 0; assert_out "$SKIP1"; assert_no_out "$WT/sc1"; assert_there "$WT/sc1"; assert_branch sc1
 fx_SC1 "$SWEEP" --check; assert_out "$SKIP1"; assert_no_out "would remove"
@@ -240,8 +254,15 @@ fresh; mkwt mk develop; work "$WT/mk" mk; merge_into develop mk; age "$WT/mk"
 sweep "$SWEEP"; assert_out "removed: $WT/mk"; assert_no_out "skipped:"   # no skipped line when nothing was skipped
 
 hd "SC2 a malformed marker, a valid line that is not the first, a symlinked marker: all unmarked"
-fx_SC2 "$SWEEP"; assert_rc 0; assert_out "skipped: 3 worktree(s) not created by Marvin — left to the app"; assert_no_out "removed:"
+fx_SC2 "$SWEEP"; assert_rc 0; assert_out "skipped: 3 worktree(s) not marked by Marvin — left to the app"; assert_no_out "removed:"
 assert_there "$WT/bad"; assert_there "$WT/late"; assert_there "$WT/lnk"
+
+hd "SC3 an unmarked prunable or missing worktree is skipped — no kept line, no prune advice"
+fx_SC3 "$SWEEP"; assert_rc 0; assert_out "skipped: 2 worktree(s) not marked by Marvin — left to the app"; assert_no_out "kept:"; assert_no_out "prune"
+fresh; git -C "$R" worktree add -q -b ul "$WT/ul-real" develop; mv "$WT/ul-real" "$WORK/real"; ln -s "$WORK/real" "$WT/ul-real"
+sweep "$SWEEP"; assert_out "skipped: 1 worktree(s) not marked by Marvin"; assert_no_out "never followed"   # an unmarked symlink entry
+fresh; git -C "$R" worktree add -q -b ml "$WT/ml-real" develop; mark "$WT/ml-real"; mv "$WT/ml-real" "$WORK/real"; ln -s "$WORK/real" "$WT/ml-real"
+sweep "$SWEEP"; assert_out "kept: $WT/ml-real — symlink — never followed"; assert_no_out "skipped:"   # a marked one keeps its line
 
 hd "MD1 worktree_sweep absent: --hook is check mode — nothing removed, one summary line"
 fx_MD1 "$SWEEP"; assert_rc 0; assert_out "state: kept"; assert_branch md
@@ -271,11 +292,23 @@ fx_G8b "$SWEEP"; assert_out "kept: $WT/e8b — G8 ignored .env.local differs fro
 fx_G8c "$SWEEP"; assert_out "kept: $WT/e8c — G8 ignored .env absent from the main checkout"; assert_out "state: kept"
 fx_G8d "$SWEEP"; assert_out "kept: $WT/e8d — G8 ignored app/.env differs from the main checkout"; assert_out "state: kept"
 fx_G8b "$SWEEP" --check; assert_out "kept: $WT/e8b — G8"; assert_no_out "would remove"
+fx_G8n "$SWEEP"; assert_out "removed: $WT/e8n"; assert_out "state: gone"; assert_no_out "G8"   # node_modules/x/.env, .venv/lib/.env.local: not descended into
 
 hd "G9 an ignored run file under .marvin/runs/ keeps the worktree unless the project holds the same bytes"
 fx_G9 "$SWEEP";  assert_out "kept: $WT/g9 — G9 run state not in the project: .marvin/runs/$S9/K-1/x.md"; assert_out "state: kept"
 fx_G9c "$SWEEP"; assert_out "kept: $WT/g9c — G9 run state not in the project"; assert_out "state: kept"
 fx_G9b "$SWEEP"; assert_out "removed: $WT/g9b"; assert_out "state: gone"
+fx_G9g "$SWEEP"; assert_out "removed: $WT/g9g"; assert_out "state: gone"; assert_no_out "G9"   # .marvin/runs/.gitignore is not run state
+
+hd "AR1 --at-risk lists every worktree with a G8 or G9 condition, marked or NOT, and removes nothing"
+fx_AR1 "$SWEEP"; assert_rc 0; assert_only "at-risk: $WT/ar1 — G8 ignored .env differs from the main checkout"$'\n'"state: kept"
+fx_AR2 "$SWEEP"; assert_rc 0; assert_only "at-risk: $WT/ar2 — G9 run state not in the project: .marvin/runs/$S9/K-1/x.md"$'\n'"state: kept"
+fresh; git -C "$R" worktree add -q -b clean "$WT/clean" develop; work "$WT/clean" c; mkwt mk develop; work "$WT/mk" mk; merge_into develop mk; age "$WT/mk"
+sweep "$SWEEP" --at-risk; assert_rc 0; assert_empty; assert_there "$WT/clean"; assert_there "$WT/mk"   # clean ones: no line; a removable marked one: untouched
+fx_G9g "$SWEEP" --at-risk; assert_only "state: kept"   # the runs .gitignore never counts
+fresh; envwt arh; echo S=1 > "$WT/arh/.env"; OUT=$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SWEEP" --at-risk --hook </dev/null 2>&1); RC=$?
+assert_rc 0; assert_empty   # never in --hook mode
+R0=$R; R="$WORK/my repo"; WT="$R/.claude/worktrees"; fx_AR1 "$SWEEP"; assert_out "at-risk: \"$WT/ar1\" — G8"; rm -rf "$R"; R=$R0; WT="$R/.claude/worktrees"
 
 hd "W1 a JSON-escaped hook stdin cwd still names the worktree the session stands in (G2)"
 fx_W1 "$SWEEP"; assert_rc 0; assert_only "state: kept"; assert_branch w1
@@ -301,15 +334,22 @@ mutation G7LISTED fx_G7P '    case "$op/" in "$w2"/?*|"$w1"/?*) return 0 ;; esac
 mutation G7REPO fx_G7R '  [ -n "$(find "$1" -mindepth 2 -name .git -print -quit 2>/dev/null)" ]   # a clone or submodule' '  false' "G7 another"
 mutation NOLOCK fx_IDX '  st=$(git -C "$p" --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' \
                        '  st=$(git -C "$p" status --porcelain --untracked-files=all 2>/dev/null) || { keep "$p" "G3 status unreadable"; return; }' "G5 commits"
-mutation PRUNABLE fx_PR '  [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }' '  :' "— prunable"
+mutation PRUNABLE fx_PR '    keep "$p" "prunable — run git worktree prune"; return; fi' '    fi' "— prunable"
 mutation ORIGBEHIND fx_LAG '      if ! git -C "$ROOT" merge-base --is-ancestor "$sha" "refs/remotes/origin/$b" 2>/dev/null; then note=" (branch $(q "$b") kept: origin copy is behind)"' \
                            '      if false; then note=""' "origin copy is behind"
-mutation SCOPE fx_SC1 '  is_marked "$p" || { NSKIP=$((NSKIP + 1)); return 0; }   # not Marvin'"'"'s: left to the app' '  :' "skipped: 1"
-mutation MARKLINK fx_SC2 '  [ ! -L "$f" ] && [ -f "$f" ] || return 1' '  [ -f "$f" ] || return 1' "skipped: 3"
+mutation SCOPE fx_SC1 '  mh_is_marked "$p" || { skipped; return 0; }   # not Marvin'"'"'s: left to the app' '  :' "skipped: 1"
+mutation SCOPEPRUNE fx_SC3 '  if [ -n "$prunable" ]; then entry_marked || { skipped; return 0; }' '  if [ -n "$prunable" ]; then' "skipped: 2"
+mutation SCOPEMISSING fx_SC3 '    entry_marked || { skipped; return 0; }; keep "$p" "missing — run git worktree prune"; return 0; }' '    keep "$p" "missing — run git worktree prune"; return 0; }' "skipped: 2"
+mutation G8DIR fx_G8n '  git -C "$1" ls-files -z --others --ignored --exclude-standard --directory -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' \
+                      '  git -C "$1" ls-files -z --others --ignored --exclude-standard -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' "state: gone"
+mutation G9IGNORE fx_G9g '      case "$f" in .marvin/runs/.gitignore) continue ;; .marvin/runs/?*) ;; *) continue ;; esac' '      case "$f" in .marvin/runs/?*) ;; *) continue ;; esac' "state: gone"
+mutation ATRISK fx_AR1 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      return 0' "at-risk: $WT/ar1"
+mutation ATRISKG9 fx_AR2 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      why=$(g8 "$p") && return 0' "at-risk: $WT/ar2"
+mutation ATRISKONLY fx_AR1 '  if [ "$ATRISK" = 1 ]; then   # report only, marked or not; a prunable entry has no checkout git can list' '  if false; then' "at-risk: $WT/ar1"
 mutation G8 fx_G8b '  why=$(g8 "$p") || { keep "$p" "$why"; return; }' '  :' "G8 ignored .env.local differs"
 mutation G8ABSENT fx_G8c '      if [ ! -e "$ROOT/$f" ] && [ ! -L "$ROOT/$f" ]; then printf '"'"'G8 ignored %s absent from the main checkout'"'"' "$(q "$f")"; exit 1; fi' '      :' "G8 ignored .env absent"
-mutation G8DEPTH fx_G8d '  git -C "$1" ls-files -z --others --ignored --exclude-standard -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' \
-                        '  git -C "$1" ls-files -z --others --ignored --exclude-standard -- .env .env.* 2>/dev/null | {' "G8 ignored app/.env"
+mutation G8DEPTH fx_G8d '  git -C "$1" ls-files -z --others --ignored --exclude-standard --directory -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' \
+                        '  git -C "$1" ls-files -z --others --ignored --exclude-standard --directory -- .env .env.* 2>/dev/null | {' "G8 ignored app/.env"
 mutation G9 fx_G9 '  why=$(g9 "$p") || { keep "$p" "$why"; return; }' '  :' "G9 run state"
 mutation G9CMP fx_G9c '      [ -n "$RUNS" ] && cmp -s "$1/$f" "$RUNS/${f#.marvin/runs/}" || { printf '"'"'G9 run state not in the project: %s'"'"' "$(q "$f")"; exit 1; }' \
                       '      [ -n "$RUNS" ] && [ -e "$RUNS/${f#.marvin/runs/}" ] || { printf '"'"'G9 run state not in the project: %s'"'"' "$(q "$f")"; exit 1; }' "G9 run state"

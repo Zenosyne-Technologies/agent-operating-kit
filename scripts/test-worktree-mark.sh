@@ -2,7 +2,8 @@
 # test-worktree-mark.sh — behavioural tests for scripts/marvin-worktree-mark.sh (AOS-223).
 # Real repos in a temp dir. Hook mode (--subagent-stop): only the stopping agent's own isolation
 # worktree <main>/.claude/worktrees/agent-<agent_id> is marked (K1–K8, K10, K11); by hand (K9) the
-# orchestrator marks a worktree it made, refusing its own, the main checkout and anything else.
+# orchestrator marks a worktree it made, refusing its own, the main checkout, one whose git admin dir is
+# over 60 minutes old (K12: a live session's worktree) and anything else.
 # The mutation section reverts one guard at a time in a copy; the guard's fixture must then fail.
 # Run from anywhere: bash scripts/test-worktree-mark.sh — exit 0 = all passed.
 set -uo pipefail
@@ -77,6 +78,8 @@ by_hand() {  # by_hand <script> <cwd> <args…> — run from <cwd>
 }
 fx_OWN() { fresh; mkwt own; by_hand "$1" "$WT/own" "$WT/own"; }
 fx_SYM() { fresh; mkwt real; ln -s "$WT/real" "$WT/lnk"; by_hand "$1" "$R" "$WT/lnk"; OUT="$OUT $(state "$WT/real")"; }
+oldwt() { local gd; gd=$(gdir "$1"); touch -t 202001010000 "$gd/commondir" "$gd"; }   # oldwt <wt> — its admin dir made long ago
+fx_AGE() { fresh; mkwt old; oldwt "$WT/old"; by_hand "$1" "$R" "$WT/old"; OUT="$OUT $(state "$WT/old")"; }
 
 hd "K1 an isolated agent's worktree is marked, with a valid one-line marker"
 fresh; mkwt "agent-$ID"; hook "$MARK" "$WT/agent-$ID"; silent_ok; marker_ok "$WT/agent-$ID" "$MARKER_RE"
@@ -147,6 +150,11 @@ by_hand "$MARK" "$R" --bogus; assert_rc 2; assert_out "usage"
 by_hand "$MARK" "$R" a b; assert_rc 2; assert_out "usage"
 by_hand "$MARK" "$R" --subagent-stop x; assert_rc 2
 
+hd "K12 by hand: a worktree whose git admin dir is over 60 minutes old is refused; the hook mode is unaffected"
+fx_AGE "$MARK"; assert_rc 1; assert_out "refused: $WT/old — mark only a worktree you just created"; assert_out " unmarked"
+fresh; mkwt "agent-$ID"; oldwt "$WT/agent-$ID"; hook "$MARK" "$WT/agent-$ID"; silent_ok; marker_ok "$WT/agent-$ID" "$MARKER_RE"
+fresh; mkwt young; gd=$(gdir "$WT/young"); touch -t 202001010000 "$gd"; by_hand "$MARK" "$R" "$WT/young"; assert_rc 0; want_state "$WT/young" marked   # its admin dir's mtime moves with every git write; commondir is the creation stamp
+
 hd "K10 a repo path with a space: hook and by-hand both work, output is encoded"
 R="$WORK/my repo"; fresh; mkwt "agent-$ID"; mkwt hand
 hook "$MARK" "$WT/agent-$ID"; silent_ok; marker_ok "$WT/agent-$ID" "$MARKER_RE"
@@ -154,13 +162,15 @@ by_hand "$MARK" "$R" "$WT/hand"; assert_rc 0; assert_out "marked: \"$WT/hand\"";
 by_hand "$MARK" "$WT/hand" "$R"; assert_rc 1; assert_out "refused: \"$R\" — "
 R="$WORK/repo"
 
-hd "K11 a symlinked marker file is unmarked (is_marked) and nothing is written through it"
+hd "K11 a symlinked marker file is unmarked (mh_is_marked, the lib's shared rule) and nothing is written through it"
 fresh; mkwt "agent-$ID"; printf 'marvin-owned marvin:developer %s 20200101T000000Z\n' "$ID" > "$WORK/target"; ln -s "$WORK/target" "$(mfile "$WT/agent-$ID")"
-if (. "$MARK"; is_marked "$WT/agent-$ID"); then bad "is_marked trusted a symlinked marker"; else ok "is_marked: unmarked"; fi
+if (. "$MARK"; mh_is_marked "$WT/agent-$ID"); then bad "mh_is_marked trusted a symlinked marker"; else ok "mh_is_marked: unmarked"; fi
+by_hand "$MARK" "$R" "$WT/agent-$ID"; assert_rc 1; assert_out "marker file is a symlink"
 rm -f "$(mfile "$WT/agent-$ID")"; printf 'marvin-owned marvin:developer %s 20200101T000000Z\n' "$ID" > "$(mfile "$WT/agent-$ID")"
-if (. "$MARK"; is_marked "$WT/agent-$ID"); then ok "is_marked: a regular file is marked"; else bad "is_marked rejected a valid regular marker"; fi
+if (. "$MARK"; mh_is_marked "$WT/agent-$ID"); then ok "mh_is_marked: a regular file is marked"; else bad "mh_is_marked rejected a valid regular marker"; fi
+by_hand "$MARK" "$R" "$WT/agent-$ID"; assert_rc 0; assert_out "already marked:"   # the script uses the same rule
 printf 'marvin-owned nobody 20200101T000000Z\n' > "$(mfile "$WT/agent-$ID")"
-if (. "$MARK"; is_marked "$WT/agent-$ID"); then bad "is_marked accepted a malformed line"; else ok "is_marked: a malformed line is unmarked"; fi
+if (. "$MARK"; mh_is_marked "$WT/agent-$ID"); then bad "mh_is_marked accepted a malformed line"; else ok "mh_is_marked: a malformed line is unmarked"; fi
 fx_K11 "$MARK"; if [ "$OUT" = intact ]; then ok "hook wrote nothing through the symlink"; else bad "hook touched the symlinked marker"; fi
 fx_K11D "$MARK"; if [ "$OUT" = intact ]; then ok "hook wrote nothing through a dangling symlink"; else bad "hook touched the dangling symlinked marker"; fi
 
@@ -186,6 +196,7 @@ mutation SYMMARK fx_K11D '  [ -e "$f" ] || [ -L "$f" ] && return 1' '  [ -e "$f"
                       '    && mv -n -- "$tmp" "$f" 2>/dev/null' '    && mv -f -- "$tmp" "$f" 2>/dev/null'
 mutation OWN fx_OWN '  case "$(mh_path "$here")/" in "$(mh_path "$phys")"/*) refuse "$arg" "the worktree you are standing in" ;; esac' '  :' "standing in"
 mutation SYMARG fx_SYM '  [ -L "$a" ] && refuse "$arg" "a symlink"' '  :' "unmarked"
+mutation AGE fx_AGE '  [ -n "$(find "$age" -prune -mmin +60 2>/dev/null)" ] && refuse "$arg" "mark only a worktree you just created; its git admin dir is over 60 minutes old (a live session'"'"'s worktree is never Marvin'"'"'s)"' '  :' "unmarked"
 
 printf '\n----\ntest-worktree-mark: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

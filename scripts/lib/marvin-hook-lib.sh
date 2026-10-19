@@ -301,6 +301,20 @@ mh_is_key() {
   [ "${1:-}" = adhoc ] || printf '%s' "${1:-}" | grep -Eq "$MH_KEY_RE"
 }
 
+# mh_marker_in <git admin dir> — rc 0 when it holds `marvin-owned` as a regular file (not a symlink) whose
+# FIRST line is a valid marker (MH_MARKER_RE); mh_is_marked <worktree> — the same test on that worktree's
+# admin dir. The one marker rule the sweep and the marker script share (AOS-223).
+mh_marker_in() {
+  local f="${1:-}/marvin-owned"
+  [ -n "${1:-}" ] && [ ! -L "$f" ] && [ -f "$f" ] || return 1
+  head -n 1 -- "$f" 2>/dev/null | grep -Eq "$MH_MARKER_RE"
+}
+mh_is_marked() {
+  local gd
+  gd=$(git -C "${1:-}" rev-parse --absolute-git-dir 2>/dev/null) && [ -n "$gd" ] || return 1
+  mh_marker_in "$gd"
+}
+
 # mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting. Prints the
 # resolved value and sets the global MH_MODE to it: the value lower-cased when it is in the allowed list;
 # absent, empty or not allowed → <default>. A value that is present but not allowed also sets the global

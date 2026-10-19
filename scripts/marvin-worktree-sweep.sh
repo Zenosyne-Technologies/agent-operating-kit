@@ -2,13 +2,15 @@
 # marvin-worktree-sweep.sh — remove finished agent worktrees (AOS-196 v0.37.0; scope, mode, G8/G9 AOS-223/224/225).
 #
 #   marvin-worktree-sweep.sh [--check] [--hook] [<repo-dir>]      repo-dir: $CLAUDE_PROJECT_DIR, else $PWD
+#   marvin-worktree-sweep.sh --at-risk [<repo-dir>]               report only: G8/G9 on EVERY worktree
 #
 # Scope: linked worktrees physically under <main checkout>/.claude/worktrees/ — never the main
 # checkout, never a worktree elsewhere, never a symlink — that Marvin MARKED as its own: a regular
 # file (not a symlink) `marvin-owned` in the worktree's git admin dir whose first line matches the
-# marker grammar (MH_MARKER_RE; the one writer is marvin-worktree-mark.sh). An unmarked worktree is
-# left to the app: never touched, never named; a hand run counts it in one `skipped:` line. A marker
-# is written at the agent's first stop and never means "finished": every guard still applies.
+# marker grammar (mh_is_marked; the one writer is marvin-worktree-mark.sh). The marker is tested FIRST,
+# before the symlink, missing and prunable checks: an unmarked worktree is left to the app — never touched,
+# never named; a hand run counts it in one `skipped:` line. A marker is written at the agent's first stop
+# and never means "finished": every guard still applies.
 # A candidate is KEPT when any guard holds:
 #   G1 locked (Claude Code locks a running agent's worktree)
 #   G2 a session stands in it ($PWD, or the hook's stdin "cwd", JSON-decoded by the hook lib)
@@ -19,10 +21,12 @@
 #   G4 a merge, rebase, cherry-pick, revert or bisect is in progress
 #   G3 uncommitted or untracked changes (status runs with --no-optional-locks: no index write,
 #      so the sweep never "touches" what G6 measures)
-#   G8 a git-ignored `.env` or `.env.*` (any depth) that the main checkout lacks at the same relative
-#      path, or holds with other bytes
-#   G9 a git-ignored file under its .marvin/runs/ that the project's run folder (mh_runs_root) lacks
-#      at the same path, or holds with other bytes — run state a hook did not carry home
+#   G8 a git-ignored `.env` or `.env.*` (any depth, but never inside a wholly ignored directory such as
+#      node_modules/ or .venv/) that the main checkout lacks at the same relative path, or holds with
+#      other bytes
+#   G9 a git-ignored file under its .marvin/runs/ (but not .marvin/runs/.gitignore itself) that the
+#      project's run folder (mh_runs_root) lacks at the same path, or holds with other bytes — run state
+#      a hook did not carry home
 #   G5 its HEAD is in no branch other than its own (its own origin copy does not count)
 # Otherwise: `git worktree remove` (never --force), then — only when origin has a copy of its
 # branch — the local branch is deleted by compare-and-delete on the commit the guards checked,
@@ -34,12 +38,15 @@
 # Rules: .marvin/agents/worktrees.md. Paths print through q() (mh_q, git core.quotePath convention).
 # --check reports only. --hook (SessionStart): Marvin projects only, one summary line when
 # something was removed (or would be, in check mode), otherwise silent, always exit 0.
+# --at-risk (the upgrade skill's readiness report): every linked worktree physically under
+# .claude/worktrees/, marked or NOT, gets one `at-risk: <path> — <G8|G9 reason>` line when G8 or G9 holds;
+# nothing is removed, no other line is printed, exit 0. Never in --hook mode (silent there).
 # Exit without --hook: 0 ok · 1 refused (symlinked scope) · 2 usage / not a git repository / no lib.
 set -u
 
 IDLE_MIN=15
-MODE=run; HOOK=0; REPO=""; HOOK_CWD=""; NREM=0; REMOVED=""; NSKIP=0
-USAGE="usage: marvin-worktree-sweep.sh [--check] [--hook] [<repo-dir>]"
+MODE=run; HOOK=0; REPO=""; HOOK_CWD=""; NREM=0; REMOVED=""; NSKIP=0; ATRISK=0
+USAGE="usage: marvin-worktree-sweep.sh [--check] [--hook] [<repo-dir>] | --at-risk [<repo-dir>]"
 
 for a in "$@"; do case "$a" in --hook) HOOK=1 ;; esac; done
 . "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || {
@@ -53,12 +60,14 @@ die()  { [ "$HOOK" = 1 ] && exit 0; printf 'marvin-worktree-sweep: %s\n' "$2" >&
 for a in "$@"; do
   case "$a" in
     --check) MODE=check ;;
+    --at-risk) ATRISK=1; MODE=check ;;
     --hook)  ;;
     -*)      die 2 "$USAGE" ;;
     *)       [ -z "$REPO" ] || die 2 "$USAGE"; REPO="$a" ;;
   esac
 done
 
+[ "$HOOK" = 1 ] && [ "$ATRISK" = 1 ] && exit 0   # a report for a person, never a hook's
 if [ "$HOOK" = 1 ] && mh_read_stdin; then   # the host closes stdin; its hook timeout bounds us
   HOOK_CWD=$(printf '%s' "$MH_IN" | mh_get cwd 2>/dev/null) || HOOK_CWD=""
   HOOK_CWD=$(mh_path "$HOOK_CWD") || HOOK_CWD=""
@@ -112,19 +121,24 @@ in_progress() {  # in_progress <admin dir>
   done
   return 1
 }
-is_marked() {  # is_marked <worktree> — a regular-file (not symlink) marker whose FIRST line is valid (marvin-worktree-mark.sh's rule)
-  local gd f
-  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) && [ -n "$gd" ] || return 1
-  f="$gd/marvin-owned"
-  [ ! -L "$f" ] && [ -f "$f" ] || return 1
-  head -n 1 -- "$f" 2>/dev/null | grep -Eq "$MH_MARKER_RE"
+entry_marked() {  # entry_marked — the listed worktree $p is marked, found by its admin dir's gitdir record:
+  # for a symlinked, missing or prunable entry `git -C "$p"` cannot be trusted to name its admin dir
+  local d g want
+  want=$(mh_path "$p/.git") || return 1
+  for d in "$common"/worktrees/*; do
+    [ -d "$d" ] && [ ! -L "$d" ] && [ -f "$d/gitdir" ] || continue
+    g=$(head -n 1 -- "$d/gitdir" 2>/dev/null) && [ "$(mh_path "$g")" = "$want" ] || continue
+    mh_marker_in "$d"; return
+  done
+  return 1
 }
+skipped() { NSKIP=$((NSKIP + 1)); }
 # g8 / g9 <worktree> — rc 0 when safe; rc 1 with the keep reason (naming the first offending file) on
 # stdout. git lists the ignored files (NUL-separated, pathspec-limited); a listing git could not
 # produce keeps the worktree too.
 g8() {
   local f s0 s1
-  git -C "$1" ls-files -z --others --ignored --exclude-standard -- ':(glob)**/.env' ':(glob)**/.env.*' 2>/dev/null | {
+  git -C "$1" ls-files -z --others --ignored --exclude-standard --directory -- ':(glob)**/.env' ':(glob)**/.env.*' 2>/dev/null | {
     while IFS= read -r -d '' f; do
       case "${f##*/}" in .env|.env.*) ;; *) continue ;; esac
       if [ ! -e "$ROOT/$f" ] && [ ! -L "$ROOT/$f" ]; then printf 'G8 ignored %s absent from the main checkout' "$(q "$f")"; exit 1; fi
@@ -138,7 +152,7 @@ g9() {
   local f s0 s1
   git -C "$1" ls-files -z --others --ignored --exclude-standard -- .marvin/runs/ 2>/dev/null | {
     while IFS= read -r -d '' f; do
-      case "$f" in .marvin/runs/?*) ;; *) continue ;; esac
+      case "$f" in .marvin/runs/.gitignore) continue ;; .marvin/runs/?*) ;; *) continue ;; esac
       [ -n "$RUNS" ] && cmp -s "$1/$f" "$RUNS/${f#.marvin/runs/}" || { printf 'G9 run state not in the project: %s' "$(q "$f")"; exit 1; }
     done; exit 0; }
   s0=${PIPESTATUS[0]} s1=${PIPESTATUS[1]}
@@ -162,13 +176,25 @@ consider() {  # one linked worktree: globals p sha b locked prunable
   local p_phys gd st note why
   [ -n "$p" ] || return 0
   if [ -L "$p" ]; then
-    case "$p/" in "$WT_DIR"/?*|"$WT_PHYS"/?*) keep "$p" "symlink — never followed" ;; esac; return 0
+    case "$p/" in "$WT_DIR"/?*|"$WT_PHYS"/?*) ;; *) return 0 ;; esac
+    [ "$ATRISK" = 1 ] && return 0
+    entry_marked || { skipped; return 0; }; keep "$p" "symlink — never followed"; return 0
   fi
   p_phys=$(cd "$p" 2>/dev/null && pwd -P) || {
-    case "$p/" in "$WT_DIR"/?*|"$WT_PHYS"/?*) keep "$p" "missing — run git worktree prune" ;; esac; return 0; }
+    case "$p/" in "$WT_DIR"/?*|"$WT_PHYS"/?*) ;; *) return 0 ;; esac
+    [ "$ATRISK" = 1 ] && return 0
+    entry_marked || { skipped; return 0; }; keep "$p" "missing — run git worktree prune"; return 0; }
   case "$p_phys/" in "$WT_PHYS"/?*) ;; *) return 0 ;; esac
-  [ -n "$prunable" ] && { keep "$p" "prunable — run git worktree prune"; return; }
-  is_marked "$p" || { NSKIP=$((NSKIP + 1)); return 0; }   # not Marvin's: left to the app
+  if [ "$ATRISK" = 1 ]; then   # report only, marked or not; a prunable entry has no checkout git can list
+    if [ -z "$prunable" ]; then
+      why=$(g8 "$p") && why=$(g9 "$p") && return 0
+      say "at-risk: $(q "$p") — $why"
+    fi
+    return 0
+  fi
+  if [ -n "$prunable" ]; then entry_marked || { skipped; return 0; }
+    keep "$p" "prunable — run git worktree prune"; return; fi
+  mh_is_marked "$p" || { skipped; return 0; }   # not Marvin's: left to the app
   [ -n "$locked" ] && { keep "$p" "G1 locked"; return; }
   is_current "$p_phys" && { keep "$p" "G2 current checkout"; return; }
   nested "$p" "$p_phys" && { keep "$p" "G7 another worktree or repository inside it"; return; }
@@ -226,7 +252,8 @@ if [ "$HOOK" = 1 ]; then
     printf 'Marvin: removed %d finished agent worktree(s) under .claude/worktrees/:%s\n' "$NREM" "$REMOVED"
   fi
 else
-  [ "$NSKIP" -eq 0 ] || say "skipped: $NSKIP worktree(s) not created by Marvin — left to the app"
+  [ "$ATRISK" = 1 ] && exit 0
+  [ "$NSKIP" -eq 0 ] || say "skipped: $NSKIP worktree(s) not marked by Marvin — left to the app"
   if mh_is_marvin "$ROOT" && [ "$SWEEP_MODE" != on ]; then
     say "Marvin: worktree sweep is $SWEEP_MODE (worktree_sweep in .marvin/PROJECT-INFO.md)"
   fi
