@@ -156,6 +156,9 @@ copy-without-cmp|N14|s/^  cmp -s -- "\$s" "\$d" \|\| \{ rm -f -- "\$d"; return 1
 no-copy-fallback|N14|s/^  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then\n/  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then return 1\n/m
 copy-loses-mtime|N14|s/cp -p -- "\$s" "\$tmp"/cp -- "\$s" "\$tmp"/
 irregular-target-accepted|N13|s/^  if has "\$t" && \[ ! -f "\$t" \]; then refuse[^\n]*\n//m
+defer-no-main-fallback|N15|s/ \|\| pd=\$\(rel_main "\$d"\)//
+capture-scanned|N16|s/^    is_capture "\$e" && continue[^\n]*\n//m
+capture-any-name|N16|s/\^upgrade-\[0-9\]\{8\}T\[0-9\]\{6\}Z-/^upgrade-.*/
 '
 
 table_for() {

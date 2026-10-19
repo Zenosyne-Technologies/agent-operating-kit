@@ -7,7 +7,8 @@
 # `<main>/.marvin/runs/<UTC of run>-00000000-0000-0000-0000-000000000000/<KEY|adhoc>/<file>` — the nil UUID
 # satisfies the session allowlist and the UTC prefix sorts it by time. An existing nil-UUID folder is reused
 # (a re-run after a deferral lands in the same folder); more than one refuses. Never sources, never touched:
-# `.marvin/runs/.gitignore`, and every folder already named like a session (MH_SESSION_RE). A top-level entry
+# `.marvin/runs/.gitignore`, the upgrade skill's own report captures (regular files named
+# `upgrade-<UTC>-<name>.txt`), and every folder already named like a session (MH_SESSION_RE). A top-level entry
 # whose name is not a key (mh_is_key), and anything in a key folder that is not a regular file, is skipped
 # and reported.
 #
@@ -24,7 +25,9 @@
 # before the first change (exit 1): a symlinked component on a source or target path (`.marvin`,
 # `.marvin/runs`, a key folder, a file, the legacy folder), a target git does not ignore, a source file git
 # tracks, more than one legacy folder. A deferred worktree (`--defer`) and, with `--defer-flat`, the main
-# checkout's flat folders are skipped entirely: `deferred: <path> — open session`. Idempotent: a re-run is
+# checkout's flat folders are skipped entirely: `deferred: <path> — open session`. A relative `--defer` path
+# that does not resolve against the cwd resolves against the main checkout, so a run from a session
+# worktree takes the same `.claude/worktrees/<name>` paths. Idempotent: a re-run is
 # `result=nothing-to-do`. Every guard has an N* fixture in scripts/test-migrations.sh, mutation-tested by
 # scripts/mutate-migrations.sh --script marvin-runs-migrate.sh.
 #
@@ -104,6 +107,10 @@ in_list() {  # in_list <value> <array name>
   return 1
 }
 phys() { (cd "$1" 2>/dev/null && pwd -P); }
+rel_main() { case "$1" in /*|[A-Za-z]:*) return 1 ;; esac; phys "$MAIN/$1"; }   # a relative path, from the main checkout
+is_capture() {  # is_capture <path> — one of the upgrade skill's report captures: a regular file upgrade-<UTC>-<name>.txt
+  [ -f "$1" ] && [ ! -L "$1" ] && no_nl "${1##*/}" && printf '%s' "${1##*/}" | grep -Eq '^upgrade-[0-9]{8}T[0-9]{6}Z-[A-Za-z0-9._-]+\.txt$'
+}
 
 # ── the worktrees, and the deferred ones ─────────────────────────────────────────────────────
 # Listed through a temp file so git's exit status is seen: a failed listing is never "no worktrees" —
@@ -128,7 +135,7 @@ fi
 i=0
 while [ "$i" -lt "${#DEFER_IN[@]}" ]; do
   d=${DEFER_IN[$i]}; i=$((i+1))
-  pd=$(phys "$d") || usage_err "--defer: not a directory: $(mh_q "$d")"
+  pd=$(phys "$d") || pd=$(rel_main "$d") || usage_err "--defer: not a directory: $(mh_q "$d")"
   in_list "$pd" WT || usage_err "--defer: not a worktree under .claude/worktrees/: $(mh_q "$d")"
   in_list "$pd" DEFER || DEFER[${#DEFER[@]}]="$pd"
 done
@@ -154,6 +161,7 @@ scan_checkout() {
   while IFS= read -r -d '' e; do
     n=${e##*/}
     [ "$n" = .gitignore ] && continue                  # the ignore file stays where it is
+    is_capture "$e" && continue                        # the upgrade skill's own report captures
     is_session "$n" && continue                        # already the per-session layout
     if ! is_key "$n"; then skip "$e" "not a key folder"; continue; fi
     if [ -L "$e" ]; then hit "$e"; continue; fi
