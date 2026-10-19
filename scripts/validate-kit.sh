@@ -244,7 +244,7 @@ want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", 
         "PostToolUse": ["marvin-context-budget.sh"],
         "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
         "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
-        "SubagentStop": ["marvin-subagent-gate.sh"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
+        "SubagentStop": ["marvin-subagent-gate.sh", "marvin-worktree-mark.sh"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
 matcher = {"SubagentStart": "^marvin:", "SubagentStop": "^marvin:", "marvin-brief-lint.sh": "Agent|Task",
            "marvin-docker-lint.sh": "Bash",
            "marvin-ticket-lint.sh": "^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$"}

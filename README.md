@@ -281,6 +281,7 @@ bash scripts/test-context-budget.sh
 bash scripts/test-claude-md-split.sh
 bash scripts/test-whats-new.sh
 bash scripts/test-worktree-sweep.sh
+bash scripts/test-worktree-mark.sh
 bash scripts/test-docker-sweep.sh
 bash scripts/test-hook-lib.sh
 bash scripts/test-update-gate.sh
@@ -299,7 +300,7 @@ The static gate's nineteen checks: known placeholders only · template line budg
 README.md                          this file
 BOOTSTRAP.md                       pointer prompt at the install skill (plugin-less environments)
 CHANGELOG.md                       categorised per-release briefs (Action needed · Added · Changed · Fixed · Removed · Security), newest first — read by /marvin:whats-new
-hooks/*.json                         hook registration — SessionStart runs marvin-session-start.sh, marvin-worktree-sweep.sh --hook and marvin-docker-sweep.sh --hook; PostToolUse + UserPromptSubmit run marvin-context-budget.sh; UserPromptSubmit + Stop run marvin-update-gate.sh; SubagentStart/SubagentStop (^marvin:) run marvin-subagent-rules.sh / marvin-subagent-gate.sh; PreToolUse (Agent|Task) runs marvin-brief-lint.sh; PreToolUse (Bash) runs marvin-docker-lint.sh; PreToolUse (tracker-write MCP tools|Bash|Write) runs marvin-ticket-lint.sh
+hooks/*.json                         hook registration — SessionStart runs marvin-session-start.sh, marvin-worktree-sweep.sh --hook and marvin-docker-sweep.sh --hook; PostToolUse + UserPromptSubmit run marvin-context-budget.sh; UserPromptSubmit + Stop run marvin-update-gate.sh; SubagentStart/SubagentStop (^marvin:) run marvin-subagent-rules.sh / marvin-subagent-gate.sh (+ marvin-worktree-mark.sh --subagent-stop); PreToolUse (Agent|Task) runs marvin-brief-lint.sh; PreToolUse (Bash) runs marvin-docker-lint.sh; PreToolUse (tracker-write MCP tools|Bash|Write) runs marvin-ticket-lint.sh
 scripts/marvin-session-start.sh      SessionStart hook body: version-drift check + the user-update rules block (only when the Marvin output style is not in effect), silent no-op outside a Marvin project
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
@@ -315,6 +316,8 @@ scripts/whats-new.sh                 read-only aggregator: merges CHANGELOG.md b
 scripts/marvin-worktree-sweep.sh     removes finished agent worktrees under .claude/worktrees/ behind seven guards (backs the SessionStart sweep and /marvin:clean-worktrees)
 scripts/test-whats-new.sh            fixture suite for the aggregator, incl. inline mutation checks (CI runs it too)
 scripts/test-worktree-sweep.sh       fixture suite for the sweep, incl. inline mutation checks (CI runs it too)
+scripts/marvin-worktree-mark.sh      writes the Marvin-owned marker (git admin dir `marvin-owned`) for a marvin:* agent's isolation worktree on SubagentStop, or by hand for one the orchestrator made
+scripts/test-worktree-mark.sh        fixture suite for the marker, incl. inline mutation checks (CI runs it too)
 scripts/marvin-docker-sweep.sh       removes throwaway Docker resources of finished agent worktrees behind eight keep guards (D0–D7) (backs the SessionStart Docker sweep and /marvin:clean-worktrees)
 scripts/test-docker-sweep.sh         fixture suite for the Docker sweep against a fake docker, incl. inline mutation checks (CI runs it too)
 hooks/user-update-rules.txt          the user-update rules block, defined once — printed by the SessionStart hook, embedded by the output style
