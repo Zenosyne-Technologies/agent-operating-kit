@@ -18,7 +18,7 @@ For each qualifying task, the planner dispatches two research passes, in order, 
 Each pass runs in two stages:
 
 - **Survey** ({{WORKER_MODEL}}, `marvin:developer-small`, dispatched in the same read-only survey mode as the brief falsifier — no code, no commit): gathers the facts, excerpts and `file:line` citations that answer the pass's question; no recommendation, no judgement call — its FINAL MESSAGE uses the SURVEY format below, never the synthesis verdict format.
-- **Synthesis** ({{ESCALATION_MODEL}}, `marvin:researcher`): reads the survey's findings and turns them into the pass's risks/recommendation — dispatched ONLY for `size:l`/`xl`, since that judgement is what the heavy tier is for; it works from the survey's citations, reading a path directly only to verify a contested or missing point.
+- **Synthesis** ({{ESCALATION_MODEL}}, `marvin:researcher`): reads the survey's findings and turns them into the pass's risks/recommendation — dispatched ONLY for `size:l`/`xl`, since that judgement is what the heavy tier is for; it works from the survey's citations, reading a path directly only to verify a contested or missing point. A Codex `plan` lane swaps or pairs this stage and the brief falsifier below (`codex.md` *Strategies and lanes*).
 
 Both passes search the CODE and the PM TOOL: `git log`/`git blame` the touched files and methods for issue keys in earlier commits (commit messages start with their key), fetch those issues, and read their comments — prior findings and solutions often answer current questions. Cite the relevant issues in Refs.
 

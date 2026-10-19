@@ -155,10 +155,13 @@ fi
 # ── 13. model-names: concrete model names live ONLY in the version's model profile
 # (templates/marvin/agents/model-profile.md — CLAUDE.md "The division"); every other template names
 # tiers and cites the profile. Whole-word, case-insensitive, so words that merely contain a name
-# (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it.
+# (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it. The Codex
+# names count too: astra|luna as whole words, and gpt-<digit> anywhere. The skill `/marvin:codex-astra`
+# and the flag `--astra` are not model names — those two literal tokens are stripped before matching.
 MP=templates/marvin/agents/model-profile.md
 [ -d templates ] || fail model-names "templates/ missing"
-mn=$(grep -rniwE 'opus|sonnet|haiku|fable' templates/ | awk -F: -v mp="$MP" '$1 != mp')
+mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" '$1 != mp' | sed 's/codex-astra//g; s/--astra//g')
+mn=$( { printf '%s\n' "$mncand" | grep -iwE 'opus|sonnet|haiku|fable|astra|luna'; printf '%s\n' "$mncand" | grep -iE 'gpt-[0-9]'; } | sort -u )
 if [ -z "$mn" ]; then
   pass model-names
 else
@@ -288,6 +291,19 @@ for c in MH_SESSION_RE MH_KEY_RE; do
   elif ! grep -qF -- "\`$v\`" "$BR" 2>/dev/null; then rp="$rp $BR lacks $c \`$v\` verbatim;"; fi
 done
 [ -z "$rp" ] && pass run-patterns || fail run-patterns "${rp# }"
+
+# ── 22. fleet-pairs: every routed fleet event has both halves — the child's sending half in
+# fleet-child.md and the master's receiving half in fleet.md, each marked by its **E-<event>** tag
+# exactly once per guide (the kit's dominant defect is a rule written in one half and not the other)
+fp=""
+for f in templates/marvin/agents/fleet.md templates/marvin/agents/fleet-child.md; do
+  if [ ! -f "$f" ]; then fp="$fp $f missing;"; continue; fi
+  for t in E-cross E-scope E-done E-blocked E-successor E-question E-relay; do
+    n=$(grep -oF "**$t**" "$f" | wc -l | tr -d ' ')
+    case "$n" in 1) ;; 0) fp="$fp **$t** missing from $f;" ;; *) fp="$fp **$t** ${n}x in $f (want 1);" ;; esac
+  done
+done
+[ -z "$fp" ] && pass fleet-pairs || fail fleet-pairs "$fp"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

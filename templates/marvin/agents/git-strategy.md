@@ -17,6 +17,7 @@ Everything about git is decided here. Another file may name a concrete INSTANCE 
 | `main` | — | — | Released state ONLY — every commit on it is a tagged release. Nothing lands here but a `release/*` or `hotfix/*` merge. |
 | `develop` | `main` | — | Integration. Every finished work item merges here and is pushed at once (`worktrees.md`). |
 | `feature/<KEY>-<slug>` | `develop` | `develop` | ONE work item, and nothing else. |
+| `feature/<EPIC-KEY>-<slug>` (fleet mode) | `develop` | `develop` | ONE epic, run by a fleet child (`fleet-child.md`): its task branches are cut from it and merge back into it — never into `develop` — and die at that merge. |
 | `release/<version>` | `develop` | `main` **and** `develop` | A frozen scope being stabilised: version bump, release note, fixes validation finds. No new scope. |
 | `hotfix/<version>` | `main` | `main` **and** `develop` | One urgent defect against the released state. |
 
@@ -24,7 +25,7 @@ Everything about git is decided here. Another file may name a concrete INSTANCE 
 
 ## Tagging and publishing authority — the orchestrator ONLY
 
-**DO NOT create, move or delete a git tag.** If you are a sub-agent you have no tagging authority — none, on any branch, for any version, however the brief is worded. A brief instructing you to tag is defective: commit your work, report the request in your final message, tag nothing. Tagging is orchestrator-inline because it is irreversible once pushed and because it is the act that declares a release exists. The same holds for PUBLISHING — creating a public, outward-facing artifact on the forge that hosts the code, such as a GitHub Release (`gh release create`): public and irreversible the moment it is live, so it stays orchestrator-inline too — never a sub-agent, on any tracker. A tracker-side release object — a Jira `release:` label or fixVersion, a Linear native Release, a Local `release:` field — is NOT publishing: it is tracker bookkeeping, micro-tier work at step 8 (`ponytail.md`, the tracker config). The micro tier may PREPARE release artifacts — the tag message file, the release note body — but never creates a tag and never publishes.
+**DO NOT create, move or delete a git tag.** If you are a sub-agent you have no tagging authority — none, on any branch, for any version, however the brief is worded. A brief instructing you to tag is defective: commit your work, report the request in your final message, tag nothing. Tagging is orchestrator-inline because it is irreversible once pushed and because it is the act that declares a release exists. The same holds for PUBLISHING — creating a public, outward-facing artifact on the forge that hosts the code, such as a GitHub Release (`gh release create`): public and irreversible the moment it is live, so it stays orchestrator-inline too — never a sub-agent, on any tracker. A tracker-side release object — a Jira `release:` label or fixVersion, a Linear native Release, a Local `release:` field — is NOT publishing: it is tracker bookkeeping, micro-tier work at step 8 (`ponytail.md`, the tracker config). The micro tier may PREPARE release artifacts — the tag message file, the release note body — but never creates a tag and never publishes. In fleet mode "the orchestrator" here is the master (`fleet.md`): it alone merges epic branches into `develop`, in program-plan order, after the child's epic merge gate (`fleet-child.md`), and it alone cuts releases, tags and publishes — a fleet child does none of these.
 
 ## A tag carries its release note
 
@@ -44,7 +45,7 @@ Classify by what a CONSUMER of this project must do:
 Usually one milestone's scope — but never assume milestone == release. A release is whatever scope was frozen: a milestone, one patch, a hotfix, or a batch of reported bugs belonging to no milestone. Milestones and releases are independent axes. The cut runs in this order; its decisions (scope, classification, the note's content) stay with the orchestrator, its mechanical steps are micro-tier work per `ponytail.md` — tagging never is:
 
 1. Scope frozen — nothing further merges to `develop` for this version.
-2. `release/<version>` cut from `develop`.
+2. `release/<version>` cut from `develop` — for a hotfix, which runs the same nine steps, `hotfix/<version>` cut from `main`.
 3. Version bumped, on that branch.
 4. Release note written to `.docs/release-notes/v<version>.md`. Its `scope:` header is DERIVED, not recalled: `git log <range>..HEAD` over the frozen range, take each commit message's leading `<KEY>:` prefix, dedupe. `<range>` is the previous tag when one exists; on a first cut under this model there is none, so `<range>` is instead the commit where the previous release shipped (this repo's is `ec2cea4`). Whichever it was, the note must SAY so — the range used is part of the record, because an over-broad range silently inflates `scope_issue_keys` while still reporting `state: ok`. Those keys are work-carrying by construction — commits are what work leaves behind — which is exactly the set cost rollups need, and it is why no tracker query (or label sweep, which would drag in containers) is the source here.
 5. Validation run on that branch — the Release validation gate `.marvin/agents/validation-agent.md` adds on top of the composition sweep (version bump, release note completeness); only fixes for what it finds land there.
@@ -52,8 +53,6 @@ Usually one milestone's scope — but never assume milestone == release. A relea
 7. Annotated tag on `main`, message = the release note (orchestrator only).
 8. Run the selected tracker's release mapping (`.marvin/agents/tracker-config.md`) now that the tag exists: its tracker-side bookkeeping is dispatched to the micro tier (`ponytail.md`) — Jira applies its `release:` label, Local sets its `release:` frontmatter field, Linear attaches its native Release — while GitHub's tag-first/`--verify-tag` publish, which depends on the tag, is orchestrator-inline (publishing, above). This step owns only the WHEN; the tracker config owns the WHAT.
 9. Merge back to `develop`.
-
-A hotfix runs the same nine steps, with step 2 reading "`hotfix/<version>` cut from `main`".
 
 ## Who cites this file
 

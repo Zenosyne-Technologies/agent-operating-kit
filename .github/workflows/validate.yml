@@ -42,6 +42,8 @@ jobs:
         run: bash scripts/test-ticket-lint.sh
       - name: Run style-plugin finder tests
         run: bash scripts/test-style-plugins.sh
+      - name: Run codex handover tests
+        run: bash scripts/test-codex.sh
   windows:
     # Git Bash on windows-latest: the hooks are bash scripts. First run pending (cannot be verified before a push).
     continue-on-error: true   # until its first green run — then remove this line

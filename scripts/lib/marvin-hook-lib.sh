@@ -143,29 +143,59 @@ mh_fm_value() {
     | sed -E 's/^[[:space:]"'"'"']+//; s/[[:space:]"'"'"']+$//'
 }
 
-# Context size (in thousands) per MESSAGE, last two messages. Only lines whose type is assistant and that
-# carry an UNESCAPED "usage":{ are read (usage text quoted inside a tool result is escaped, so never
-# counts); the counters are matched only in the text from the LAST "usage":{ on, so a tool_use input
-# holding an input_tokens key earlier on the line is ignored. One size per "id":"msg_…" (last line wins);
-# a line without a message id is its own message.
+# Context size (in thousands) per MESSAGE. MH_SIZES_AWK reads assistant lines that carry an UNESCAPED
+# "usage":{ (usage text quoted inside a tool result is escaped, so never counts) and prints one size per
+# message, in order; the counters are matched only in the text from the LAST "usage":{ on, so a tool_use
+# input holding an input_tokens key earlier on the line is ignored. One size per "id":"msg_…" (last line
+# wins); a line without a message id is its own message. mh_sizes keeps the last two of the 400-line tail;
+# mh_since_compact runs the same program over the text after the last compaction.
+IFS= read -r -d '' MH_SIZES_AWK <<'AWK' || true
+{
+  key = "L" NR
+  if (match($0, /"id":"msg_[^"]*"/)) key = substr($0, RSTART, RLENGTH)
+  rest = $0; pos = 0
+  while ((i = index(rest, "\"usage\":{")) > 0) { pos += i; rest = substr(rest, i + 1) }
+  u = substr($0, pos)
+  n = 0
+  if (match(u, /"input_tokens":[0-9]+/))                { n += substr(u, RSTART + 15, RLENGTH - 15) }
+  if (match(u, /"cache_read_input_tokens":[0-9]+/))     { n += substr(u, RSTART + 26, RLENGTH - 26) }
+  if (match(u, /"cache_creation_input_tokens":[0-9]+/)) { n += substr(u, RSTART + 30, RLENGTH - 30) }
+  if (!(key in val)) order[++cnt] = key
+  val[key] = int(n / 1000)
+}
+END { for (j = 1; j <= cnt; j++) print val[order[j]] }
+AWK
 mh_sizes() {
   [ -n "${1:-}" ] && [ -f "$1" ] || return 1
   tail -c 8000000 -- "$1" 2>/dev/null | tail -n 400 \
   | grep '"type":"assistant"' | grep '"usage":{' \
-  | awk '{
-      key = "L" NR
-      if (match($0, /"id":"msg_[^"]*"/)) key = substr($0, RSTART, RLENGTH)
-      rest = $0; pos = 0
-      while ((i = index(rest, "\"usage\":{")) > 0) { pos += i; rest = substr(rest, i + 1) }
-      u = substr($0, pos)
-      n = 0
-      if (match(u, /"input_tokens":[0-9]+/))                { n += substr(u, RSTART + 15, RLENGTH - 15) }
-      if (match(u, /"cache_read_input_tokens":[0-9]+/))     { n += substr(u, RSTART + 26, RLENGTH - 26) }
-      if (match(u, /"cache_creation_input_tokens":[0-9]+/)) { n += substr(u, RSTART + 30, RLENGTH - 30) }
-      if (!(key in val)) order[++cnt] = key
-      val[key] = int(n / 1000)
-    }
-    END { for (j = 1; j <= cnt; j++) print val[order[j]] }' | tail -n 2
+  | awk "$MH_SIZES_AWK" | tail -n 2
+}
+
+# A compaction is one main-thread transcript line holding the literal system/compact_boundary pair (a
+# sub-agent's carries "isSidechain":true; quoted inside a tool result the quotes are escaped, so no match).
+MH_COMPACT_PAT='"type":"system","subtype":"compact_boundary"'
+# mh_compactions <transcript> — the number of compactions in the WHOLE file (not the 400-line tail); rc 1
+# when the file is unreadable.
+mh_compactions() {
+  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
+  LC_ALL=C grep -F -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | LC_ALL=C grep -vc '"isSidechain":true'
+  return 0
+}
+# mh_since_compact <transcript> — "<n> <k>": the messages after the LAST compaction and the context size (k)
+# of the first of them, sized exactly as mh_sizes does; nothing when there is no compaction or no message
+# after it. rc 1 only when the file is unreadable. Only the first 400 lines / 8 MB after that compaction are
+# read (mh_sizes' caps, applied from the front), so n saturates at the window's message count — callers
+# need n exact only up to a few — and the cost stays flat however long the session runs afterwards.
+mh_since_compact() {
+  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1
+  local ln
+  ln=$(LC_ALL=C grep -nF -- "$MH_COMPACT_PAT" "$1" 2>/dev/null | LC_ALL=C grep -v '"isSidechain":true' | tail -n 1 | cut -d: -f1)
+  [ -n "$ln" ] || return 0
+  tail -n "+$((ln + 1))" -- "$1" 2>/dev/null | head -n 400 | head -c 8000000 \
+  | LC_ALL=C grep '"type":"assistant"' | LC_ALL=C grep '"usage":{' \
+  | awk "$MH_SIZES_AWK" | awk 'NR == 1 { f = $0 } END { if (NR) print NR, f }'
+  return 0
 }
 
 # mh_last_text <transcript> — the last main-thread assistant text block, decoded. Up to five candidate
@@ -226,6 +256,46 @@ mh_budget_init() {
   e="${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-}"
   if printf '%s' "$e" | grep -Eq '^[0-9]{1,3}$' && [ "$e" -ge 1 ] && [ "$e" -le 100 ]; then MH_SCALE=$e; fi
 }
+# mh_fleet_init <frontmatter> — the fleet-mode settings: MH_FLEET_MAX_CHILDREN (1–9, default 3),
+# MH_FLEET_MAX_COMPACTIONS (0–9, default 3), MH_FLEET_RESTART_PCT (1–99, default 33). An invalid value
+# falls back to its default.
+mh_fleet_init() {
+  local fm="$1" c m p
+  MH_FLEET_MAX_CHILDREN=3; MH_FLEET_MAX_COMPACTIONS=3; MH_FLEET_RESTART_PCT=33
+  c=$(mh_fm_value "$fm" fleet_max_children)
+  printf '%s' "$c" | grep -Eq '^[0-9]{1,2}$' || c=
+  m=$(mh_fm_value "$fm" fleet_max_compactions)
+  printf '%s' "$m" | grep -Eq '^[0-9]{1,2}$' || m=
+  p=$(mh_fm_value "$fm" fleet_restart_max_pct)
+  printf '%s' "$p" | grep -Eq '^[0-9]{1,3}$' || p=
+  if [ -n "$c" ] && [ "$((10#$c))" -ge 1 ] && [ "$((10#$c))" -le 9 ]; then MH_FLEET_MAX_CHILDREN=$((10#$c)); fi
+  if [ -n "$m" ] && [ "$((10#$m))" -le 9 ]; then MH_FLEET_MAX_COMPACTIONS=$((10#$m)); fi
+  if [ -n "$p" ] && [ "$((10#$p))" -ge 1 ] && [ "$((10#$p))" -le 99 ]; then MH_FLEET_RESTART_PCT=$((10#$p)); fi
+}
+# mh_fleet_role <root> — prints child | master | nothing, and sets the globals MH_FLEET_ROLE (child | master |
+# empty) and MH_FLEET_EPIC (child only, else empty); both are reset on every call. Call it in the main shell
+# (`mh_fleet_role "$root" >/dev/null`) and read the variables — inside $( ) they are lost. The marker is
+# <this worktree's private git dir>/marvin-fleet: lines role=child|master and epic=<KEY>. Never followed if a
+# symlink; first 4 KiB only; read-only, silent, rc 0 always — a hook never blocks.
+mh_fleet_role() {
+  local root="$1" gd mk body role epic
+  MH_FLEET_ROLE=; MH_FLEET_EPIC=
+  gd=$(git -C "$root" rev-parse --git-dir 2>/dev/null) || return 0
+  [ -n "$gd" ] || return 0
+  case "$gd" in /*) ;; *) gd="$root/$gd" ;; esac
+  mk="$gd/marvin-fleet"
+  [ ! -L "$mk" ] && [ -f "$mk" ] || return 0
+  body=$(head -c 4096 -- "$mk" 2>/dev/null | tr -d '\r')
+  role=$(printf '%s\n' "$body" | sed -nE 's/^role=//p' | head -n 1)
+  case "$role" in
+    child)
+      epic=$(printf '%s\n' "$body" | sed -nE 's/^epic=//p' | head -n 1)
+      if printf '%s' "$epic" | grep -Eq '^[A-Za-z][A-Za-z0-9]*-[0-9]+$'; then MH_FLEET_EPIC=$epic; fi
+      MH_FLEET_ROLE=child; echo child ;;
+    master) MH_FLEET_ROLE=master; echo master ;;
+  esac
+  return 0
+}
 # mh_win_for <k> — the resolved window, stepped up (→ 200k → 1M → k) when usage exceeds it
 mh_win_for() {
   local k=$1 w=$MH_WIN
@@ -245,6 +315,12 @@ mh_level() {
   if [ "$p" -ge $((80 * MH_SCALE / 100)) ] || [ "$k" -ge "$MH_HARD" ]; then l=2; fi
   if [ "$p" -ge $((90 * MH_SCALE / 100)) ]; then l=3; fi
   echo "$l"
+}
+# The fleet rest point (Task 0 spike: the host auto-compacts a request that starts near 98 %), scaled like the
+# ladder steps. mh_fleet_rest <k> — 1 when k is at or past it, else 0. Fleet sessions only; mh_level is untouched.
+MH_FLEET_REST_PCT=94
+mh_fleet_rest() {
+  if [ "$1" -gt 0 ] && [ "$(mh_pct "$1")" -ge $((MH_FLEET_REST_PCT * MH_SCALE / 100)) ]; then echo 1; else echo 0; fi
 }
 
 # mh_q — git core.quotePath-style encoding for anything an agent will parse (the sweep's q())
