@@ -13,12 +13,12 @@ Fleet mode runs several epics at once: one child orchestrator per epic, and this
 ## Role and limits
 
 - Ceiling tier at `medium` effort, like any orchestrator (`model-profile.md`). It plans, sequences and leases; its merge and release authority is `git-strategy.md`'s (fleet mode). It never briefs a builder and never reads code, task-level output or sub-agent detail. Every read is a micro-tier exact lookup (`marvin:ponytail`): the master stays the smallest context in the system.
-- At most `fleet_max_children` children at once (`.marvin/PROJECT-INFO.md`, default 3), local sessions only — a cloud session sends no notes back. Depth two: a child never starts children.
+- At most `fleet_max_children` children at once (`.marvin/PROJECT-INFO.md`, default 3), local sessions only — a cloud session sends no notes back. A shared tracker only (Linear, Jira, GitHub): the Local tracker's issue files would ride each epic branch, unseen on `develop`. Depth two: a child never starts children.
 - Offer, never start: at milestone planning, when two or more epics have no dependency on each other and the host can start child sessions, suggest `/marvin:fleet`. The architect starts it and approves the program plan.
 
 ## The program plan
 
-`.docs/plans/program-<milestone>.md`, a document per `document-standard.md`, written ONLY by the master and committed on `develop` — no child writes it, so it never conflicts with an epic branch. Sections: **Epics** (in order) · **Dependencies** (mirrored as tracker relations where the tracker has them) · **Leases** · **Merge order** · **Lineage** (each epic's child sessions in order, and why each ended) · **Decision log**. A decision-log entry: `D<m>`, date and time, epic, the decision in one line, the architect's exact quote, its source (the `FLEET-Q<n>` or board item it answered), the child it was relayed to. The tracker stays the live state; the plan never copies task status.
+`.docs/plans/program-<milestone>.md` (the milestone's slug, as in `milestone:<slug>`), a document per `document-standard.md`, written ONLY by the master and committed on `develop` — no child writes it, so it never conflicts with an epic branch. Sections: **Epics** (in order) · **Dependencies** (mirrored as tracker relations where the tracker has them) · **Leases** · **Merge order** · **Lineage** (each epic's child sessions in order, and why each ended) · **Decision log**. A decision-log entry: `D<m>`, date and time, epic, the decision in one line, the architect's exact quote, its source (the `FLEET-Q<n>` or board item it answered), the child it was relayed to. The tracker stays the live state; the plan never copies task status.
 
 ## Leases
 
