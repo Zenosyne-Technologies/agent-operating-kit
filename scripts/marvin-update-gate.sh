@@ -2,9 +2,11 @@
 # marvin-update-gate.sh — UserPromptSubmit + Stop hook for the marvin plugin (v0.38.0).
 # Checks the orchestrator's messages to the user against .marvin/agents/user-updates.md:
 #   U1 a <details> fold · U2 a pictographic emoji outside the legend (✅ ❌ ⚠️ ⏳ ⏭️) · U3 a ⚠️/❌ issue
-#   callout (bold-bullet points, or the equal two-column point | detail table, inside the blockquote or
-#   directly below it) without What / Impact / Cause / Fix / Needs you? in that order · U4 a status update (a table
-#   row carrying a legend emoji, or a callout) with no Next / Open questions heading after it.
+#   callout without five point lines (a bold-led bullet, or a point | detail table row, inside the blockquote
+#   or directly below it; the header row is no point) — and, when the English What / Impact / Cause / Fix /
+#   Needs you? are all there, not in that order · U4 a status update (a table row carrying a legend emoji,
+#   or a callout) with no bold-only line or markdown heading after it. STRUCTURE, not words: the same
+#   shape in the project's language passes (AOS-229).
 # Fenced and inline code is ignored. Mode = update_gate in .marvin/PROJECT-INFO.md frontmatter:
 #   advise (default) — on UserPromptSubmit, check the PREVIOUS assistant text in the transcript and
 #                      inject one note with the prompt: passive, no extra turn. Stop stays silent.
@@ -40,8 +42,16 @@ function pt(s,   x, p) {  # a table row -> its first cell as a bold point token 
   x = s; sub(/^[ \t]*(>[ \t]*)?\|/, "", x); p = index(x, "|"); if (p) x = substr(x, 1, p - 1)
   gsub(/\*\*/, "", x); sub(/^[ \t]+/, "", x); sub(/[ \t]+$/, "", x); sub(/:$/, "", x); sub(/[ \t]+$/, "", x)
   if (x == "What" || x == "Impact" || x == "Cause" || x == "Fix" || x == "Needs you?") return "**" x "**"
-  return "" }
-function haspoint(c) { return index(c, "**What**") || index(c, "**Impact**") || index(c, "**Cause**") || index(c, "**Fix**") || index(c, "**Needs you?**") }
+  return "" }  # (English labels only feed the order check; the point count is ispoint)
+function hasall(c) { return index(c, "**What**") && index(c, "**Impact**") && index(c, "**Cause**") && index(c, "**Fix**") && index(c, "**Needs you?**") }
+function ispoint(s, nx,   x, p) {  # 1 if s is a point line: a bold-led (bulleted) blockquote line, or a table row with a first cell
+  if (s ~ /^[ \t]*(>[ \t]*)?\|/) {  # table row: first cell non-empty, not a separator row, not the header (the row above a separator)
+    if (nx ~ /^[ \t]*(>[ \t]*)?\|[ \t]*:?-+:?[ \t]*(\||$)/) return 0
+    x = s; sub(/^[ \t]*(>[ \t]*)?\|/, "", x); p = index(x, "|"); if (p) x = substr(x, 1, p - 1)
+    gsub(/[ \t]/, "", x); return x != "" && x !~ /^:?-+:?$/ }
+  if (s !~ /^[ \t]*>/) return 0
+  x = s; sub(/^[ \t]*>[ \t]*/, "", x); sub(/^[-*][ \t]+/, "", x)
+  return x ~ /^\*\*[^*]+\*\*/ }
 function inorder(c,   k, p, q, r) {
   split("**What**|**Impact**|**Cause**|**Fix**|**Needs you?**", k, "|"); p = 0
   for (q = 1; q <= 5; q++) { r = index(substr(c, p + 1), k[q]); if (!r) return 0; p += r }
@@ -58,13 +68,14 @@ END {
     t = l; gsub(ck, "", t); gsub(cx, "", t); gsub(wn, "", t)
     if (t ~ /\360\237[\200-\253]/ || t ~ /\342[\230-\236\254-\257]/) u2 = 1
     if (l ~ /^[ \t]*>[ \t]*\*\*[ \t]*(\342\232\240|\342\235\214)/) {
-      c = ""; for (j = i + 1; j <= n && L[j] ~ /^[ \t]*>/; j++) c = c "\n" pt(L[j])
-      if (!haspoint(c)) { while (j <= n && L[j] ~ /^[ \t]*$/) j++
-        for (; j <= n && L[j] ~ /^[ \t]*(>[ \t]*)?\|/; j++) c = c "\n" pt(L[j]) }
-      if (!inorder(c)) u3 = 1
+      c = ""; cnt = 0
+      for (j = i + 1; j <= n && L[j] ~ /^[ \t]*>/; j++) { c = c "\n" pt(L[j]); cnt += ispoint(L[j], L[j + 1]) }
+      if (!cnt) { while (j <= n && L[j] ~ /^[ \t]*$/) j++
+        for (; j <= n && L[j] ~ /^[ \t]*(>[ \t]*)?\|/; j++) { c = c "\n" pt(L[j]); cnt += ispoint(L[j], L[j + 1]) } }
+      if (cnt < 5 || (hasall(c) && !inorder(c))) u3 = 1
       st = i }
     if (l ~ /^[ \t]*\|/ && (index(l, ck) || index(l, cx) || index(l, wn) || index(l, hg) || index(l, sk))) st = i
-    if (l ~ /^[ \t]*(\*\*(Next|Open questions):?\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }
+    if (l ~ /^[ \t]*(\*\*[^*]+\*\*:?|#+[ \t]+[^ \t].*)[ \t:]*$/) tl = i }
   if (u1) print "U1"
   if (u2) print "U2"
   if (u3) print "U3"
@@ -77,8 +88,8 @@ note() {  # note <ids> — the constant advice for the failed checks
     case "$id" in
       U1) s="$s; U1 a <details> fold — never fold, link the report or ticket instead" ;;
       U2) s="$s; U2 a status emoji outside the legend — use only ✅ ❌ ⚠️ ⏳ ⏭️" ;;
-      U3) s="$s; U3 an issue callout without What / Impact / Cause / Fix / Needs you? in that order" ;;
-      U4) s="$s; U4 a status update with no Next / Open questions tail — end with it whenever anything is next or open" ;;
+      U3) s="$s; U3 an issue callout without five bold points (What / Impact / Cause / Fix / Needs you? in that order, or the same in your language)" ;;
+      U4) s="$s; U4 a status update with no Next / Open questions tail heading (or the same in your language) — end with it whenever anything is next or open" ;;
     esac
   done
   printf '%s' "${s#; }"
