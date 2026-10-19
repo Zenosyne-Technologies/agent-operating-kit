@@ -24,6 +24,8 @@ jobs:
         run: bash scripts/test-worktree-sweep.sh
       - name: Run worktree marker tests
         run: bash scripts/test-worktree-mark.sh
+      - name: Run run-state sync tests
+        run: bash scripts/test-runs-sync.sh
       - name: Run Docker sweep tests
         run: bash scripts/test-docker-sweep.sh
       - name: Run hook library tests

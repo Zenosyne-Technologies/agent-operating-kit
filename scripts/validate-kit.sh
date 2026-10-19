@@ -240,13 +240,13 @@ grep -qF 'hooks/user-update-rules.txt' scripts/marvin-session-start.sh || ss="$s
 # ticket lint to the tracker-write tools
 IFS= read -r -d '' HR_PY <<'PY' || true
 import json
-want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh"],
-        "PostToolUse": ["marvin-context-budget.sh"],
+want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh", "marvin-runs-sync.sh --session-start"],
+        "PostToolUse": ["marvin-context-budget.sh", "marvin-runs-sync.sh --post-tool"],
         "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
         "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
-        "SubagentStop": ["marvin-subagent-gate.sh", "marvin-worktree-mark.sh"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
+        "SubagentStop": ["marvin-subagent-gate.sh", "marvin-worktree-mark.sh", "marvin-runs-sync.sh --subagent-stop"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
 matcher = {"SubagentStart": "^marvin:", "SubagentStop": "^marvin:", "marvin-brief-lint.sh": "Agent|Task",
-           "marvin-docker-lint.sh": "Bash",
+           "marvin-docker-lint.sh": "Bash", "marvin-runs-sync.sh --post-tool": "Write|Edit|MultiEdit",
            "marvin-ticket-lint.sh": "^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$"}
 h = json.load(open("hooks/hooks.json"))["hooks"]
 for ev, scripts in want.items():

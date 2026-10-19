@@ -1,11 +1,12 @@
 {
-  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), the finished-agent-worktree sweep and the Docker sweep (throwaway resources of finished agent worktrees); PostToolUse + UserPromptSubmit: the context ladder and budgets; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection, the FINAL MESSAGE contract gate and the Marvin-owned worktree marker; PreToolUse (Agent): the brief lint; PreToolUse (Bash): the Docker lint (unlabelled resources, compose without -p, throwaway MySQL/MariaDB with binary logging on); PreToolUse (tracker writes: Jira/Linear/GitHub MCP issue tools, Bash gh issue, Write of Local issue files): the ticket lint (required dimensions, registry values, size/severity only in prose; ticket_lint block|advise|off) — Marvin-installed projects only",
+  "description": "SessionStart: Marvin kit-version drift check, the user-update rules (unless the project's outputStyle is Marvin's own), the finished-agent-worktree sweep and the Docker sweep (throwaway resources of finished agent worktrees); PostToolUse + UserPromptSubmit: the context ladder and budgets; SessionStart + PostToolUse (Write|Edit|MultiEdit) + SubagentStop: the run-state carry to the project's per-session run folder; UserPromptSubmit + Stop: the user-update format gate; SubagentStart / SubagentStop (marvin:* personas): rules injection, the FINAL MESSAGE contract gate and the Marvin-owned worktree marker; PreToolUse (Agent): the brief lint; PreToolUse (Bash): the Docker lint (unlabelled resources, compose without -p, throwaway MySQL/MariaDB with binary logging on); PreToolUse (tracker writes: Jira/Linear/GitHub MCP issue tools, Bash gh issue, Write of Local issue files): the ticket lint (required dimensions, registry values, size/severity only in prose; ticket_lint block|advise|off) — Marvin-installed projects only",
   "hooks": {
     "SessionStart": [
       {
         "matcher": "startup|resume|clear|compact",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-session-start.sh", "timeout": 5 }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-session-start.sh", "timeout": 5 },
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-runs-sync.sh --session-start", "timeout": 10 }
         ]
       },
       {
@@ -17,7 +18,8 @@
       }
     ],
     "PostToolUse": [
-      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-context-budget.sh", "timeout": 5 } ] }
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-context-budget.sh", "timeout": 5 } ] },
+      { "matcher": "Write|Edit|MultiEdit", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-runs-sync.sh --post-tool", "timeout": 10 } ] }
     ],
     "UserPromptSubmit": [
       { "hooks": [
@@ -34,7 +36,8 @@
     "SubagentStop": [
       { "matcher": "^marvin:", "hooks": [
         { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-subagent-gate.sh", "timeout": 10 },
-        { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-worktree-mark.sh --subagent-stop", "timeout": 5 }
+        { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-worktree-mark.sh --subagent-stop", "timeout": 5 },
+        { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/marvin-runs-sync.sh --subagent-stop", "timeout": 10 }
       ] }
     ],
     "PreToolUse": [
