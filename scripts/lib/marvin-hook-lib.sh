@@ -316,6 +316,12 @@ mh_level() {
   if [ "$p" -ge $((90 * MH_SCALE / 100)) ]; then l=3; fi
   echo "$l"
 }
+# The fleet rest point (Task 0 spike: the host auto-compacts a request that starts near 98 %), scaled like the
+# ladder steps. mh_fleet_rest <k> — 1 when k is at or past it, else 0. Fleet sessions only; mh_level is untouched.
+MH_FLEET_REST_PCT=94
+mh_fleet_rest() {
+  if [ "$1" -gt 0 ] && [ "$(mh_pct "$1")" -ge $((MH_FLEET_REST_PCT * MH_SCALE / 100)) ]; then echo 1; else echo 0; fi
+}
 
 # mh_q — git core.quotePath-style encoding for anything an agent will parse (the sweep's q())
 mh_q() {
