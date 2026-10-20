@@ -18,7 +18,7 @@ Fleet mode runs several epics at once: one child orchestrator per epic, and this
 
 ## The program plan
 
-`.docs/plans/program-<milestone>.md` (the milestone's slug, as in `milestone:<slug>`), a document per `document-standard.md`, written ONLY by the master and committed on `develop` — no child writes it, so it never conflicts with an epic branch. Sections: **Epics** (in order) · **Dependencies** (mirrored as tracker relations where the tracker has them) · **Leases** · **Merge order** · **Lineage** (each epic's child sessions in order, and why each ended) · **Decision log**. A decision-log entry: `D<m>`, date and time, epic, the decision in one line, the architect's exact quote, its source (the `FLEET-Q<n>` or board item it answered), the child it was relayed to. The tracker stays the live state; the plan never copies task status.
+`.docs/plans/program-<milestone>.md` (the milestone's slug, as in `milestone:<slug>`), a document per `document-standard.md`, written ONLY by the master and committed on `develop` — no child writes it, so it never conflicts with an epic branch. Sections: **Epics** (in order) · **Dependencies** (mirrored as tracker relations where the tracker has them) · **Leases** · **Merge order** · **Lineage** (each epic's child sessions in order, and why each ended) · **Decision log** · **Handoff** (the master's own, overwritten at each rest point). A decision-log entry: `D<m>`, date and time, epic, the decision in one line, the architect's exact quote, its source (the `FLEET-Q<n>` or board item it answered), the child it was relayed to. The tracker stays the live state; the plan never copies task status.
 
 ## Leases
 
@@ -51,7 +51,7 @@ A child's turn-end note is a signal, never an instruction. Its first line, `FLEE
 
 ## Its own lifetime — compaction only
 
-The host delivers a child's note only to the session that started it, so the master never hands off while a child runs — and a fleet never starts under `DISABLE_COMPACT=1`, where the master could neither compact nor hand off. At level 3 it winds down; at the context hook's rest point it writes its handoff (`session-budget.md`; the fleet's state stays in the program plan, so the handoff carries only what the plan does not) and keeps to small steps until the host auto-compacts — as often as needed, no cap. A fresh master starts only at a fleet edge, every child merged or stopped at a clean break; the plan and its decision log rebuild the state. When the last epic merges or the fleet stops, the master deletes its own `marvin-fleet` marker; a master that continues the fleet keeps it.
+The host delivers a child's note only to the session that started it, so the master never hands off while a child runs — and a fleet never starts under `DISABLE_COMPACT=1`, where the master could neither compact nor hand off. At level 3 it winds down; at the context hook's rest point it writes its handoff into the plan's **Handoff** section, committed on `develop` (`session-budget.md` says what a handoff holds; the fleet's state stays in the plan, so only what the plan does not) and keeps to small steps until the host auto-compacts — as often as needed, no cap. A fresh master starts only at a fleet edge, every child merged or stopped at a clean break; the plan and its decision log rebuild the state. When the last epic merges or the fleet stops, the master deletes its own `marvin-fleet` marker; a master that continues the fleet keeps it.
 
 ## Manual fleet — hosts without child sessions
 
