@@ -28,7 +28,7 @@ The setup half only. The rules are the installed guides — `.marvin/agents/flee
    Otherwise `fleet.md` *Starting a child*, in its order:
    - The worktree by `worktrees.md`'s recipe (*Where*), named `<EPIC-KEY>-<slug>` (`<slug>`: a short kebab-case form of the epic title), on branch `feature/<EPIC-KEY>-<slug>` from `develop`, then at once `git worktree lock --reason "marvin-fleet:<EPIC-KEY>" <worktree>`.
    - The child marker: `printf 'role=child\nepic=%s\n' '<EPIC-KEY>' > "$(git -C <worktree> rev-parse --git-dir)/marvin-fleet"`.
-   - The start brief (`fleet.md` *Starting a child* item 3) — session-capable: start the child with its folder set to that worktree; manual fleet: print it as one resume prompt per epic for the architect to open there.
+   - The start brief (`fleet.md` *Starting a child* item 3) — session-capable: start the child with its folder set to that worktree's resolved path (`pwd -P`); manual fleet: print it as one resume prompt per epic for the architect to open there.
 8. **Post the first board** in `fleet.md`'s columns (*Doorbells and the board*), then **Next** / **Open questions** (`user-updates.md`); Spend per `token-economics.md`, absent without telemetry. From here this session runs as the master under `.marvin/agents/fleet.md`.
 
 ## Stop — `/marvin:fleet stop`
