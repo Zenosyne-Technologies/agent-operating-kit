@@ -73,6 +73,7 @@ sweep() {  # sweep <script> [args…] — run from the main checkout
 }
 
 # ── keep-guard fixtures: each takes the script to run, so the mutation section can reuse it ──
+fx_G1R() { fresh; mkwt g1 develop; work "$WT/g1" g1; merge_into develop g1; git -C "$R" worktree lock --reason "marvin-fleet:AOS-1" "$WT/g1"; age "$WT/g1"; sweep "$1"; }   # the lock a fleet master writes
 fx_G1() { fresh; mkwt g1 develop; work "$WT/g1" g1; merge_into develop g1; git -C "$R" worktree lock "$WT/g1"; age "$WT/g1"; sweep "$1"; }
 fx_G2() { fresh; mkwt g2 develop; work "$WT/g2" g2; merge_into develop g2; age "$WT/g2"
           OUT=$(cd "$WT/g2" && CLAUDE_PROJECT_DIR="$R" bash "$1" </dev/null 2>&1); RC=$?; }
@@ -166,6 +167,9 @@ fx_W1() {  # hook stdin cwd JSON-escaped (every / as \/): only a real JSON decod
 
 hd "G1 a locked worktree is kept"
 fx_G1 "$SWEEP"; assert_rc 0; assert_out "kept: $WT/g1 — G1 locked"; assert_there "$WT/g1"
+
+hd "G1b a worktree locked with a --reason (a fleet child's) is kept all the same"
+fx_G1R "$SWEEP"; assert_rc 0; assert_out "kept: $WT/g1 — G1 locked"; assert_there "$WT/g1"
 
 hd "G2 the worktree a session stands in is kept (cwd, then hook stdin cwd)"
 fx_G2 "$SWEEP"; assert_out "kept: $WT/g2 — G2 current checkout"; assert_there "$WT/g2"
@@ -349,6 +353,7 @@ mutation() {  # mutation <name> <fixture-fn> <exact script line> <replacement> <
 }
 hd "M mutations"
 mutation G1 fx_G1 '  [ -n "$locked" ] && { keep "$p" "G1 locked"; return; }' '  :' "G1 locked"
+mutation G1R fx_G1R '  [ -n "$locked" ] && { keep "$p" "G1 locked"; return; }' '  :' "G1 locked"
 mutation G2 fx_G2 '  is_current "$p_phys" && { keep "$p" "G2 current checkout"; return; }' '  :' "G2 current checkout"
 mutation G3 fx_G3 '  [ -n "$st" ] && { keep "$p" "G3 uncommitted or untracked changes"; return; }' '  :' "G3 uncommitted"
 mutation G4 fx_G4 '  in_progress "$gd" && { keep "$p" "G4 merge, rebase, cherry-pick, revert or bisect in progress"; return; }' '  :' "G4"

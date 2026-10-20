@@ -303,7 +303,22 @@ for f in templates/marvin/agents/fleet.md templates/marvin/agents/fleet-child.md
     case "$n" in 1) ;; 0) fp="$fp **$t** missing from $f;" ;; *) fp="$fp **$t** ${n}x in $f (want 1);" ;; esac
   done
 done
+# set-equality: a tag in ONE guide that the other (or the list above) lacks is a half-written event
+tc=$(grep -oE '\*\*E-[a-z]+\*\*' templates/marvin/agents/fleet-child.md 2>/dev/null | sort -u)
+tm=$(grep -oE '\*\*E-[a-z]+\*\*' templates/marvin/agents/fleet.md 2>/dev/null | sort -u)
+[ "$tc" = "$tm" ] || fp="$fp E-* tag sets differ (fleet-child.md vs fleet.md): $(printf '%s\n%s\n' "$tc" "$tm" | sort | uniq -u | tr '\n' ' ');"
+for t in $tc; do
+  case " **E-cross** **E-scope** **E-done** **E-blocked** **E-successor** **E-question** **E-relay** " in *" $t "*) ;; *) fp="$fp $t not in the fleet-pairs list;" ;; esac
+done
 [ -z "$fp" ] && pass fleet-pairs || fail fleet-pairs "$fp"
+
+# ── 23. frontmatter-quoting: the free-text PROJECT-INFO keys are quoted scalars in the template, so a
+# value holding ": " or " #" cannot break the YAML frontmatter (the installer escapes \ and ")
+fq=""
+for k in project description brief owner tracker_coordinates stack dev_command; do
+  grep -qE "^$k: \"\{\{[A-Z_]+\}\}\"\$" templates/marvin/PROJECT-INFO.md || fq="$fq $k unquoted in PROJECT-INFO.md;"
+done
+[ -z "$fq" ] && pass frontmatter-quoting || fail frontmatter-quoting "${fq# }"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

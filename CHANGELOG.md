@@ -2,6 +2,25 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.42.1] — 2026-10-20
+
+### Added
+- `validate-kit` check `frontmatter-quoting` (23rd): the free-text `PROJECT-INFO.md` keys are quoted scalars; `fleet-pairs` also requires the fleet guides' `E-*` tag sets to be equal.
+- `/marvin:info` reports a fleet marker (role, age) and flags a stale master marker.
+- The master's own handoff has a home: a **Handoff** section in the program plan.
+
+### Changed
+- `PROJECT-INFO.md` writes its free-text values (`project`, `description`, `brief`, `owner`, `tracker_coordinates`, `stack`, `dev_command`) as double-quoted YAML; the install and `project-info` skills escape `\` and `"` and repair an unquoted `: ` value.
+- Fleet: a child compares resolved paths for `CLAUDE_PROJECT_DIR`, treats a missing master marker as a stopped fleet and, told the fleet is stopping, hands off and ends its turn; `/marvin:fleet stop` lists the running children first, accepts a squash/rebase-merged epic with the architect's confirmation, and the Local-tracker refusal keys on `pm_tool`; resume rewrites a missing child marker.
+- `git-strategy.md` scopes its `develop` row and branch death for fleet mode; the fleet guides no longer restate the branch cut or the lock command; a board item without a `FLEET-Q<n>` is never relayed; the MEMORY.md-before-compaction rule carries the fleet-child exception.
+
+### Fixed
+- `test-docker-lint.sh` and `test-ticket-lint.sh` no longer fail intermittently: the "never writes" snapshot listed the shared temp directory, which any concurrent `mktemp` changed.
+- A fleet child on a symlinked project path is no longer reported blocked.
+
+### Action needed
+- Run `/marvin:upgrade-agent-os`, then `/marvin:project-info` if a free-text `PROJECT-INFO.md` value holds `: ` unquoted (`upgrades/v0.42.1.md`).
+
 ## [0.42.0] — 2026-10-20
 
 ### Added
