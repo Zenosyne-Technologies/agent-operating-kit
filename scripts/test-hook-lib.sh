@@ -62,7 +62,7 @@ J '{"enabledPlugins":{"a@m":true,"b@m":false,"c@m":{"x":1}},"other":1}' members 
 eq "$(printf 'a@m\ttrue\nb@m\tfalse')"
 
 hd "J9 a 1 MiB string decodes in one pass, in under 10 s"
-big=$(python3 -c 'import json; print(json.dumps({"m": "ab\n" * 350000}))')
+big=$(awk 'BEGIN { printf "{\"m\": \""; for (i = 0; i < 350000; i++) printf "ab\\n"; print "\"}" }')   # no python dependency
 SECONDS=0; J "$big" get m; t=$SECONDS; rc 0
 if [ "${#OUT}" -ge 1049990 ]; then ok "length ${#OUT}"; else bad "decoded length ${#OUT}"; fi
 if [ "$t" -lt 10 ]; then ok "took ${t}s"; else bad "took ${t}s"; fi
@@ -129,6 +129,90 @@ F mh_fm_value "$FM" c; eq "x#y"
 F mh_fm_value "$FM" d; eq ""
 F mh_fm_value "$FM" e; eq "plain"
 
+hd "L8 mh_path: one comparable form for Windows spellings; POSIX paths pass through"
+F mh_path 'C:\Work\a b\r'; rc 0; eq "/c/Work/a b/r"
+F mh_path 'C:/Work/x'; rc 0; eq "/c/Work/x"
+F mh_path '/c/Work/x'; rc 0; eq "/c/Work/x"
+F mh_path '/private/tmp/x'; rc 0; eq "/private/tmp/x"
+F mh_path 'c:\x\y'; rc 0; eq "/c/x/y"
+F mh_path 'C:\Work\\a b'; rc 0; eq "/c/Work/a b"
+F mh_path 'C://Work//x'; rc 0; eq "/c/Work/x"
+F mh_path ''; rc 1
+
+hd "L9 mh_mode: lower-cased when allowed; absent/empty -> default; invalid -> default + MH_MODE_INVALID"
+mode() { OUT=$( ( . "$LIBUSE"; mh_mode "$1" worktree_sweep "off on dry-run" "$2" >/dev/null; echo "$MH_MODE|inv=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; }   # mode <fm> <default>
+mode $'worktree_sweep: OFF' on; rc 0; eq "off|inv="
+mode $'other: 1' on; rc 0; eq "on|inv="
+mode $'worktree_sweep:' on; rc 0; eq "on|inv="
+mode $'worktree_sweep: on # c' off; rc 0; eq "on|inv="
+mode $'worktree_sweep: "Dry-Run"' on; rc 0; eq "dry-run|inv="
+mode $'worktree_sweep: Bogus' on; rc 0; eq "on|inv=Bogus"
+mode $'worktree_sweep: bogus' off; rc 0; eq "off|inv=bogus"
+mode $'worktree_sweep: on off' off; rc 0; eq "off|inv=on off"
+# the printed value matches MH_MODE; both globals are reset on the next call
+OUT=$( ( . "$LIBUSE"; mh_mode $'worktree_sweep: bogus' worktree_sweep "off on" on >/dev/null; a=$MH_MODE_INVALID
+         v=$(mh_mode $'worktree_sweep: off' worktree_sweep "off on" on); mh_mode $'worktree_sweep: off' worktree_sweep "off on" on >/dev/null
+         echo "$v|$MH_MODE|a=$a|after=${MH_MODE_INVALID:-}" ) 2>&1); RC=$?; rc 0; eq "off|off|a=bogus|after="
+
+hd "L9b mh_is_key: a ticket key or exactly adhoc"
+isk() { OUT=$( ( . "$LIBUSE"; mh_is_key "$1" && echo yes || echo no ) 2>&1); RC=$?; }
+isk adhoc; eq yes
+isk AOS-1; eq yes
+isk aos-1; eq no
+isk adhoc2; eq no
+isk ""; eq no
+isk 42; eq yes                     # a GitHub issue number
+isk T-1; eq yes                    # a one-letter prefix
+isk A-; eq no
+isk 1a; eq no
+isk -1; eq no
+isk $'AOS-1\nAOS-2'; eq no         # single-line only: grep would match line by line
+isk $'42\n'; eq no
+
+hd "L10 mh_runs_root: the main checkout's physical .marvin/runs, from any linked worktree"
+RR="$WORK/rr main"; mkdir -p "$RR" && git -C "$RR" init -q -b main . && git -C "$RR" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
+  && git -C "$RR" worktree add -q "$WORK/rr wt" -b side 2>/dev/null
+PHYS=$(cd "$RR" && pwd -P)
+F mh_runs_root "$RR"; rc 0; eq "$PHYS/.marvin/runs"
+F mh_runs_root "$WORK/rr wt"; rc 0; eq "$PHYS/.marvin/runs"
+mkdir -p "$RR/sub dir"; F mh_runs_root "$RR/sub dir"; rc 0; eq "$PHYS/.marvin/runs"
+git init -q --bare "$WORK/rr.git"; F mh_runs_root "$WORK/rr.git"; rc 1; eq ""
+mkdir -p "$WORK/notrepo"; F mh_runs_root "$WORK/notrepo"; rc 1; eq ""
+F mh_runs_root ""; rc 1
+# a separate-git-dir checkout (common dir is not <main>/.git) has no run state
+git init -q --separate-git-dir "$WORK/rr sep.gitdir" "$WORK/rr sep" >/dev/null 2>&1; F mh_runs_root "$WORK/rr sep"; rc 1; eq ""
+
+hd "L11 layout regexes: session folder, key, stamp, marker"
+re() { OUT=$( ( . "$LIBUSE"; printf '%s' "$2" | grep -Eq "${!1}" && echo match || echo no ) 2>&1); RC=$?; }   # re <CONST> <value>
+re MH_SESSION_RE 20261019T101500Z-0b1f6c1e-aaaa-4bbb-8ccc-0123456789ab; eq match
+re MH_SESSION_RE 20261019T101500Z-short; eq no
+re MH_KEY_RE AOS-222; eq match
+re MH_KEY_RE adhoc; eq no
+re MH_KEY_RE aos-222; eq no
+re MH_KEY_RE A-1; eq match
+re MH_KEY_RE 42; eq match
+re MH_KEY_RE A-; eq no
+re MH_KEY_RE 1a; eq no
+re MH_STAMP_RE 20261019T101500Z-note.md; eq match
+re MH_STAMP_RE note.md; eq no
+re MH_MARKER_RE 'marvin-owned marvin:developer-small 0123abcd 20261019T101500Z'; eq match
+re MH_MARKER_RE 'marvin-owned orchestrator - 20261019T101500Z'; eq match
+re MH_MARKER_RE 'marvin-owned marvin:Dev 0123abcd 20261019T101500Z'; eq no
+re MH_MARKER_RE 'marvin-owned orchestrator abc 20261019T101500Z'; eq no
+
+hd "L12 mh_is_marked / mh_marker_in: a regular-file marker whose FIRST line is valid (the sweep's and the marker's rule)"
+MK="$WORK/mk main"; mkdir -p "$MK" && git -C "$MK" init -q -b main . && git -C "$MK" -c user.name=t -c user.email=t@t commit -q --allow-empty -m i \
+  && git -C "$MK" worktree add -q "$WORK/mk wt" -b mkwt 2>/dev/null
+MKGD=$(git -C "$WORK/mk wt" rev-parse --absolute-git-dir)
+GOOD='marvin-owned marvin:developer 0123abcd 20261019T101500Z'
+F mh_is_marked "$WORK/mk wt"; rc 1                                                  # no marker
+printf '%s\n' "$GOOD" > "$MKGD/marvin-owned"; F mh_is_marked "$WORK/mk wt"; rc 0
+F mh_marker_in "$MKGD"; rc 0
+printf 'junk\n%s\n' "$GOOD" > "$MKGD/marvin-owned"; F mh_is_marked "$WORK/mk wt"; rc 1   # valid, but not the first line
+printf '%s\n' "$GOOD" > "$WORK/goodmarker"; rm -f "$MKGD/marvin-owned"; ln -s "$WORK/goodmarker" "$MKGD/marvin-owned"
+f_mklink() { F mh_is_marked "$WORK/mk wt"; }
+f_mklink; rc 1                                                                         # a symlinked valid marker
+F mh_is_marked "$WORK/nowhere"; rc 1; F mh_marker_in ""; rc 1
 # ── fleet role marker and settings (fleet-mode) ───────────────────────────────────────────────────
 # fleet <root>… → OUT="<printed role>|<MH_FLEET_ROLE>|<MH_FLEET_EPIC>" and RC = mh_fleet_role's OWN status, both of
 # the LAST root. The roots are called in ONE shell in order (the globals do not survive a $( ) subshell, and the
@@ -332,6 +416,11 @@ hd "ML19 since_compact reports the LAST message's size, not the first's — C4 m
 mutlib cfirst "  | awk \"\$MH_SIZES_AWK\" | awk 'NR == 1 { f = \$0 } END { if (NR) print NR, f }'" "  | awk \"\$MH_SIZES_AWK\" | awk '{ f = \$0 } END { if (NR) print NR, f }'" f_cfirst
 hd "ML20 unreadable file no longer rc 1 — C1 rc must catch it"
 mutlib crc '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$1" ] && [ -r "$1" ] || return 0' f_crc
+f_keynl() { isk $'AOS-1\nAOS-2'; }
+hd "ML24 a symlinked marker trusted — L12 must catch it"
+mutlib mklink '  [ -n "${1:-}" ] && [ ! -L "$f" ] && [ -f "$f" ] || return 1' '  [ -n "${1:-}" ] && [ -f "$f" ] || return 1' f_mklink
+hd "ML25 the key rule's single-line guard removed — L9b must catch it"
+mutlib keynl "  case \"\${1:-}\" in *\$'\\n'*) return 1 ;; esac" '  :' f_keynl
 
 printf '\n----\ntest-hook-lib: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

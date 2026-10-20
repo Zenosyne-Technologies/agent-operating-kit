@@ -147,6 +147,109 @@ mk_t "✅ AOS-12 merged to develop."; run "$HOOK" "$P" "$(ups_in "$P")"; assert_
 mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed -E 's/^\*\*(Next|Open questions)\*\*$/**\1:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # **Next:** tail
 mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/^\*\*Open questions\*\*$/**Open questions:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty
 
+hd "G5b structure, not words (AOS-229): a callout of five bold points in any language; a tail heading in any language"
+HU_CALLOUT='> **❌ AOS-13 blokkolva: a validátor elbukott**
+> - **Mi**: az export elhagy sorokat.
+> - **Hatás**: AOS-13 nem zárható.
+> - **Ok**: ismeretlen
+> - **Javítás**: újraépítés.
+> - **Kell tőled?**: nem.
+
+**Következő**
+
+- AOS-13 újrafuttatása'
+mk_t "$HU_CALLOUT"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # HU1 five Hungarian points, a Hungarian tail
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | grep -v 'Ok\*\*')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # HU2 four points
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | sed -E 's/\*\*(Mi|Hatás|Ok|Javítás|Kell tőled\?)\*\*:/**\1:**/')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # colon inside the bold
+mk_t '| tétel | eredmény | hol |
+|---|---|---|
+| AOS-12 | ✅ kész | AOS-12 |
+
+**Következő**
+
+- AOS-13'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # HU3
+mk_t '| tétel | eredmény | hol |
+|---|---|---|
+| AOS-12 | ✅ kész | AOS-12 |'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U4"   # HU4
+mk_t '| tétel | eredmény | hol |
+|---|---|---|
+| AOS-12 | ✅ kész | AOS-12 |
+
+## Következő
+
+- AOS-13'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # a markdown heading is a tail
+mk_t '> **⚠️ AOS-13 lassú**
+
+| pont | részlet |
+|---|---|
+| Mi | az export lassú. |
+| Hatás | AOS-13 vár. |
+| Ok | ismeretlen |
+| Javítás | index. |
+| Kell tőled? | nem |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # TBL: table-form, Hungarian first cells
+mk_t '> **⚠️ AOS-13 lassú**
+
+| pont | részlet |
+|---|---|
+| Mi | az export lassú. |
+| Hatás | AOS-13 vár. |
+| Ok | ismeretlen |
+| Javítás | index. |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # the header row is not a point: four rows fail
+mk_t '> **⚠️ x**
+> - **Hatás**: a
+> - **Mi**: b
+> - **Ok**: c
+> - **Javítás**: d
+> - **Kell tőled?**: nem
+
+**Következő**
+
+- x'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # Hungarian labels are not order-checked
+mk_t "> **⚠️ x**
+> - **Impact**: a
+> - **What**: b
+> - **Cause**: c
+> - **Fix**: d
+> - **Needs you?**: no
+
+**Next**
+
+- x"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # EN-order: all five English labels, out of order
+
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | sed -E 's/^> - /> * /')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # '*' bullets
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | sed -E 's/^> - /> * /' | grep -v 'Ok\*\*')"; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # four '*' bullets
+mk_t '> **⚠️ AOS-13 lassú**
+> | pont | részlet |
+> |:--|---|
+> | Mi | az export lassú. |
+> | Hatás | AOS-13 vár. |
+> | Ok | ismeretlen |
+> | Javítás | index. |
+> | Kell tőled? | nem |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_empty   # table inside the blockquote
+mk_t '> **⚠️ AOS-13 lassú**
+> | pont | részlet |
+> |---|---|
+> | Mi | az export lassú. |
+> | Hatás | AOS-13 vár. |
+> | Ok | ismeretlen |
+> | Javítás | index. |
+
+**Következő**
+
+- javítás'; run "$HOOK" "$P" "$(ups_in "$P")"; assert_out "U3"   # quoted table: header not a point
+
 hd "G6 fenced and inline code is ignored"
 mk_t 'Example:
 ```
@@ -233,14 +336,68 @@ mk_t '> **❌ AOS-13 blocked**
 **Next**
 
 - x'
-mutation tablebelow '      if (!haspoint(c)) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' '      if (0) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' "$P" "$(ups_in "$P")"
+mutation tablebelow '      if (!cnt) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' '      if (0) { while (j <= n && L[j] ~ /^[ \t]*$/) j++' "$P" "$(ups_in "$P")"
 
-hd "M6 colon inside bold labels not normalised — G4 must catch it"
-mk_t "$(printf '%s\n' "$GOOD_CALLOUT" | sed -E 's/\*\*(What|Impact|Cause|Fix|Needs you\?)\*\*:/**\1:**/')"
+hd "M6 colon inside bold labels not normalised — an out-of-order callout with them must catch it"
+mk_t "> **⚠️ x**
+> - **Impact:** a
+> - **What:** b
+> - **Cause:** c
+> - **Fix:** d
+> - **Needs you?:** no
+
+**Next**
+
+- x"
 mutation labelcolon '  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return lb(s)' '  if (s !~ /^[ \t]*(>[ \t]*)?\|/) return s' "$P" "$(ups_in "$P")"
-hd "M7 colon inside a bold tail heading not accepted — G5 must catch it"
-mk_t "$(printf '%s\n' "$GOOD_TABLE" | sed -E 's/^\*\*(Next|Open questions)\*\*$/**\1:**/')"
-mutation tailcolon '    if (l ~ /^[ \t]*(\*\*(Next|Open questions):?\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }' '    if (l ~ /^[ \t]*(\*\*(Next|Open questions)\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }' "$P" "$(ups_in "$P")"
+hd "M7 the tail regex back to the English headings — a Hungarian tail (HU3) must catch it"
+mk_t '| tétel | eredmény | hol |
+|---|---|---|
+| AOS-12 | ✅ kész | AOS-12 |
+
+**Következő**
+
+- AOS-13'
+TLNEW='    if (l ~ /^[ \t]*(\*\*[^*]+\*\*:?|#+[ \t]+[^ \t].*)[ \t:]*$/) tl = i }'
+mutation tailwords "$TLNEW" '    if (l ~ /^[ \t]*(\*\*(Next|Open questions):?\*\*|#+[ \t]+(Next|Open questions))[ \t:]*$/) tl = i }' "$P" "$(ups_in "$P")"
+hd "M8 markdown heading not accepted as a tail — the '## Következő' fixture must catch it"
+mk_t '| tétel | eredmény | hol |
+|---|---|---|
+| AOS-12 | ✅ kész | AOS-12 |
+
+## Következő
+
+- AOS-13'
+mutation tailheading "$TLNEW" '    if (l ~ /^[ \t]*(\*\*[^*]+\*\*:?)[ \t:]*$/) tl = i }' "$P" "$(ups_in "$P")"
+hd "M9 point threshold lowered to four — four Hungarian points (HU2) must catch it"
+mk_t "$(printf '%s\n' "$HU_CALLOUT" | grep -v 'Ok\*\*')"
+mutation threshold '      if (cnt < 5 || (hasall(c) && !inorder(c))) u3 = 1' '      if (cnt < 4 || (hasall(c) && !inorder(c))) u3 = 1' "$P" "$(ups_in "$P")"
+hd "M10 English order check dropped — the out-of-order English callout (EN-order) must catch it"
+mk_t "> **⚠️ x**
+> - **Impact**: a
+> - **What**: b
+> - **Cause**: c
+> - **Fix**: d
+> - **Needs you?**: no
+
+**Next**
+
+- x"
+mutation order '      if (cnt < 5 || (hasall(c) && !inorder(c))) u3 = 1' '      if (cnt < 5) u3 = 1' "$P" "$(ups_in "$P")"
+hd "M11 table header counted as a point — a four-row table (header + 4) must catch it"
+mk_t '> **⚠️ AOS-13 lassú**
+
+| pont | részlet |
+|---|---|
+| Mi | az export lassú. |
+| Hatás | AOS-13 vár. |
+| Ok | ismeretlen |
+| Javítás | index. |
+
+**Következő**
+
+- javítás'
+mutation header '    y = nx; if (sub(/^[ \t]*(>[ \t]*)?\|/, "", y) && y ~ /^[ \t]*:?-+:?[ \t]*(\|.*)?$/) return 0' '    if (0) return 0' "$P" "$(ups_in "$P")"
 
 printf '\n----\ntest-update-gate: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

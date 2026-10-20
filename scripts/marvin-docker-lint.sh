@@ -14,6 +14,8 @@
 #     mysqldump, mysqladmin, mysqlimport, mysqlsh, mariadb, mariadb-dump or mariadb-admin) or
 #     overrides --entrypoint. --label-file counts as labelled.
 # The rules it cites are owned by .marvin/agents/tidying.md.
+# Mode = docker_lint in .marvin/PROJECT-INFO.md frontmatter (case-insensitive): advise (default; absent,
+# empty or any other value too) — the advice above · off — nothing, exit 0 silently.
 # Detection: the command is split into shell words (quotes, backslash escapes, line continuations,
 # comments) and simple commands (; & && | || ( ) ` and newlines); docker must sit in COMMAND POSITION,
 # after any VAR=value assignments, redirections and the wrappers sudo, env, command, exec, time, nohup,
@@ -36,6 +38,9 @@ MH_IN=$RAW
 cmd=$(printf '%s' "$MH_IN" | mh_get tool_input.command | head -c 65536) || exit 0
 case "$cmd" in *docker*) ;; *) exit 0 ;; esac
 root=$(mh_root); mh_is_marvin "$root" || exit 0
+fm=$(mh_frontmatter "$root") || fm=""
+mh_mode "$fm" docker_lint "advise off" advise >/dev/null
+[ "$MH_MODE" = off ] && exit 0
 
 lc=$(printf '%s' "$cmd" | LC_ALL=C tr 'A-Z_' 'a-z-')
 binoff=0

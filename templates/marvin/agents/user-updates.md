@@ -37,9 +37,11 @@ This is a blockquote with a bold ⚠️ (needs attention) or ❌ (failed) lead. 
 
 A two-column table (`point | detail`) with the same five rows is an equal alternative when blockquotes render poorly.
 
+**Language.** The same structure may be written in the project's language, with the labels and headings translated (e.g. five bold points, a bold or `#` heading for the tail); the gate checks the shape, not the words.
+
 ## Enforcement
 
-Where the marvin plugin is enabled, four of these rules are checked on every message to the user — U1 no `<details>` fold, U2 no pictographic emoji outside the legend, U3 every issue callout carries its five points in order, U4 a status update ends with the tail. `update_gate` in `.marvin/PROJECT-INFO.md` sets the force: `advise` (default — the next prompt carries a note naming what failed; apply it from that reply on, without re-sending or apologising), `block` (U1–U3 send the message back once to be rewritten; failures are also noted on the next prompt, as in advise), `off`. U4 only ever advises: an empty tail is legal. The rules themselves stay here; the checks only catch drift.
+Where the marvin plugin is enabled, four of these rules are checked on every message to the user — U1 no `<details>` fold, U2 no pictographic emoji outside the legend, U3 every issue callout carries five bold points (the English five, in order, when they are used), U4 a status update ends with a bold-only or `#` tail heading. `update_gate` in `.marvin/PROJECT-INFO.md` sets the force: `advise` (default — the next prompt carries a note naming what failed; apply it from that reply on, without re-sending or apologising), `block` (U1–U3 send the message back once to be rewritten; failures are also noted on the next prompt, as in advise), `off`. U4 only ever advises: an empty tail is legal. The rules themselves stay here; the checks only catch drift.
 
 ## Next / Open questions: the tail of every message
 

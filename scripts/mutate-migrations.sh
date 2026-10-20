@@ -8,12 +8,14 @@
 # FAILS. A mutation the suite survives is a hole.
 #
 # The script under test is a parameter: each migration script has its own mutation table below
-# (`table_for <version>`), and `--script migrate-v<version>.sh` selects one. Without it, every
-# table runs.
+# (`table_for <key>`, the key a version or `runs`), and `--script <file>` selects one:
+# `migrate-v<version>.sh`, or `marvin-runs-migrate.sh` (key `runs`, the run-state move, fixtures
+# N*). Without it, every table runs.
 #
 # Usage:
 #   bash scripts/mutate-migrations.sh                                  # every table, 4 at a time
 #   bash scripts/mutate-migrations.sh --script migrate-v0.35.0.sh      # one script's table
+#   bash scripts/mutate-migrations.sh --script marvin-runs-migrate.sh  # the run-state move's table
 #   bash scripts/mutate-migrations.sh --script migrate-v0.21.0.sh no-mkdir glob-pathspec
 #   bash scripts/mutate-migrations.sh [--script <file>] --list
 #   PARALLEL=1 bash scripts/mutate-migrations.sh # serialise (timing fixtures are load-sensitive)
@@ -26,7 +28,7 @@ set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 SRC_SUITE="$SCRIPT_DIR/test-migrations.sh"
 PARALLEL=${PARALLEL:-4}
-VERSIONS="0.21.0 0.35.0"
+VERSIONS="0.21.0 0.35.0 runs"
 
 # name | fixture that must fail | perl -0 expression reverting one mechanic
 MUTATIONS_0_21_0='
@@ -110,21 +112,75 @@ no-rollback-trap|R27|s/^trap rollback EXIT INT TERM HUP\n//m
 rollback-keeps-map|R27|s/^  clear_move_map\n  report rolled-back/  report rolled-back/m
 '
 
+# marvin-runs-migrate.sh (key `runs`) — the run-state move (AOS-237), each guard against its N* fixture.
+MUTATIONS_RUNS='
+no-symlink-refusal|N02|s/^hit\(\)  \{ local i=0;/hit()  { return 0; local i=0;/m
+no-checkout-link-check|N02|s/^  if \[ -L "\$c\/\.marvin" \]; then hit "\$c\/\.marvin"; return 0; fi\n//m
+no-checkout-runs-link-check|N02|s/^  if \[ -L "\$r" \]; then hit "\$r"; return 0; fi\n//m
+no-key-link-check|N02|s/^    if \[ -L "\$e" \]; then hit "\$e"; continue; fi\n//m
+no-file-link-check|N02|s/^        if \[ -L "\$f" \]; then hit "\$f"; continue; fi\n//m
+no-project-marvin-link-check|N02|s/^if \[ -L "\$MAIN\/\.marvin" \]; then hit "\$MAIN\/\.marvin"$/if false; then :/m
+no-runs-link-check|N02|s/^elif \[ -L "\$RUNS" \]; then hit "\$RUNS"$/elif false; then :/m
+no-legacy-link-check|N02|s/if \[ -L "\$e" \]; then hit "\$e"; elif \[ -d "\$e" \]/if false; then hit "\$e"; elif [ -d "\$e" ]/
+no-target-key-link-check|N02|s/^  if \[ -L "\$RUNS\/\$L\/\$k" \]; then hit "\$RUNS\/\$L\/\$k"; return 0; fi\n//m
+no-target-file-link-check|N02|s/^  if \[ -L "\$t" \]; then hit "\$t"; return 0; fi\n//m
+duplicate-detection-off|N03|s/^      if cmp -s -- "\$s" "\$\{KEPT\[0\]\}"; then op dedup/      if true; then op dedup/m
+no-dedup|N03|s/^      if cmp -s -- "\$s" "\$\{KEPT\[0\]\}"; then op dedup/      if false; then op dedup/m
+newest-loses|N04|s/\[ "\$s" -nt "\$w" \]/[ "\$w" -nt "\$s" ]/
+mutable-as-immutable|N04|s/^is_mutable\(\) \{ case "\$1" in ledger\.md\|build-brief\*\.md\) return 0 ;; esac; return 1; \}/is_mutable() { return 1; }/m
+older-overwrites|N04|s/if ! has "\$p" && ! in_list "\$p" OP_D/if ! in_list "\$p" OP_D/
+no-displace|N04|s/^      if has "\$t"; then o=\$\(alloc_older "\$dir" "\$stem"\); op displace[^\n]*\n//m
+defer-ignored|N05|s/if in_list "\$\{WT\[\$i\]\}" DEFER; then/if false; then/
+defer-unknown-accepted|N05|s/^  in_list "\$pd" WT \|\| usage_err/  true || usage_err/m
+defer-not-physical|N05|s/^  pd=\$\(phys "\$d"\) \|\|/  pd=\$d; [ -d "\$d" ] ||/m
+defer-flat-ignored|N06|s/^if \[ "\$DEFER_FLAT" = 1 \]; then/if false; then/m
+no-key-check|N08|s/^    if ! is_key "\$n"; then skip/    if false; then skip/m
+session-folder-scanned|N08|s/^    is_session "\$n" && continue[^\n]*\n//m
+gitignore-reported|N08|s/^    \[ "\$n" = \.gitignore \] && continue[^\n]*\n//m
+no-ignore-check|N09|s/^        git -C "\$MAIN" check-ignore -q -- "\$\{OP_D\[\$i\]\}" 2>\/dev\/null \|\|/        true ||/m
+refusal-keeps-map|N09|s/^  OP_T=\(\); OP_S=\(\); OP_D=\(\); DUP_S=\(\); DUP_D=\(\)\n//m
+no-tracked-check|N10|s/^        if in_list "\$f" TRK; then refuse/        if false; then refuse/m
+check-applies|N01|s/^if \[ "\$MODE" = check \]; then/if false; then/m
+check-count-lies|N01|s/^  echo "moved=\$\(count_t move dedup\)"/  if [ "\$MODE" = check ]; then echo "moved=99"; else echo "moved=\$(count_t move dedup)"; fi/m
+nothing-to-do-lies|N07|s/^  report nothing-to-do/  report done/m
+defer-word-split|N11|s/^  pd=\$\(phys "\$d"\)/  pd=\$(phys \$d)/m
+no-encoder|N11|s/"\$\(mh_q "\$\(rel "\$\{OP_S\[\$i\]\}"\)"\)"/"\$(rel "\${OP_S[\$i]}")"/g
+rewrites-content|N12|s/^  rm -f -- "\$s"\n\}/  rm -f -- "\$s"\n  printf x >> "\$d"\n}/m
+no-legacy-reuse|N13|s/^  elif \[ "\$\{#LEG\[\@\]\}" -eq 1 \]; then L=\$\{LEG\[0\]\}/  elif false; then L=\${LEG[0]}/m
+multi-legacy-accepted|N13|s/^  if \[ "\$\{#LEG\[\@\]\}" -gt 1 \]; then/  if false; then/m
+legacy-file-accepted|N13|s/; else refuse "a legacy name that is not a folder[^\n]*; fi$/; fi/m
+worktree-list-failure-ignored|N05|s/^if ! git (-C "\$MAIN" worktree list --porcelain -z > "\$WTL" 2>\/dev\/null); then/git $1\nif false; then/m
+identical-winner-displaced|N13|s/if has "\$t" && cmp -s -- "\$w" "\$t"; then op dedup/if false; then op dedup/
+no-kept-match|N13|s/^kept_match\(\) \{  # kept_match/kept_match() { return 1;  # kept_match/m
+copy-without-cmp|N14|s/^  cmp -s -- "\$s" "\$d" \|\| \{ rm -f -- "\$d"; return 1; \}\n//m
+no-copy-fallback|N14|s/^  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then\n/  if ! ln -- "\$s" "\$d" 2>\/dev\/null; then return 1\n/m
+copy-loses-mtime|N14|s/cp -p -- "\$s" "\$tmp"/cp -- "\$s" "\$tmp"/
+irregular-target-accepted|N13|s/^  if has "\$t" && \[ ! -f "\$t" \]; then refuse[^\n]*\n//m
+defer-no-main-fallback|N15|s/ \|\| pd=\$\(rel_main "\$d"\)//
+capture-scanned|N16|s/^    is_capture "\$e" && continue[^\n]*\n//m
+capture-any-name|N16|s/\^upgrade-\[0-9\]\{8\}T\[0-9\]\{6\}Z-/^upgrade-.*/
+'
+
 table_for() {
   case "$1" in
     0.21.0) printf '%s\n' "$MUTATIONS_0_21_0";;
     0.35.0) printf '%s\n' "$MUTATIONS_0_35_0";;
+    runs)   printf '%s\n' "$MUTATIONS_RUNS";;
     *) return 1;;
   esac
 }
+# script_for <key> — the file a table mutates; label_for <key> — how its results are named
+script_for() { case "$1" in runs) echo marvin-runs-migrate.sh;; *) echo "migrate-v$1.sh";; esac; }
+label_for()  { case "$1" in runs) echo runs;; *) echo "v$1";; esac; }
 
 SELECTED_VERSIONS="$VERSIONS"; LIST=0; NAMES=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --script)
-      v=${2:-}; v=${v##*/}; v=${v#migrate-v}; v=${v%.sh}
+      v=${2:-}; v=${v##*/}; v=${v%.sh}
+      case "$v" in marvin-runs-migrate|runs) v=runs;; *) v=${v#migrate-v};; esac
       table_for "$v" >/dev/null 2>&1 || { echo "mutate-migrations: no mutation table for '${2:-}'" >&2; exit 2; }
-      [ -f "$SCRIPT_DIR/migrate-v$v.sh" ] || { echo "mutate-migrations: $SCRIPT_DIR/migrate-v$v.sh missing" >&2; exit 2; }
+      [ -f "$SCRIPT_DIR/$(script_for "$v")" ] || { echo "mutate-migrations: $SCRIPT_DIR/$(script_for "$v") missing" >&2; exit 2; }
       SELECTED_VERSIONS="$v"; shift 2;;
     --list) LIST=1; shift;;
     *) NAMES="$NAMES $1"; shift;;
@@ -133,7 +189,7 @@ done
 
 list_names() { table_for "$1" | grep . | cut -d'|' -f1; }
 if [ "$LIST" = 1 ]; then
-  for v in $SELECTED_VERSIONS; do list_names "$v" | sed "s/^/$v\//"; done
+  for v in $SELECTED_VERSIONS; do list_names "$v" | sed "s/^/$(label_for "$v")\//"; done
   exit 0
 fi
 
@@ -144,11 +200,12 @@ mkdir -p "$WORK/res"
 
 run_one() {
   local ver="$1" name="$2" fixture="$3" expr="$4" d out rc all hit key mig
-  key="v$ver-$name"; d="$WORK/$key"; mkdir -p "$d"
-  mig="migrate-v$ver.sh"
-  cp "$SCRIPT_DIR"/migrate-v*.sh "$SRC_SUITE" "$d/"
+  key="$(label_for "$ver")-$name"; d="$WORK/$key"; mkdir -p "$d"
+  mig=$(script_for "$ver")
+  cp "$SCRIPT_DIR"/migrate-v*.sh "$SCRIPT_DIR/marvin-runs-migrate.sh" "$SRC_SUITE" "$d/"
+  cp -R "$SCRIPT_DIR/lib" "$d/lib"   # the run-state move sources the hook library
   perl -0pi -e "$expr" "$d/$mig"
-  name="v$ver/$name"
+  name="$(label_for "$ver")/$name"
   if cmp -s "$d/$mig" "$SCRIPT_DIR/$mig"; then
     printf '%-38s %-6s STALE — the mutation no longer applies; fix this harness\n' "$name" "$fixture" > "$WORK/res/$key"
     return
@@ -197,8 +254,8 @@ wait $pids 2>/dev/null
 total=0; caught=0
 while IFS=' ' read -r ver name; do
   [ -n "$name" ] || continue
-  if [ "$ver" = unknown ]; then key="unknown-$name"; else key="v$ver-$name"; fi
-  [ -f "$WORK/res/$key" ] || { printf '%-38s NO RESULT\n' "v$ver/$name"; total=$((total+1)); continue; }
+  if [ "$ver" = unknown ]; then key="unknown-$name"; else key="$(label_for "$ver")-$name"; fi
+  [ -f "$WORK/res/$key" ] || { printf '%-38s NO RESULT\n' "$(label_for "$ver")/$name"; total=$((total+1)); continue; }
   cat "$WORK/res/$key"
   total=$((total+1))
   grep -q 'CAUGHT   (' "$WORK/res/$key" && caught=$((caught+1))
