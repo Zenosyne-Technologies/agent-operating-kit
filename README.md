@@ -208,6 +208,8 @@ It never writes a file, never blocks the session, and always exits 0 — includi
 
 **Fleet mode (v0.41.0).** For parallel epics, `/marvin:fleet` turns the session into a master orchestrator that starts one child orchestrator per epic (up to `fleet_max_children`, default 3) in locked worktrees, keeps the program plan with area leases and a decision log, and posts one board with every epic and every question waiting on you. You answer epic questions in each child; the master merges epics into `develop` and cuts releases. Children compact up to three times before a successor takes over. Needs a shared tracker (Linear, Jira or GitHub); without child sessions it runs as a manual fleet. Rules: `.marvin/agents/fleet.md`, `.marvin/agents/fleet-child.md`.
 
+**Session clean-up (v0.42.0).** The automatic worktree sweep removes only worktrees Marvin marked as its own (agent worktrees when they stop, a hand-made one via `/marvin:clean-worktrees --mark`); desktop session worktrees are left to the app. Run state — ledger, build briefs, run reports — lives in the project's `.marvin/runs/<session>/<KEY>/`, carried there by hooks from any worktree, with ledgers chained across sessions. `worktree_sweep` (`on | check | off`) and `docker_lint` (`advise | off`) are per-project switches; an absent mode key never enforces. The upgrade's readiness step moves existing run state and defers sessions you say are still open. Rules: `.marvin/agents/worktrees.md`, `.marvin/agents/briefing.md` item 11, `.marvin/agents/session-recovery.md`.
+
 ## PM tools
 
 The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.

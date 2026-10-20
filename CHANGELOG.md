@@ -2,6 +2,30 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.42.0] — 2026-10-20
+
+### Added
+- `worktree_sweep: on | check | off` in `PROJECT-INFO` (absent = check, report only); the upgrade writes `on` when missing.
+- `docker_lint: advise | off` in `PROJECT-INFO` (absent = advise).
+- Run-state hooks carry the ledger, build briefs and run reports to the project's `.marvin/runs/<UTC>-<session_id>/<KEY|adhoc>/` from any worktree (SessionStart, PostToolUse, SubagentStop, and a Stop catch-up for Bash-written ledgers); a clash keeps both copies and saves a `.clash-*` sidecar.
+- `/marvin:clean-worktrees --mark <path>` and the sweep's report-only `--at-risk` mode.
+- `.marvin/agents/session-recovery.md`: the procedure when a session's worktree vanishes mid-task.
+- Upgrade step 6b (session readiness) and `scripts/marvin-runs-migrate.sh`: run state moved into the per-session layout, open sessions deferred, at-risk files and both sweeps' `--check` lines reported.
+- A Windows CI job (Git Bash), a README Windows section and LF `.gitattributes`; the job is non-blocking until its first green run.
+
+### Changed
+- The worktree sweep removes only worktrees Marvin marked as its own (agent worktrees at stop, hand-made ones via `--mark`); session and older worktrees are never touched. G8/G9 keep a worktree whose ignored `.env*` or carried run file is not safely in the main checkout.
+- Ledgers chain across sessions (the newest earlier ledger for a key is authoritative), and the milestone prune follows the per-session layout.
+- An absent `ticket_lint` now means advise; an unknown explicit value still blocks.
+- The update gate checks the structure of callouts and tails, not their English labels, so a project may write them in its own language.
+- The precedence clause gates only selective staging and the tagging authority; the branch model, merge style and push cadence are project-refinable.
+- Hook stdin paths are decoded and compared in one form (`mh_path`), so Windows `C:\` paths work.
+- The task key rule admits single-letter prefixes and bare GitHub issue numbers.
+- Codex: the forwarder's prompt file is `<base>.prompt.txt`, and its DATA files are passed as absolute paths under the orchestrator's checkout.
+
+### Action needed
+- Pre-set `ticket_lint`, `worktree_sweep` and `docker_lint` before updating the plugin if you want other than the defaults. Restart other open sessions after `/marvin:upgrade-agent-os`, and run the upgrade again once deferred sessions have finished.
+
 ## [0.41.0] — 2026-10-20
 
 ### Added
