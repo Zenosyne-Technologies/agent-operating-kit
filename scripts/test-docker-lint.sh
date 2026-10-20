@@ -162,6 +162,19 @@ fires "$LBL" 'docker volume create --label marvin.project=p --label marvin.owner
 fires "$LBL" 'docker run --label marvin.checkout=/x nginx'
 silent 'docker run -l marvin.project=p -l marvin.checkout=/x -l marvin.owner=main -l marvin.lifetime=throwaway nginx'
 
+hd "D14 docker_lint: advise | off — absent or invalid advises, off is silent"
+dl_proj() {  # dl_proj <dir> <frontmatter line|"">
+  rm -rf "$1"; mkdir -p "$1/.marvin"
+  { printf -- '---\nkit_version: 0.39.0\n'; [ -n "$2" ] && printf '%s\n' "$2"; printf -- '---\n'; } > "$1/.marvin/PROJECT-INFO.md"
+}
+for m in 'docker_lint: off' 'docker_lint: OFF # quiet' "docker_lint: 'off'"; do
+  dl_proj "$WORK/dl" "$m"; run "$WORK/dl" "$(pre_in 'docker run nginx')"; assert_rc0; assert_empty; done
+dl_proj "$WORK/dl" 'docker_lint: off'; run "$WORK/dl" "$(pre_in 'docker compose up')"; assert_empty
+for m in '' 'docker_lint:' 'docker_lint: advise' 'docker_lint: bogus' 'docker_lint: block'; do
+  dl_proj "$WORK/dl" "$m"; run "$WORK/dl" "$(pre_in 'docker run nginx')"; assert_rc0; assert_out "$LBL"; done
+dl_proj "$WORK/dl sp" 'docker_lint: off'; run "$WORK/dl sp" "$(pre_in 'docker run nginx')"; assert_empty
+mkdir -p "$WORK/dlplain"; printf 'docker_lint: off\n' > "$WORK/dlplain/PROJECT-INFO.md"; run "$WORK/dlplain" "$(pre_in 'docker run nginx')"; assert_empty
+
 hd "D9 never writes"
 before=$(ls -laR "$WORK" | cksum); lint 'docker run mysql'
 after=$(ls -laR "$WORK" | cksum); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
@@ -174,14 +187,14 @@ check() {  # check <expect> — expect is "silent", "fast" (under 1 s), "has:<te
     no:*) ! printf '%s\n' "$OUT" | grep -Fq -- "${1#no:}" ;;
   esac
 }
-mutation() {  # mutation <name> <exact line> <replacement> <expect> <command> [prefix-fields]
+mutation() {  # mutation <name> <exact line> <replacement> <expect> <command> [prefix-fields] [project, default $P]
   local d="$WORK/m-$1" in
   rm -rf "$d"; mkdir -p "$d/lib"; cp "$LIB" "$d/lib/"
   A="$2" B="$3" awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$HOOK" > "$d/hook.sh"   # ENVIRON: no escape processing
   if [ ! -f "$HOOK" ] || cmp -s "$d/hook.sh" "$HOOK"; then bad "mutation $1: target line not found — harness is stale"; return; fi
   in=$(pre_in "$5" "${6:-}")
-  run "$P" "$in"; if [ "$RC" != 0 ] || ! check "$4"; then bad "mutation $1: fixture fails on the real hook — harness is stale"; return; fi
-  HOOKX="$d/hook.sh" run "$P" "$in"
+  run "${7:-$P}" "$in"; if [ "$RC" != 0 ] || ! check "$4"; then bad "mutation $1: fixture fails on the real hook — harness is stale"; return; fi
+  HOOKX="$d/hook.sh" run "${7:-$P}" "$in"
   if [ "$RC" != 0 ]; then bad "mutation $1: run failed (exit $RC)"; return; fi
   if check "$4"; then bad "mutation $1 survived ($4 still holds)"; else ok "mutation $1 caught"; fi
 }
@@ -216,6 +229,10 @@ hd "M14 exported COMPOSE_PROJECT_NAME ignored — D10 must catch it"
 mutation export '  if (gcpn) cpn = 1' '' silent 'export COMPOSE_PROJECT_NAME=p; docker compose up'
 hd "M15 comment handling dropped — D10 ls # ; docker run must catch it"
 mutation comment '      else if (c == "#" && !inw) cmt = 1' '      else if (0) cmt = 1' silent 'ls # ; docker run nginx'
+
+hd "M16 docker_lint: off ignored — D14 must catch it"
+dl_proj "$WORK/dloff" 'docker_lint: off'
+mutation dloff '[ "$MH_MODE" = off ] && exit 0' ':' silent 'docker run nginx' '' "$WORK/dloff"
 
 printf '\n----\ntest-docker-lint: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]

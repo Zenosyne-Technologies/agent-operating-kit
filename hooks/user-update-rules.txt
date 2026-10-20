@@ -4,3 +4,4 @@
 - Any issue/blocker: a callout — What / Impact / Cause / Fix / Needs you? — in that order.
 - Link to agent reports and tickets; never paste their content into chat.
 - End every message with Next / Open questions; drop an empty heading.
+- Same structure in project's language.
