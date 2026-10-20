@@ -1,15 +1,15 @@
 ---
-project: {{PROJECT_NAME}}
-description: {{ONE_SENTENCE_DESCRIPTION}}
-brief: {{PROJECT_BRIEF}}
-owner: {{OWNER_ORG_OR_PERSON}}
+project: "{{PROJECT_NAME}}"
+description: "{{ONE_SENTENCE_DESCRIPTION}}"
+brief: "{{PROJECT_BRIEF}}"
+owner: "{{OWNER_ORG_OR_PERSON}}"
 pm_tool: {{PM_TOOL}}
-tracker_coordinates: {{TRACKER_COORDINATES}}
+tracker_coordinates: "{{TRACKER_COORDINATES}}"
 project_key: {{PROJECT_KEY_OR_NA}}
 hierarchy_levels: {{LEVELS}}
 intake_guide_url: {{TRACKER_GUIDE_URL}}
-stack: {{LANGUAGES_FRAMEWORKS_DATASTORES}}
-dev_command: {{DEV_COMMAND_AND_PORTS}}
+stack: "{{LANGUAGES_FRAMEWORKS_DATASTORES}}"
+dev_command: "{{DEV_COMMAND_AND_PORTS}}"
 audience: {{AUDIENCE}}
 project_size: {{PROJECT_SIZE}}
 app_type: {{APP_TYPE}}

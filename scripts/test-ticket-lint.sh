@@ -388,8 +388,9 @@ ghl 'gh issue create -t `echo "x"` -b y'; advised "C1"; advised "$UNC"
 ghl 'X=$(echo "a") gh issue create -t x'; advised "C1"; advised "$UNC"
 
 hd "T12 never writes"
-before=$(ls -laR "$WORK" | cksum); lint "$J" "$(jira '"type:bug"' 'x' 'Size: m')"
-after=$(ls -laR "$WORK" | cksum); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
+snap() { find "$WORK" -exec ls -ldn {} + 2>/dev/null | sort | cksum; }   # $WORK only — `ls -laR` also lists `..`, the shared temp dir, which any concurrent mktemp changes
+before=$(snap); lint "$J" "$(jira '"type:bug"' 'x' 'Size: m')"
+after=$(snap); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
 
 # ── mutations: the fixture must hold on the real hook and break on the mutant ─────────────────────────
 check() {  # check <expect> — "silent", "has:<text>", "no:<text>", "deny", "nodeny"
