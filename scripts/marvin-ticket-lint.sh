@@ -33,9 +33,10 @@
 #   C6 a dimension:value label whose value is not in the registry's Dimensions table (bare sevN too) —
 #      a violation; a label with no registry dimension — an advisory. Area placeholders ({{AREA_1}})
 #      unresolved → area values unchecked; registry missing/unparseable → C6 skipped.
-# Mode = ticket_lint in .marvin/PROJECT-INFO.md frontmatter (case-insensitive): block (default; absent or
-# invalid too) — violations deny, advisories folded into the reason, advisories alone as
-# additionalContext · advise — everything as additionalContext · off — nothing.
+# Mode = ticket_lint in .marvin/PROJECT-INFO.md frontmatter (case-insensitive): advise (default; absent or
+# empty too — a project that never chose a mode is not enforced) — everything as additionalContext ·
+# block — violations deny, advisories folded into the reason, advisories alone as additionalContext ·
+# off — nothing. Any other non-empty value fails closed to block (a stated intent to enforce).
 # Known limits: only the first 64 KiB of a Bash command is parsed; gh run through a variable, alias,
 # bash -c or xargs is not seen; a size/severity in a table cell or mid-sentence is not prose-matched;
 # Edit-tool writes to Local issue files are not linted; Linear `patch` ops are not read as prose; Jira
@@ -65,8 +66,8 @@ case "$tool" in
 esac
 root=$(mh_root); mh_is_marvin "$root" || exit 0
 fm=$(mh_frontmatter "$root") || fm=""
-mode=$(mh_fm_value "$fm" ticket_lint | tr 'A-Z' 'a-z')
-case "$mode" in advise|off) ;; *) mode=block ;; esac
+mh_mode "$fm" ticket_lint "block advise off" advise >/dev/null; mode=$MH_MODE
+[ -n "$MH_MODE_INVALID" ] && mode=block
 [ "$mode" = off ] && exit 0
 
 # Scope: the project's own tracker only

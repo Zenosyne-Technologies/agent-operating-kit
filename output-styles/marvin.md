@@ -15,6 +15,7 @@ You work in a Marvin-orchestrated project. Its operating rules live in `.marvin/
 - Any issue/blocker: a callout — What / Impact / Cause / Fix / Needs you? — in that order.
 - Link to agent reports and tickets; never paste their content into chat.
 - End every message with Next / Open questions; drop an empty heading.
+- Same structure in project's language.
 <!-- user-update-rules:end -->
 
 Detail — evidence, test counts, file lists — lives in tickets, files and reports: name where it is, never copy it into chat.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# marvin-hook-lib.sh — shared helpers for the marvin plugin's hook scripts (v0.38.0). Sourced, never run.
+# marvin-hook-lib.sh — shared helpers for the marvin plugin's hook scripts (v0.38.0+, extended for AOS-222). Sourced, never run.
 # Every helper is read-only and bounded, and fails SILENT: on any doubt it returns 1 with nothing usable
 # printed, so the calling hook stays quiet instead of acting on a parse failure. bash 3.2 + POSIX awk
 # (mawk-safe), no jq, no python. JSON always arrives on stdin, never through the environment (a 1 MiB
@@ -341,4 +341,87 @@ mh_q() {
         else if(b<32 || b>126) printf "\\%03o", b
         else printf "%c", b } }
     END{ printf "\"" }'
+}
+
+# Layout regexes (ERE, for grep -E / [[ =~ ]]) — the single owner of the run-state names (AOS-222).
+# MH_KEY_RE matches a ticket key ONLY; the literal folder name `adhoc` is checked separately by callers.
+MH_SESSION_RE='^[0-9]{8}T[0-9]{6}Z-[0-9a-f-]{36}$'                                   # a session folder
+MH_KEY_RE='^([A-Z][A-Z0-9]*-[0-9]+|[0-9]+)$'                                         # a ticket key or a GitHub issue number (not `adhoc`)
+MH_STAMP_RE='^[0-9]{8}T[0-9]{6}Z-'                                                    # a timestamped run file
+MH_MARKER_RE='^marvin-owned (marvin:[a-z0-9-]+|orchestrator) ([0-9a-f]{8,40}|-) [0-9]{8}T[0-9]{6}Z$'   # a worktree marker line
+
+# mh_path <path> — one comparable spelling of a path: C:\x\y, C:/x/y and /c/x/y all become /c/x/y.
+# Only a drive-letter path is rewritten (cygpath -u when present, else pure bash); POSIX paths pass
+# through unchanged. In a rewritten drive-letter path, runs of `/` are squeezed to one. rc 1 on an empty input.
+mh_path() {
+  local p="${1:-}" d r
+  [ -n "$p" ] || return 1
+  case "$p" in
+    [A-Za-z]:|[A-Za-z]:[\\/]*)
+      if command -v cygpath >/dev/null 2>&1 && r=$(cygpath -u -- "$p" 2>/dev/null) && [ -n "$r" ]; then
+        p=$r
+      else
+        d=$(printf '%s' "${p%%:*}" | tr 'A-Z' 'a-z')
+        r=${p#?:}; r=${r//\\//}
+        p="/$d$r"
+      fi
+      while :; do case "$p" in *//*) p=${p//\/\//\/} ;; *) break ;; esac; done ;;   # squeeze // runs: cygpath and the fallback agree
+  esac
+  printf '%s' "$p"
+}
+
+# mh_is_key <name> — rc 0 when the name is a ticket key (MH_KEY_RE) or exactly `adhoc`: the whole key rule.
+# A single-line string only: grep matches line by line, so a name holding a newline is refused up front.
+mh_is_key() {
+  case "${1:-}" in *$'\n'*) return 1 ;; esac
+  [ "${1:-}" = adhoc ] || printf '%s' "${1:-}" | grep -Eq "$MH_KEY_RE"
+}
+
+# mh_marker_in <git admin dir> — rc 0 when it holds `marvin-owned` as a regular file (not a symlink) whose
+# FIRST line is a valid marker (MH_MARKER_RE); mh_is_marked <worktree> — the same test on that worktree's
+# admin dir. The one marker rule the sweep and the marker script share (AOS-223).
+mh_marker_in() {
+  local f="${1:-}/marvin-owned"
+  [ -n "${1:-}" ] && [ ! -L "$f" ] && [ -f "$f" ] || return 1
+  head -n 1 -- "$f" 2>/dev/null | grep -Eq "$MH_MARKER_RE"
+}
+mh_is_marked() {
+  local gd
+  gd=$(git -C "${1:-}" rev-parse --absolute-git-dir 2>/dev/null) && [ -n "$gd" ] || return 1
+  mh_marker_in "$gd"
+}
+
+# mh_mode <frontmatter> <key> <allowed, space-separated> <default> — a keyword setting. Prints the
+# resolved value and sets the global MH_MODE to it: the value lower-cased when it is in the allowed list;
+# absent, empty or not allowed → <default>. A value that is present but not allowed also sets the global
+# MH_MODE_INVALID to it as written (original case, trimmed); both globals are reset on every call. A
+# command substitution hides globals from the caller, so to read MH_MODE_INVALID call
+# `mh_mode "$fm" key "a b" a >/dev/null; mode=$MH_MODE`.
+MH_MODE=""; MH_MODE_INVALID=""
+mh_mode() {
+  local raw l
+  MH_MODE_INVALID=""; MH_MODE=$4
+  raw=$(mh_fm_value "$1" "$2")
+  if [ -n "$raw" ]; then
+    l=$(printf '%s' "$raw" | tr 'A-Z' 'a-z')
+    case "$l" in
+      *[[:space:]]*) MH_MODE_INVALID=$raw ;;
+      *) case " $3 " in *" $l "*) MH_MODE=$l ;; *) MH_MODE_INVALID=$raw ;; esac ;;
+    esac
+  fi
+  printf '%s' "$MH_MODE"
+}
+
+# mh_runs_root <any checkout dir> — <main checkout>/.marvin/runs, physical. The git common dir is the
+# main checkout's .git from a linked worktree too, so every checkout resolves to the one runs folder.
+# rc 1 for a bare repo, a non-repo, a git too old for --path-format, or a common dir that is not
+# <main>/.git — a separate-git-dir or submodule checkout therefore has no run state (rc 1), by design.
+mh_runs_root() {
+  local d="${1:-}" c m
+  [ -n "$d" ] && [ -d "$d" ] || return 1
+  [ "$(git -C "$d" rev-parse --is-bare-repository 2>/dev/null)" = false ] || return 1
+  c=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && [ -n "$c" ] || return 1
+  [ "${c##*/}" = .git ] || return 1
+  m=$(cd "$c/.." 2>/dev/null && pwd -P) && [ -n "$m" ] || return 1
+  printf '%s' "$m/.marvin/runs"
 }
