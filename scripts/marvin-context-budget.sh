@@ -19,6 +19,12 @@
 # What each level demands is owned by .marvin/agents/session-budget.md (fleet: fleet.md, fleet-child.md).
 # Contract: Marvin projects only; sub-agent invocations skipped; never writes a file; always exits 0; only
 # numbers this script computed reach the output; never blocks.
+# Known limits, decided not to fix (AOS-249): the restart threshold (fleet_restart_max_pct) is a share of the
+# FULL window and is not scaled by CLAUDE_AUTOCOMPACT_PCT_OVERRIDE — it bounds the size of the compaction
+# SUMMARY, which does not depend on where compaction fired. autoCompactEnabled:false (a host setting in the
+# user's config, not a documented surface) is not detected; fleet-child.md tells the child to act as under
+# DISABLE_AUTO_COMPACT. The successor reason repeats at most once on PostToolUse and on three prompts after a
+# compaction, each time a successor is due. The role-marker lookup costs one `git rev-parse` (~8 ms) per call.
 set -u
 . "$(dirname "$0")/lib/marvin-hook-lib.sh" 2>/dev/null || exit 0
 mh_read_stdin || exit 0

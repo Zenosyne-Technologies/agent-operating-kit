@@ -41,4 +41,4 @@ A fleet child or master follows its guide's rest rule (`fleet-child.md`, `fleet.
 
 ## The handoff
 
-What the next session — or the compacted one — cannot rebuild from the repo, tracker or handbooks: work in flight (issue key, branch, the gate each task stands at, each in-flight task's ledger path `<session>/<KEY>/ledger.md`), open decisions and blockers, every worktree you leave and whether it is safe to delete (`worktrees.md`), and the next step. Write noteworthy findings to `.marvin/MEMORY.md` before compaction — it is the continuity.
+What the next session — or the compacted one — cannot rebuild from the repo, tracker or handbooks: work in flight (issue key, branch, the gate each task stands at, each in-flight task's ledger path `<session>/<KEY>/ledger.md`), open decisions and blockers, every worktree you leave and whether it is safe to delete (`worktrees.md`), and the next step. Write noteworthy findings to `.marvin/MEMORY.md` before compaction — it is the continuity (a fleet child writes none: `fleet-child.md`).
