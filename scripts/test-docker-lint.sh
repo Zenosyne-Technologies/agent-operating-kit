@@ -176,8 +176,9 @@ dl_proj "$WORK/dl sp" 'docker_lint: off'; run "$WORK/dl sp" "$(pre_in 'docker ru
 mkdir -p "$WORK/dlplain"; printf 'docker_lint: off\n' > "$WORK/dlplain/PROJECT-INFO.md"; run "$WORK/dlplain" "$(pre_in 'docker run nginx')"; assert_empty
 
 hd "D9 never writes"
-before=$(ls -laR "$WORK" | cksum); lint 'docker run mysql'
-after=$(ls -laR "$WORK" | cksum); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
+snap() { find "$WORK" -exec ls -ldn {} + 2>/dev/null | sort | cksum; }   # $WORK only — `ls -laR` also lists `..`, the shared temp dir, which any concurrent mktemp changes
+before=$(snap); lint 'docker run mysql'
+after=$(snap); if [ "$before" = "$after" ]; then ok "nothing written"; else bad "the hook wrote something"; fi
 
 check() {  # check <expect> — expect is "silent", "fast" (under 1 s), "has:<text>" or "no:<text>"
   case "$1" in
