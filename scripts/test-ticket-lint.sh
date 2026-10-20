@@ -4,7 +4,7 @@
 # issue_write, gh issue create|edit, Local Write) × C1–C6; Jira Epic and Local children: exempt from C4;
 # label-less edits never denied; C5 prose positives and ordinary-prose negatives; registry parse
 # (resolved areas vs placeholders, sev4 vs sev4-low, milestone/release patterns, registry absent); modes
-# block (absent, invalid, # comment) / advise / off; no echo of prose or odd labels; valid JSON; sub-agent
+# block (explicit, invalid value, # comment) / advise (absent, empty) / off; no echo of prose or odd labels; valid JSON; sub-agent
 # calls fire; non-Marvin, other tools and malformed input silent; never writes; exit 0.
 # bash 3.2 + POSIX awk; python3 optional.
 set -uo pipefail
@@ -40,11 +40,11 @@ jstr() {  # JSON string literal of $1 (no python): escapes \ " tab, joins lines 
     END { printf "\"" }'
 }
 REGSRC="$ROOT/templates/marvin/agents/label-syntax.md"
-mk_project() {  # mk_project <dir> <frontmatter-line|""> <registry: resolved|placeholder|absent> [pm_tool, default jira|- for none] [coordinates]
+mk_project() {  # mk_project <dir> <frontmatter-line|""=ticket_lint: block|"-"=no mode key at all> <registry: resolved|placeholder|absent> [pm_tool, default jira|- for none] [coordinates]
   rm -rf "$1"; mkdir -p "$1/.marvin/agents"
   { printf -- '---\nkit_version: 0.39.0\n'; [ "${4:-jira}" != - ] && printf 'pm_tool: %s\n' "${4:-jira}"
     printf 'project_key: AOS\ntracker_coordinates: %s\n' "${5:-https://example.atlassian.net AOS}"
-    [ -n "$2" ] && printf '%s\n' "$2"; printf -- '---\nFacts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
+    case "$2" in -) ;; "") printf 'ticket_lint: block\n' ;; *) printf '%s\n' "$2" ;; esac; printf -- '---\nFacts.\n'; } > "$1/.marvin/PROJECT-INFO.md"
   case "$3" in
     resolved) sed 's/{{AREA_1}} · {{AREA_2}} · {{AREA_3}}/ui · core · api/' "$REGSRC" > "$1/.marvin/agents/label-syntax.md" ;;
     placeholder) cp "$REGSRC" "$1/.marvin/agents/label-syntax.md" ;;
@@ -237,13 +237,13 @@ lint "$J" "$(jira '"type:feature","area:ui","origin:roadmap","size:huge","x"')" 
 
 hd "T10 modes"
 V='"type:feature","area:ui","origin:roadmap"'
-for m in 'ticket_lint: block' 'ticket_lint: block   # strict' 'ticket_lint: strict' 'ticket_lint:' ''; do
+for m in 'ticket_lint: block' 'ticket_lint: block   # strict' 'ticket_lint: strict' 'ticket_lint: BLOCK' 'ticket_lint: soft mode'; do
   PM="$WORK/pm"; mk_project "$PM" "$m" resolved
   lint "$J" "$(jira "$V")" "$PM"; denied "C4 a non-epic"; assert_json; done
 PM="$WORK/pm"; mk_project "$PM" 'ticket_lint: block' resolved
 lint "$J" "$(jira "$GOODL,\"oddlabel\"")" "$PM"; advised "C6 label oddlabel"
 lint "$J" "$(jira "$V,\"oddlabel\"")" "$PM"; denied "Also: C6 label oddlabel has no registry dimension"
-for m in 'ticket_lint: advise' 'ticket_lint: advise # soft' "ticket_lint: 'advise'"; do
+for m in 'ticket_lint: advise' 'ticket_lint: advise # soft' "ticket_lint: 'advise'" 'ticket_lint:' 'ticket_lint: # none' '-'; do
   mk_project "$PM" "$m" resolved
   lint "$J" "$(jira "$V")" "$PM"; advised "C4 a non-epic create without a size: label"; assert_json; done
 for m in 'ticket_lint: off' 'ticket_lint: off # quiet'; do
@@ -435,8 +435,11 @@ hd "M9 C6 value check removed — T9 size:huge must catch it"
 mutation c6 '    if ((dm in UNK) || ((dm, (dm == "sev" ? x : v)) in OK)) continue' '    continue' "has:C6" "$P" "$(pre_in "$J" "$(jira "$GOODL,\"size:huge\"")")"
 hd "M10 placeholder areas checked — T9 placeholder registry must catch it"
 mutation placeholder '  v = c[4]; if (index(v, "{{")) { o = o "|" dm ":?"; next }' '  v = c[4]' silent "$PP" "$(pre_in "$J" "$(jira '"type:feature","area:anything","origin:roadmap","size:m"')")"
-hd "M11 absent mode defaults to advise — T10 must catch it"
-mutation mode 'case "$mode" in advise|off) ;; *) mode=block ;; esac' 'case "$mode" in block|off) ;; *) mode=advise ;; esac' deny "$P" "$(pre_in "$J" "$(jira "$V")")"
+hd "M11 absent mode defaults to block instead of advise — T10 must catch it"
+PABS="$WORK/pabs"; mk_project "$PABS" - resolved; PSTR="$WORK/pstr"; mk_project "$PSTR" 'ticket_lint: strict' resolved
+mutation mode 'mh_mode "$fm" ticket_lint "block advise off" advise >/dev/null; mode=$MH_MODE' 'mh_mode "$fm" ticket_lint "block advise off" block >/dev/null; mode=$MH_MODE' nodeny "$PABS" "$(pre_in "$J" "$(jira "$V")")"
+hd "M11b an unknown explicit value no longer fails closed — T10 must catch it"
+mutation modebad '[ -n "$MH_MODE_INVALID" ] && mode=block' ':' deny "$PSTR" "$(pre_in "$J" "$(jira "$V")")"
 EDIT_SIZE="{\"cloudId\":\"c\",\"issueIdOrKey\":\"AOS-1\",\"fields\":{\"description\":$(jstr 'Size: m')}}"
 hd "M12 label-less edits treated as full sets — T3 description-only edit must catch it"
 mutation full '  full = (op == "create" || hf)' '  full = 1' nodeny "$P" "$(pre_in "$JE" "$EDIT_SIZE")"

@@ -243,13 +243,13 @@ grep -qF 'hooks/user-update-rules.txt' scripts/marvin-session-start.sh || ss="$s
 # ticket lint to the tracker-write tools
 IFS= read -r -d '' HR_PY <<'PY' || true
 import json
-want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh"],
-        "PostToolUse": ["marvin-context-budget.sh"],
+want = {"SessionStart": ["marvin-session-start.sh", "marvin-worktree-sweep.sh", "marvin-docker-sweep.sh", "marvin-runs-sync.sh --session-start"],
+        "PostToolUse": ["marvin-context-budget.sh", "marvin-runs-sync.sh --post-tool"],
         "UserPromptSubmit": ["marvin-context-budget.sh", "marvin-update-gate.sh"],
-        "Stop": ["marvin-update-gate.sh"], "SubagentStart": ["marvin-subagent-rules.sh"],
-        "SubagentStop": ["marvin-subagent-gate.sh"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
+        "Stop": ["marvin-update-gate.sh", "marvin-runs-sync.sh --stop"], "SubagentStart": ["marvin-subagent-rules.sh"],
+        "SubagentStop": ["marvin-subagent-gate.sh", "marvin-worktree-mark.sh", "marvin-runs-sync.sh --subagent-stop"], "PreToolUse": ["marvin-brief-lint.sh", "marvin-docker-lint.sh", "marvin-ticket-lint.sh"]}
 matcher = {"SubagentStart": "^marvin:", "SubagentStop": "^marvin:", "marvin-brief-lint.sh": "Agent|Task",
-           "marvin-docker-lint.sh": "Bash",
+           "marvin-docker-lint.sh": "Bash", "marvin-runs-sync.sh --post-tool": "Write|Edit|MultiEdit",
            "marvin-ticket-lint.sh": "^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$"}
 h = json.load(open("hooks/hooks.json"))["hooks"]
 for ev, scripts in want.items():
@@ -273,7 +273,26 @@ lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-li
 if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
 else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
 
-# ── 20. fleet-pairs: every routed fleet event has both halves — the child's sending half in
+# ── 20. runs-layout: the briefing template carries the per-session run layout literal. The SessionStart
+# run-state hook (marvin-runs-sync.sh --session-start) creates a project's session folder only when the
+# installed briefing.md carries it, so a template that lost it would silently switch every install back
+# to the flat, checkout-local layout (AOS-224).
+BR=templates/marvin/agents/briefing.md
+if grep -qF '.marvin/runs/<session>/' "$BR" 2>/dev/null; then pass runs-layout
+else fail runs-layout "$BR lacks the per-session layout literal .marvin/runs/<session>/ (the run-state hook gates on it)"; fi
+
+# ── 21. run-patterns: the prune allowlist in briefing.md item 11 quotes the hook lib's session and key
+# regexes verbatim. The orchestrator validates prune targets by the briefing's copy and the hooks carry by
+# the lib's, so a copy that drifted would prune what the hooks never carry, or refuse what they do (AOS-224).
+rp=""
+for c in MH_SESSION_RE MH_KEY_RE; do
+  v=$(sed -nE "s/^$c='([^']*)'.*/\\1/p" scripts/lib/marvin-hook-lib.sh)
+  if [ -z "$v" ]; then rp="$rp $c unreadable in marvin-hook-lib.sh;"
+  elif ! grep -qF -- "\`$v\`" "$BR" 2>/dev/null; then rp="$rp $BR lacks $c \`$v\` verbatim;"; fi
+done
+[ -z "$rp" ] && pass run-patterns || fail run-patterns "${rp# }"
+
+# ── 22. fleet-pairs: every routed fleet event has both halves — the child's sending half in
 # fleet-child.md and the master's receiving half in fleet.md, each marked by its **E-<event>** tag
 # exactly once per guide (the kit's dominant defect is a rule written in one half and not the other)
 fp=""
