@@ -276,7 +276,8 @@ mh_fleet_init() {
 # empty) and MH_FLEET_EPIC (child only, else empty); both are reset on every call. Call it in the main shell
 # (`mh_fleet_role "$root" >/dev/null`) and read the variables — inside $( ) they are lost. The marker is
 # <this worktree's private git dir>/marvin-fleet: lines role=child|master and epic=<KEY>. Never followed if a
-# symlink; first 4 KiB only; read-only, silent, rc 0 always — a hook never blocks.
+# symlink; first 4 KiB only; read-only, silent, rc 0 always — a hook never blocks. Parsing is strict: `role=` and
+# `epic=` must start the line, with no whitespace around the `=` (a hand-edited marker with either is no marker).
 mh_fleet_role() {
   local root="$1" gd mk body role epic
   MH_FLEET_ROLE=; MH_FLEET_EPIC=
