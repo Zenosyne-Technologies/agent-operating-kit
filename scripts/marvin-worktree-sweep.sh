@@ -24,9 +24,14 @@
 #   G8 a git-ignored `.env` or `.env.*` (any depth, but never inside a wholly ignored directory such as
 #      node_modules/ or .venv/) that the main checkout lacks at the same relative path, or holds with
 #      other bytes
-#   G9 a git-ignored file under its .marvin/runs/ (but not .marvin/runs/.gitignore itself) that the
-#      project's run folder (mh_runs_root) lacks at the same path, or holds with other bytes — run state
-#      a hook did not carry home
+#   G9 a carried run file (ledger, build brief or report) under its .marvin/runs/ that the project's run
+#      folder (mh_runs_root) lacks at the same path, or holds with other bytes — run state a hook did not
+#      carry home. Only the kinds the hooks carry count: exactly .marvin/runs/<session>/<KEY|adhoc>/<name>
+#      (MH_SESSION_RE, mh_is_key) with <name> ledger.md, build-brief*.md or a timestamped (MH_STAMP_RE)
+#      *.md — plus a flat-layout file exactly at .marvin/runs/<KEY|adhoc>/<name>, the source shape of
+#      marvin-runs-migrate.sh, whose deferred and `duplicate:` run state stays there by its contract until
+#      migrated; every other ignored file there (Codex .out/.err/.json/.txt, .shots/, .carried-*, a
+#      non-session or deeper leftover, .marvin/runs/.gitignore) is scratch and never keeps the worktree
 #   G5 its HEAD is in no branch other than its own (its own origin copy does not count)
 # Otherwise: `git worktree remove` (never --force), then — only when origin has a copy of its
 # branch — the local branch is deleted by compare-and-delete on the commit the guards checked,
@@ -149,11 +154,21 @@ g8() {
   [ "$s1" = 0 ] || return 1
   [ "$s0" = 0 ] || { printf 'G8 ignored files unreadable'; return 1; }
 }
+# carried <path under .marvin/runs/> — rc 0 for G9's kinds: a run file the hooks carry (marvin-runs-sync.sh),
+# or a flat <KEY|adhoc>/<name> source marvin-runs-migrate.sh has not moved (deferred, or left as `duplicate:`)
+carried() {
+  local s k n
+  case "$1" in *$'\n'*|*/*/*/*) return 1 ;; ?*/?*/?*) ;; ?*/?*) mh_is_key "${1%%/*}"; return ;; *) return 1 ;; esac
+  s=${1%%/*}; k=${1#*/}; n=${k#*/}; k=${k%%/*}
+  [[ $s =~ $MH_SESSION_RE ]] && mh_is_key "$k" || return 1
+  case "$n" in ledger.md|build-brief*.md) return 0 ;; *.md) [[ $n =~ $MH_STAMP_RE ]] ;; *) return 1 ;; esac
+}
 g9() {
   local f s0 s1
   git -C "$1" ls-files -z --others --ignored --exclude-standard -- .marvin/runs/ 2>/dev/null | {
     while IFS= read -r -d '' f; do
-      case "$f" in .marvin/runs/.gitignore) continue ;; .marvin/runs/?*) ;; *) continue ;; esac
+      case "$f" in .marvin/runs/?*) ;; *) continue ;; esac
+      carried "${f#.marvin/runs/}" || continue
       [ -n "$RUNS" ] && cmp -s "$1/$f" "$RUNS/${f#.marvin/runs/}" || { printf 'G9 run state not in the project: %s' "$(q "$f")"; exit 1; }
     done; exit 0; }
   s0=${PIPESTATUS[0]} s1=${PIPESTATUS[1]}

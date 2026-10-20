@@ -109,17 +109,34 @@ fx_G8n() {  # a wholly ignored dependency folder is never descended into: its .e
   mkdir -p "$WT/e8n/node_modules/x" "$WT/e8n/.venv/lib"; echo S=1 > "$WT/e8n/node_modules/x/.env"; echo S=1 > "$WT/e8n/.venv/lib/.env.local"
   age "$WT/e8n"; sweep "$1"; state "$WT/e8n"; }
 S9=20261019T120000Z-0123abcd-0123-4567-89ab-0123456789ab
-runwt() {  # runwt <name> — a marked, merged worktree holding an ignored run file .marvin/runs/$S9/K-1/x.md
+RP=20261019T120500Z-developer.md   # a timestamped report: a kind the hooks carry
+runwt() {  # runwt <name> — a marked, merged worktree holding an ignored report .marvin/runs/$S9/K-1/$RP
   fresh; mkwt "$1" develop; work "$WT/$1" "$1"; merge_into develop "$1"
   mkdir -p "$WT/$1/.marvin/runs/$S9/K-1" "$R/.marvin/runs"
   printf '*\n' > "$WT/$1/.marvin/runs/.gitignore"; printf '*\n' > "$R/.marvin/runs/.gitignore"
-  echo report > "$WT/$1/.marvin/runs/$S9/K-1/x.md"
+  echo report > "$WT/$1/.marvin/runs/$S9/K-1/$RP"
 }
 fx_G9()  { runwt g9; age "$WT/g9"; sweep "$1"; state "$WT/g9"; }                       # not in the project
-fx_G9c() { runwt g9c; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo other > "$R/.marvin/runs/$S9/K-1/x.md"; age "$WT/g9c"; sweep "$1"; state "$WT/g9c"; }  # differs
-fx_G9b() { runwt g9b; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/x.md"; age "$WT/g9b"; sweep "$1"; state "$WT/g9b"; }  # identical
-fx_G9g() { runwt g9g; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/x.md"   # only .marvin/runs/.gitignore differs
+fx_G9c() { runwt g9c; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo other > "$R/.marvin/runs/$S9/K-1/$RP"; age "$WT/g9c"; sweep "$1"; state "$WT/g9c"; }  # differs
+fx_G9b() { runwt g9b; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/$RP"; age "$WT/g9b"; sweep "$1"; state "$WT/g9b"; }  # identical
+fx_G9g() { runwt g9g; mkdir -p "$R/.marvin/runs/$S9/K-1"; echo report > "$R/.marvin/runs/$S9/K-1/$RP"   # only .marvin/runs/.gitignore differs
            printf '*\n# local\n' > "$WT/g9g/.marvin/runs/.gitignore"; age "$WT/g9g"; sweep "$1" "${@:2}"; state "$WT/g9g"; }
+fx_G9s() {  # only scratch under .marvin/runs/: Codex sidecars, .shots/, a .carried-* list, a non-session leftover, an upgrade capture
+  runwt g9s; rm -f "$WT/g9s/.marvin/runs/$S9/K-1/$RP"; local d="$WT/g9s/.marvin/runs"
+  echo o > "$d/$S9/K-1/20261019T120500Z-codex.out"; echo '{}' > "$d/$S9/K-1/20261019T120500Z-codex.json"
+  echo p > "$d/$S9/K-1/20261019T120500Z-codex.prompt.txt"; echo c > "$d/$S9/K-1/.carried-a1"
+  mkdir -p "$d/notasession/K-1" "$d/$S9/K-1/20261019T120500Z-codex.shots"; echo t > "$d/upgrade-20261019T110000Z-probe.txt"
+  echo n > "$d/notasession/K-1/20261019T110000Z-x.md"; echo png > "$d/$S9/K-1/20261019T120500Z-codex.shots/a.md"
+  age "$WT/g9s"; sweep "$1" "${@:2}"; state "$WT/g9s"; }
+fx_G9f() {  # a flat-layout run file the migration has not moved (deferred, or its `duplicate:`): kept until migrated
+  runwt g9f; rm -f "$WT/g9f/.marvin/runs/$S9/K-1/$RP"; mkdir -p "$WT/g9f/.marvin/runs/K-1"
+  echo old > "$WT/g9f/.marvin/runs/K-1/20261019T110000Z-old.md"; age "$WT/g9f"; sweep "$1" "${@:2}"; state "$WT/g9f"; }
+fx_G9m() {  # a Codex report (timestamped *.md) the project holds with other bytes
+  runwt g9m; rm -f "$WT/g9m/.marvin/runs/$S9/K-1/$RP"; echo mine > "$WT/g9m/.marvin/runs/$S9/K-1/20261019T120500Z-codex.md"
+  mkdir -p "$R/.marvin/runs/$S9/K-1"; echo theirs > "$R/.marvin/runs/$S9/K-1/20261019T120500Z-codex.md"; age "$WT/g9m"; sweep "$1"; state "$WT/g9m"; }
+fx_G9l() {  # an adhoc ledger the project lacks
+  runwt g9l; rm -f "$WT/g9l/.marvin/runs/$S9/K-1/$RP"; mkdir -p "$WT/g9l/.marvin/runs/$S9/adhoc"
+  echo row > "$WT/g9l/.marvin/runs/$S9/adhoc/ledger.md"; age "$WT/g9l"; sweep "$1"; state "$WT/g9l"; }
 fx_SC3() {  # an UNMARKED worktree that is prunable, and one whose directory is gone: skipped, no prune advice
   fresh; local n; for n in up um; do git -C "$R" worktree add -q -b "$n" "$WT/$n" develop; done
   rm -f "$WT/up/.git"; rm -rf "$WT/um"; sweep "$1"; }
@@ -295,15 +312,21 @@ fx_G8d "$SWEEP"; assert_out "kept: $WT/e8d — G8 ignored app/.env differs from 
 fx_G8b "$SWEEP" --check; assert_out "kept: $WT/e8b — G8"; assert_no_out "would remove"
 fx_G8n "$SWEEP"; assert_out "removed: $WT/e8n"; assert_out "state: gone"; assert_no_out "G8"   # node_modules/x/.env, .venv/lib/.env.local: not descended into
 
-hd "G9 an ignored run file under .marvin/runs/ keeps the worktree unless the project holds the same bytes"
-fx_G9 "$SWEEP";  assert_out "kept: $WT/g9 — G9 run state not in the project: .marvin/runs/$S9/K-1/x.md"; assert_out "state: kept"
+hd "G9 a carried run file (ledger, build brief or report) keeps the worktree unless the project holds the same bytes; scratch never does"
+fx_G9 "$SWEEP";  assert_out "kept: $WT/g9 — G9 run state not in the project: .marvin/runs/$S9/K-1/$RP"; assert_out "state: kept"
 fx_G9c "$SWEEP"; assert_out "kept: $WT/g9c — G9 run state not in the project"; assert_out "state: kept"
 fx_G9b "$SWEEP"; assert_out "removed: $WT/g9b"; assert_out "state: gone"
 fx_G9g "$SWEEP"; assert_out "removed: $WT/g9g"; assert_out "state: gone"; assert_no_out "G9"   # .marvin/runs/.gitignore is not run state
+fx_G9s "$SWEEP"; assert_out "removed: $WT/g9s"; assert_out "state: gone"; assert_no_out "G9"   # scratch kinds never keep it
+fx_G9m "$SWEEP"; assert_out "kept: $WT/g9m — G9 run state not in the project: .marvin/runs/$S9/K-1/20261019T120500Z-codex.md"; assert_out "state: kept"
+fx_G9l "$SWEEP"; assert_out "kept: $WT/g9l — G9 run state not in the project: .marvin/runs/$S9/adhoc/ledger.md"; assert_out "state: kept"
+fx_G9s "$SWEEP" --at-risk; assert_only "state: kept"   # --at-risk: scratch is never at risk
+fx_G9f "$SWEEP"; assert_out "kept: $WT/g9f — G9 run state not in the project: .marvin/runs/K-1/20261019T110000Z-old.md"; assert_out "state: kept"
+fx_G9f "$SWEEP" --at-risk; assert_only "at-risk: $WT/g9f — G9 run state not in the project: .marvin/runs/K-1/20261019T110000Z-old.md"$'\n'"state: kept"
 
 hd "AR1 --at-risk lists every worktree with a G8 or G9 condition, marked or NOT, and removes nothing"
 fx_AR1 "$SWEEP"; assert_rc 0; assert_only "at-risk: $WT/ar1 — G8 ignored .env differs from the main checkout"$'\n'"state: kept"
-fx_AR2 "$SWEEP"; assert_rc 0; assert_only "at-risk: $WT/ar2 — G9 run state not in the project: .marvin/runs/$S9/K-1/x.md"$'\n'"state: kept"
+fx_AR2 "$SWEEP"; assert_rc 0; assert_only "at-risk: $WT/ar2 — G9 run state not in the project: .marvin/runs/$S9/K-1/$RP"$'\n'"state: kept"
 fresh; git -C "$R" worktree add -q -b clean "$WT/clean" develop; work "$WT/clean" c; mkwt mk develop; work "$WT/mk" mk; merge_into develop mk; age "$WT/mk"
 sweep "$SWEEP" --at-risk; assert_rc 0; assert_empty; assert_there "$WT/clean"; assert_there "$WT/mk"   # clean ones: no line; a removable marked one: untouched
 fx_G9g "$SWEEP" --at-risk; assert_only "state: kept"   # the runs .gitignore never counts
@@ -344,7 +367,12 @@ mutation SCOPEPRUNE fx_SC3 '  if [ -n "$prunable" ]; then entry_marked || { skip
 mutation SCOPEMISSING fx_SC3 '    entry_marked || { skipped; return 0; }; keep "$p" "missing — run git worktree prune"; return 0; }' '    keep "$p" "missing — run git worktree prune"; return 0; }' "skipped: 2"
 mutation G8DIR fx_G8n '  git -C "$1" ls-files -z --others --ignored --exclude-standard --directory -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' \
                       '  git -C "$1" ls-files -z --others --ignored --exclude-standard -- '"':(glob)**/.env' ':(glob)**/.env.*'"' 2>/dev/null | {' "state: gone"
-mutation G9IGNORE fx_G9g '      case "$f" in .marvin/runs/.gitignore) continue ;; .marvin/runs/?*) ;; *) continue ;; esac' '      case "$f" in .marvin/runs/?*) ;; *) continue ;; esac' "state: gone"
+mutation G9KIND fx_G9s '      carried "${f#.marvin/runs/}" || continue' '      :' "state: gone"
+mutation G9IGNORE fx_G9g '      carried "${f#.marvin/runs/}" || continue' '      :' "state: gone"
+mutation G9MD fx_G9s '  case "$n" in ledger.md|build-brief*.md) return 0 ;; *.md) [[ $n =~ $MH_STAMP_RE ]] ;; *) return 1 ;; esac' '  case "$n" in ledger.md|build-brief*.md) return 0 ;; *) [[ $n =~ $MH_STAMP_RE ]] ;; esac' "state: gone"
+mutation G9SHAPE fx_G9s '  [[ $s =~ $MH_SESSION_RE ]] && mh_is_key "$k" || return 1' '  :' "state: gone"
+mutation G9DEPTH fx_G9s '  case "$1" in *$'"'"'\n'"'"'*|*/*/*/*) return 1 ;; ?*/?*/?*) ;; ?*/?*) mh_is_key "${1%%/*}"; return ;; *) return 1 ;; esac' '  case "$1" in *$'"'"'\n'"'"'*) return 1 ;; ?*/?*/?*) ;; ?*/?*) mh_is_key "${1%%/*}"; return ;; *) return 1 ;; esac' "state: gone"
+mutation G9FLAT fx_G9f '  case "$1" in *$'"'"'\n'"'"'*|*/*/*/*) return 1 ;; ?*/?*/?*) ;; ?*/?*) mh_is_key "${1%%/*}"; return ;; *) return 1 ;; esac' '  case "$1" in *$'"'"'\n'"'"'*|*/*/*/*) return 1 ;; ?*/?*/?*) ;; *) return 1 ;; esac' "G9 run state"
 mutation ATRISK fx_AR1 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      return 0' "at-risk: $WT/ar1"
 mutation ATRISKG9 fx_AR2 '      why=$(g8 "$p") && why=$(g9 "$p") && return 0' '      why=$(g8 "$p") && return 0' "at-risk: $WT/ar2"
 mutation ATRISKEXIT fx_ARX '  { [ "$HOOK" = 1 ] || [ "$ATRISK" = 1 ]; } && exit 0; exit 1' '  [ "$HOOK" = 1 ] && exit 0; exit 1' "rc:0"

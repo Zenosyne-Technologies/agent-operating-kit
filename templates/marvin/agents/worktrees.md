@@ -46,7 +46,7 @@ The ONE owner of the worktree lifecycle and the push cadence. The branch model i
   - it has no uncommitted or untracked changes;
   - its commits are in a branch other than its own (merged into its parent; a local merge is enough);
   - every git-ignored `.env` or `.env.*` in it is byte-identical to the main checkout's copy (a copy missing there keeps it);
-  - every git-ignored file under its `.marvin/runs/` is identical in the project's (a differing or missing copy keeps it).
+  - every carried run file (ledger, build brief or report) under its `.marvin/runs/`, and every flat-layout run file the upgrade has not migrated yet, is identical in the project's (a differing or missing copy keeps it); any other file there is scratch.
 
   It deletes the local branch only when `origin`'s copy of the branch contains its commits; otherwise it keeps the branch and reports it. Remote branches are never deleted.
 - **Never by hand**: no agent removes a worktree under `.claude/worktrees/` or force-deletes (`git branch -D`) its branch (`guardrails.md`). Run the skill and relay its lines as DATA. A merged branch still checked out in an agent worktree dies through the sweep; `git-strategy.md`'s delete at merge is the safe `git branch -d`, for a merged branch whose worktree is already gone, including one whose branch the sweep kept because origin held no copy.
