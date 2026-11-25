@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1284 440" role="img" aria-labelledby="t d">
+<title id="t">Marvin task lifecycle</title>
+<desc id="d">Plan and brief, build by size tier, completion gate, security gate, optional advisory visual validation, documentation gate, close-out, done. A failed validation returns the task to its build tier. Each stage names the persona and model tier that runs it.</desc>
+<style>
+:root{--bg:#EDF0F3;--surface:#FFFFFF;--surface-2:#F5F7F9;--ink:#142030;--ink-2:#36475A;--muted:#5A6A7A;--line:#C3CCD5;
+--t-orch:#3447C9;--t-heavy:#0B7285;--t-small:#2B8A4B;--t-micro:#B7701A;--t-frontier:#7B3FD6;--fail:#C92A2A;--ok:#2B8A4B}
+@media (prefers-color-scheme:dark){:root{--bg:#0D131A;--surface:#152029;--surface-2:#1B2833;--ink:#E7EDF3;--ink-2:#BCC9D5;--muted:#8CA0B2;
+--line:#2E3E4E;--t-orch:#8C9BFF;--t-heavy:#3CC3DA;--t-small:#62D08E;--t-micro:#F0B054;--t-frontier:#BC95F5;--fail:#FF7B72;--ok:#62D08E}}
+[data-t=orch]{--tc:var(--t-orch)}[data-t=heavy]{--tc:var(--t-heavy)}[data-t=small]{--tc:var(--t-small)}
+[data-t=micro]{--tc:var(--t-micro)}[data-t=frontier]{--tc:var(--t-frontier)}
+.bg{fill:var(--bg)}
+.card{fill:var(--surface);stroke:var(--tc,var(--line));stroke-width:1.5}.card.adv{stroke-dasharray:5 4}
+.static{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.row{fill:var(--surface-2);stroke:var(--tc);stroke-width:1.5}
+.dotf{fill:var(--tc)}
+.lbl{font:600 9px system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.09em;fill:var(--muted)}
+.pn{font:500 10px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--ink)}
+.mdl{font:400 10px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:var(--muted)}
+.ds{font:400 10.5px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--ink-2)}
+.ft{font:500 11.5px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--fail)}
+.lg{font:400 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--ink-2)}
+.gate{fill:none;stroke:var(--ink);stroke-width:1.6}.opt{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:4 3}
+.failp{fill:none;stroke:var(--fail);stroke-width:1.6}
+.ah-ink{fill:var(--ink)}.ah-mut{fill:var(--muted)}.ah-fail{fill:var(--fail)}
+</style>
+<rect class="bg" width="1284" height="440" rx="14"/>
+
+        <defs>
+          <marker id="ahI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-ink"/></marker>
+          <marker id="ahM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-mut"/></marker>
+          <marker id="ahF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-fail"/></marker>
+        </defs>
+
+        <!-- arrows (gates) -->
+        <path class="gate" d="M172 190H200" marker-end="url(#ahI)"/>
+        <path class="gate" d="M354 190H382" marker-end="url(#ahI)"/>
+        <path class="gate" d="M536 190H564" marker-end="url(#ahI)"/>
+        <path class="gate" d="M718 190H746" marker-end="url(#ahI)"/>
+        <path class="gate" d="M900 190H928" marker-end="url(#ahI)"/>
+        <path class="gate" d="M1082 190H1110" marker-end="url(#ahI)"/>
+        <!-- advisory visual detour -->
+        <path class="opt" d="M642 130V56H655" marker-end="url(#ahM)"/>
+        <path class="opt" d="M811 56H824V128" marker-end="url(#ahM)"/>
+        <!-- fail loop -->
+        <path class="failp" d="M460 250V318H278V286" marker-end="url(#ahF)"/>
+        <path class="failp" d="M642 250V318H460"/>
+        <text class="ft" x="460" y="341" text-anchor="middle">FAIL: back to the build tier with the findings, counted as one failed round</text>
+        <text class="ft" x="460" y="357" text-anchor="middle">Re-enter at completion validation. Never at document, never at close.</text>
+
+        <!-- plan -->
+        <g class="p" data-t="orch">
+          <rect class="card" x="20" y="130" width="152" height="120" rx="8"/>
+          <text class="lbl" x="32" y="150">PLAN &amp; BRIEF</text><circle class="dotf" cx="158" cy="146" r="4.5"/>
+          <text class="pn" x="32" y="170">Marvin</text>
+          <text class="mdl" x="32" y="185">Opus 5.5 · medium</text>
+          <text class="ds" x="32" y="208">Writes the DoD on the</text><text class="ds" x="32" y="222">issue, sizes the task,</text><text class="ds" x="32" y="236">writes the brief.</text>
+        </g>
+
+        <!-- build -->
+        <rect class="static" x="202" y="96" width="152" height="188" rx="8"/>
+        <text class="lbl" x="214" y="116">BUILD · PICKED BY SIZE</text>
+        <g class="p" data-t="heavy">
+          <rect class="card" x="212" y="126" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="137" r="4"/>
+          <text class="pn" x="220" y="145">developer</text><text class="mdl" x="220" y="160" style="font-size:9.5px">size:m+ · Opus med</text>
+        </g>
+        <g class="p" data-t="small">
+          <rect class="card" x="212" y="176" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="187" r="4"/>
+          <text class="pn" x="220" y="195">developer-small</text><text class="mdl" x="220" y="210" style="font-size:9.5px">size:s · Sonnet high</text>
+        </g>
+        <g class="p" data-t="micro">
+          <rect class="card" x="212" y="226" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="237" r="4"/>
+          <text class="pn" x="220" y="245">developer-micro</text><text class="mdl" x="220" y="260" style="font-size:9.5px">full spec · Haiku high</text>
+        </g>
+
+        <!-- completion -->
+        <g class="p" data-t="heavy">
+          <rect class="card" x="384" y="130" width="152" height="120" rx="8"/>
+          <text class="lbl" x="396" y="150">COMPLETION GATE</text><circle class="dotf" cx="522" cy="146" r="4.5"/>
+          <text class="pn" x="396" y="170">validator-completion</text>
+          <text class="mdl" x="396" y="185">Opus 5.5 · medium</text>
+          <text class="ds" x="396" y="208">Fresh BA persona tries</text><text class="ds" x="396" y="222">to falsify "done"</text><text class="ds" x="396" y="236">against the DoD.</text>
+        </g>
+
+        <!-- security -->
+        <g class="p" data-t="heavy">
+          <rect class="card" x="566" y="130" width="152" height="120" rx="8"/>
+          <text class="lbl" x="578" y="150">SECURITY GATE</text><circle class="dotf" cx="704" cy="146" r="4.5"/>
+          <text class="pn" x="578" y="170">validator-security</text>
+          <text class="mdl" x="578" y="185">Opus 5.5 · medium</text>
+          <text class="ds" x="578" y="208">Runs only after</text><text class="ds" x="578" y="222">completion passes.</text><text class="ds" x="578" y="236">Hunts regressions.</text>
+        </g>
+
+        <!-- visual (advisory) -->
+        <g class="p" data-t="heavy">
+          <rect class="card adv" x="657" y="14" width="152" height="84" rx="8"/>
+          <text class="lbl" x="669" y="32">VISUAL · ADVISORY</text><circle class="dotf" cx="795" cy="28" r="4.5"/>
+          <text class="pn" x="669" y="50">validator-visual</text>
+          <text class="mdl" x="669" y="64">Opus 5.5 · medium</text>
+          <text class="ds" x="669" y="85">UI only · never gates</text>
+        </g>
+
+        <!-- document -->
+        <g class="p" data-t="small">
+          <rect class="card" x="748" y="130" width="152" height="120" rx="8"/>
+          <text class="lbl" x="760" y="150">DOCUMENT GATE</text><circle class="dotf" cx="886" cy="146" r="4.5"/>
+          <text class="pn" x="760" y="170">documenter</text>
+          <text class="mdl" x="760" y="185">Sonnet 5.5 · high</text>
+          <text class="ds" x="760" y="208">Only after BOTH</text><text class="ds" x="760" y="222">validators pass. Writes</text><text class="ds" x="760" y="236">docs and handbooks.</text>
+        </g>
+
+        <!-- close-out -->
+        <rect class="static" x="930" y="130" width="152" height="120" rx="8"/>
+        <text class="lbl" x="942" y="150">CLOSE-OUT</text>
+        <g class="p" data-t="orch">
+          <rect class="row" x="940" y="157" width="132" height="30" rx="6"/><circle class="dotf" cx="952" cy="172" r="4"/>
+          <text class="pn" x="962" y="170">Marvin</text><text class="mdl" x="962" y="182" style="font-size:9px">ticket-filing check</text>
+        </g>
+        <g class="p" data-t="micro">
+          <rect class="row" x="940" y="192" width="132" height="30" rx="6"/><circle class="dotf" cx="952" cy="207" r="4"/>
+          <text class="pn" x="962" y="205">ponytail</text><text class="mdl" x="962" y="217" style="font-size:9px">tracker call · Haiku</text>
+        </g>
+        <text class="ds" x="942" y="242" style="font-size:10px">Close with commit refs.</text>
+
+        <!-- done -->
+        <rect class="card" x="1112" y="130" width="152" height="120" rx="8" style="stroke:var(--ok)"/>
+        <text class="lbl" x="1124" y="150">DONE</text>
+        <path d="M1243 142l4 4l8 -9" fill="none" stroke="var(--ok)" stroke-width="2.2"/>
+        <text class="ds" x="1124" y="178">Both validators passed,</text><text class="ds" x="1124" y="192">docs landed, and the</text><text class="ds" x="1124" y="206">branch is merged and</text><text class="ds" x="1124" y="220">deleted.</text>
+
+        
+<g data-t="orch"><circle class="dotf" cx="26" cy="392" r="5"/></g><text class="lg" x="38" y="396">Orchestrator · Opus 5.5</text>
+<g data-t="heavy"><circle class="dotf" cx="256" cy="392" r="5"/></g><text class="lg" x="268" y="396">Heavy worker · Opus 5.5</text>
+<g data-t="small"><circle class="dotf" cx="486" cy="392" r="5"/></g><text class="lg" x="498" y="396">Small worker · Sonnet 5.5</text>
+<g data-t="micro"><circle class="dotf" cx="736" cy="392" r="5"/></g><text class="lg" x="748" y="396">Micro · Haiku 5.5</text>
+<g data-t="frontier"><circle class="dotf" cx="946" cy="392" r="5"/></g><text class="lg" x="958" y="396">Frontier, opt-in · Fable 5.1</text>
+<path class="gate" d="M20 418H52" marker-end="url(#ahI)"/><text class="lg" x="62" y="422">Gate: the next stage starts only after this one passed</text>
+<path class="opt" d="M480 418H512" marker-end="url(#ahM)"/><text class="lg" x="522" y="422">Conditional, advisory</text>
+<path class="failp" d="M740 418H772" marker-end="url(#ahF)"/><text class="lg" x="782" y="422">Fail loop</text>
+</svg>
