@@ -14,19 +14,37 @@
 # false clean). Never writes.
 set -u
 [ "$#" -le 1 ] || { echo "usage: marvin-placeholder-check.sh [<project-root>]" >&2; exit 2; }
-plug=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd) || exit 2
+plug=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd) || { echo "marvin-placeholder-check.sh: cannot resolve the plugin root" >&2; exit 2; }
 root="${1:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 [ -d "$root" ] || { echo "marvin-placeholder-check.sh: no such directory" >&2; exit 2; }
 cd "$root" 2>/dev/null || exit 2
 [ -d "$plug/templates/docs" ] || { echo "marvin-placeholder-check.sh: no templates/docs under the plugin root" >&2; exit 2; }
-seeded=$(cd "$plug/templates/docs" && find . -type f 2>/dev/null | sed 's|^\./||')
+# The three audience indexes are seeded from the ONE template handbooks/audience-index.md (install step 5, upgrade 4a/4c:
+# .docs/handbooks/{developer,user,admin}/index.md); the template itself never exists in a consumer. test-placeholder-check.sh
+# ties this list to both skills' wording.
+AUDIENCES="developer user admin"
+listing=$(cd "$plug/templates/docs" && find . -type f) \
+  || { echo "marvin-placeholder-check.sh: could not list templates/docs under the plugin root" >&2; exit 2; }
+seeded=$(printf '%s\n' "$listing" | sed 's|^\./||')
+mapped=""
+while IFS= read -r rel; do
+  [ -n "$rel" ] || continue
+  case "$rel" in
+    handbooks/audience-index.md) for aud in $AUDIENCES; do mapped="$mapped
+handbooks/$aud/index.md"; done ;;
+    *) mapped="$mapped
+$rel" ;;
+  esac
+done <<EOT
+$seeded
+EOT
 set --
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
   [ "$#" -eq 0 ] || set -- "$@" -o
   set -- "$@" -path ".docs/$rel"
 done <<EOT
-$seeded
+$mapped
 EOT
 # find (no -L) never follows a symlink, on BSD and GNU alike; grep gets plain files only.
 files() {

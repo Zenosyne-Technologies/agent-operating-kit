@@ -25,6 +25,9 @@ empty() { if [ -z "$OUT" ]; then ok "no output"; else bad "output: $OUT"; fi; }
 render() {  # render <project dir>
   rm -rf "$1"; mkdir -p "$1/.marvin" "$1/.docs"
   cp -R "$ROOT/templates/marvin/." "$1/.marvin/"; cp -R "$ROOT/templates/docs/." "$1/.docs/"
+  # as the install seeds them: three audience indexes from the one template, which itself never lands in a consumer
+  for aud in developer user admin; do mkdir -p "$1/.docs/handbooks/$aud"; cp "$ROOT/templates/docs/handbooks/audience-index.md" "$1/.docs/handbooks/$aud/index.md"; done
+  rm -f "$1/.docs/handbooks/audience-index.md"
   cp "$ROOT/templates/pm/jira/tracker-config.md" "$ROOT/templates/pm/jira/stats-collection-brief.md" "$1/.marvin/agents/"
   printf 'see @.marvin/CLAUDE.marvin.md\n' > "$1/CLAUDE.md"
   find "$1" -name '*.md' | while read -r f; do render_file "$f" > "$f.new" && mv "$f.new" "$f"; done
@@ -95,6 +98,8 @@ printf 'old {{PROJECT_KEY}}\n' > "$P/.marvin/backups/2026-10-30/ticket-filing.md
 printf 'mine {{PROJECT_KEY}}\n' > "$P/.docs/project-management/issues/x.md"; printf 'mine {{PROJECT_KEY}}\n' > "$P/.docs/guide.md"
 run "$P"; rc 0; empty
 printf 'x {{INSTALL_DATE}}\n' >> "$P/.docs/index.md"; run "$P"; rc 1; has "unresolved: .docs/index.md:"; lacks "backups"; lacks "issues/x.md"; lacks "guide.md"
+# the audience indexes are seeded from handbooks/audience-index.md as three files: all three are scanned
+for a in developer user admin; do render "$P"; printf 'x {{INSTALL_DATE}}\n' >> "$P/.docs/handbooks/$a/index.md"; run "$P"; rc 1; has "unresolved: .docs/handbooks/$a/index.md:"; done
 # the seeded set is derived from the plugin's own templates/docs, at depth too
 nested=$(cd "$ROOT/templates/docs" && find . -mindepth 2 -type f | head -n 1 | sed 's|^\./||')
 if [ -n "$nested" ]; then render "$P"; printf 'x {{INSTALL_DATE}}\n' >> "$P/.docs/$nested"; run "$P"; rc 1; has "unresolved: .docs/$nested:"; else ok "no nested seeded doc to pin (skipped)"; fi
@@ -132,6 +137,22 @@ calls_dot() { grep -Fq 'marvin-placeholder-check.sh" .' "$1"; }
 calls_dot "$INSTALL_SKILL" && ok "install skill passes ." || bad "install skill lacks the explicit . root"
 calls_dot "$UPGRADE_SKILL" && ok "upgrade skill passes ." || bad "upgrade skill lacks the explicit . root"
 
+hd "P15 the script's audience list equals the skills' wording, and the template exists"
+aud=$(grep -E '^AUDIENCES=' "$SCRIPT" | sed -E 's/^AUDIENCES="([^"]*)"/\1/' | tr ' ' ',')
+[ -f "$ROOT/templates/docs/handbooks/audience-index.md" ] && ok "template handbooks/audience-index.md exists" || bad "template missing"
+for sk in "$INSTALL_SKILL" "$UPGRADE_SKILL"; do
+  grep -Fq ".docs/handbooks/{$aud}/" "$sk" && ok "$(basename "$(dirname "$sk")") names .docs/handbooks/{$aud}/" || bad "$sk does not name .docs/handbooks/{$aud}/ — the script's AUDIENCES drifted"
+done
+
+hd "P16 an unreadable templates/docs is exit 2 with a one-line reason — never a quietly narrower scan"
+if [ "$(id -u)" = 0 ]; then ok "running as root (skipped)"; else
+  d="$WORK/m-lsfail"; mkdir -p "$d/scripts"; cp "$SCRIPT" "$d/scripts/s.sh"; cp -R "$ROOT/templates" "$d/templates"
+  render "$P"; chmod 000 "$d/templates/docs/handbooks/developer"
+  OUT=$(bash "$d/scripts/s.sh" "$P" 2>"$WORK/err"); RC=$?; rc 2; empty
+  grep -q 'could not list templates/docs' "$WORK/err" && ok "reason names the failure" || bad "no reason: $(cat "$WORK/err")"
+  chmod 755 "$d/templates/docs/handbooks/developer"
+fi
+
 # ── mutations: break one line of the script in a copy; the named test must then fail ─────────────────
 # The copy lives in $d/scripts/ beside a templates symlink, so its plugin-root derivation still finds templates/docs.
 mutation() {  # mutation <name> <exact line> <replacement> <setup-fn> <expect: clean|hits|lost|exit2>
@@ -142,7 +163,7 @@ mutation() {  # mutation <name> <exact line> <replacement> <setup-fn> <expect: c
   case "$5" in
     hits)  if [ "$RC" = 1 ]; then ok "mutation $1 caught"; else bad "mutation $1 survived"; fi ;;   # original clean here
     clean) if [ "$RC" = 0 ]; then ok "mutation $1 caught"; else bad "mutation $1 survived"; fi ;;   # original reports hits here
-    lost)  if [ "$RC" != 1 ]; then ok "mutation $1 caught"; else bad "mutation $1 survived"; fi ;;   # original reports hits here; the mutant must not
+    lost)  if [ "$RC" = 0 ]; then ok "mutation $1 caught"; else bad "mutation $1 survived"; fi ;;   # original reports hits here; the mutant must exit 0 exactly (a mutant that merely errs is no catch)
     exit2) if [ "$RC" != 2 ]; then ok "mutation $1 caught"; else bad "mutation $1 survived"; fi ;;  # original fails the check here
   esac
 }
@@ -157,15 +178,19 @@ s_owned()  { render "$P"; mkdir -p "$P/.docs/project-management/issues"; printf 
 s_seeded() { render "$P"; printf 'x {{INSTALL_DATE}}\n' >> "$P/.docs/index.md"; }
 s_term()   { render "$P"; printf '\nw {{SCOPE_X}}\n' >> "$P/.marvin/agents/stats-collection-brief.md"; }
 s_unread() { render "$P"; printf 'x\n' > "$P/.marvin/agents/secret.md"; chmod 000 "$P/.marvin/agents/secret.md"; }
+s_aud()    { render "$P"; printf 'x {{INSTALL_DATE}}\n' >> "$P/.docs/handbooks/developer/index.md"; }
+s_lsfail() { render "$P"; local d="$WORK/m-lsfail"; rm -rf "$d/templates"; cp -R "$ROOT/templates" "$d/templates"; chmod 000 "$d/templates/docs/handbooks/developer"; }
 # target lines are read from the script itself (exact), then edited with a literal first-occurrence replace
 ed() { S="$1" A="$2" B="$3" awk 'BEGIN{s=ENVIRON["S"];a=ENVIRON["A"];i=index(s,a); if(i) s=substr(s,1,i-1) ENVIRON["B"] substr(s,i+length(a)); print s}'; }
 L_ALLOW=$(grep -F "grep -vE ':[0-9]+:" "$SCRIPT"); L_GREP=$(grep -F "xargs -0 grep -noE" "$SCRIPT"); L_FIND=$(grep -F 'find .marvin' "$SCRIPT")
 L_DOCS=$(grep -F 'find .docs' "$SCRIPT"); L_CLAUDE=$(grep -F "printf 'CLAUDE.md" "$SCRIPT"); L_BAD=$(grep -F 'if [ -n "$bad" ]' "$SCRIPT")
+L_AUD=$(grep -F 'handbooks/audience-index.md)' "$SCRIPT"); L_LS=$(grep -F "could not list templates/docs" "$SCRIPT")
 hd "M1 allowlist dropped — P3 must catch it"
 mutation allow "$L_ALLOW" "  | cat \\" s_allow hits
 hd "M2 only {{NAME}} / {{NAME: matched, or only {{NAME}} — P2 must catch the {{NAME + …}} and : forms"
-mutation plus "$L_GREP" "$(ed "$L_GREP" '[^A-Za-z0-9_]|$)' '\}\}|:)')" s_plus lost
-mutation colon "$L_GREP" "$(ed "$L_GREP" '([^A-Za-z0-9_]|$)' '\}\}')" s_colon lost
+# realistic mutants: each drops ONE form and must exit 0 on its own fixture (not a bad-line exit 2)
+mutation plus "$L_GREP" "$(ed "$L_GREP" '[^A-Za-z0-9_]|$)' '[}:]|$)')" s_plus lost
+mutation colon "$L_GREP" "$(ed "$L_GREP" '[^A-Za-z0-9_]|$)' '[^A-Za-z0-9_:]|$)')" s_colon lost
 hd "M3 runs/ and reports/ scanned — P4 must catch it"
 mutation runs "$L_FIND" "$(ed "$L_FIND" '-path .marvin/runs -o ' '')" s_runs hits
 hd "M3b backups/ scanned — P10 must catch it"
@@ -185,10 +210,14 @@ mutation term "$L_ALLOW" "$(ed "$L_ALLOW" '(\}|:)$' '')" s_term clean
 hd "M9 read failures swallowed — P13 must catch it"
 mutation swallow "$L_GREP" "$(ed "$L_GREP" '2>&1' '2>/dev/null')" s_unread exit2
 mutation nobad "$L_BAD" ':' s_unread exit2
+hd "M9b audience indexes unmapped (the template path is scanned instead) — P10 must catch it"
+mutation audience "$L_AUD" "$(ed "$L_AUD" 'handbooks/audience-index.md)' 'handbooks/audience-index.md-never)')" s_aud clean
+hd "M9c the templates/docs listing failure ignored — P16 must catch it"
+mutation lsfail "$L_LS" "  || :" s_lsfail exit2
 hd "M10 a skill without the explicit . root fails P14's check"
 printf 'run bash "${CLAUDE_PLUGIN_ROOT}/scripts/marvin-placeholder-check.sh" from the repo root\n' > "$WORK/skill-mut.md"
 calls_dot "$WORK/skill-mut.md" && bad "mutation skill-root survived" || ok "mutation skill-root caught"
-if [ "$(id -u)" = 0 ]; then :; else chmod 644 "$P/.marvin/agents/secret.md" 2>/dev/null; fi
+if [ "$(id -u)" = 0 ]; then :; else chmod 755 "$WORK/m-lsfail/templates/docs/handbooks/developer" 2>/dev/null; chmod 644 "$P/.marvin/agents/secret.md" 2>/dev/null; fi
 
 printf '\n----\ntest-placeholder-check: %d passed, %d failed\n' "$PASSED" "$FAILED"
 [ "$FAILED" -eq 0 ]
