@@ -3,3 +3,11 @@ hooks/*.json text eol=lf
 docs/**/*.html text eol=lf
 docs/**/*.css text eol=lf
 docs/**/*.js text eol=lf
+docs/**/*.txt text eol=lf
+docs/**/*.md text eol=lf
+docs/**/*.json text eol=lf
+docs/**/*.svg text eol=lf
+site/** text eol=lf
+# binary last so it overrides the text rules above (site/** would otherwise claim the fonts)
+*.woff2 binary -eol
+*.png binary -eol

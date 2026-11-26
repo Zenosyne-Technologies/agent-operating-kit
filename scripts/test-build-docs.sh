@@ -325,6 +325,212 @@ OUT=$(python3 "$MOD" --root "$R4" 2>&1); RC=$?; rc 2; has "no generator named 'n
 R5="$WORK/r5"; mkrepo "$R5"; rm "$R5/site/concepts/x.html"
 OUT=$(python3 "$MOD" --root "$R5" 2>&1); RC=$?; rc 2; has 'x.html'
 
+# ---------------------------------------------------------------- theme (AOS-302)
+# The Emprove dark theme in site/assets/site.css, the self-hosted fonts and the scoped diagram palette. One python
+# checker (THEME_PY) parses the CSS (comments stripped, @media/@supports recursed) and runs one mode per test.
+CSS="$ROOT/site/assets/site.css"
+THEME_PY='
+import colorsys, re, sys
+mode, path = sys.argv[1], sys.argv[2]
+raw = open(path, encoding="utf-8").read()
+css = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+def parse(s, chain, out):
+    i = 0
+    while True:
+        j = s.find("{", i)
+        if j < 0:
+            return out
+        pre = s[i:j].split(";")[-1].strip()
+        depth, k = 1, j + 1
+        while k < len(s) and depth:
+            depth += {"{": 1, "}": -1}.get(s[k], 0); k += 1
+        body = s[j + 1:k - 1]
+        if re.match(r"@(media|supports)\b", pre):
+            parse(body, chain + [pre], out)
+        else:
+            out.append((chain, pre, body))
+        i = k
+RULES = parse(css, [], [])
+def decls(body):
+    return {m.group(1): m.group(2).strip() for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;]+)", body)}
+root = {}
+for chain, sel, body in RULES:
+    if sel == ":root" and not chain:
+        root.update(decls(body))
+TIERS = ("orch", "heavy", "small", "micro", "frontier")
+SCOPE = re.compile(r"^\.(diagram|tier-legend)(?![\w-])")
+bad = []
+def tier_values():
+    vals = {}
+    for chain, sel, body in RULES:
+        for k, v in decls(body).items():
+            if k.startswith("--tier-"):
+                vals[k[len("--tier-"):]] = v
+    return vals
+if mode == "tokens":
+    want = {"--em-black": "#00090C", "--em-green": "#00FF57", "--em-text": "#F4F6FF", "--em-text-2": "#A7ACBF",
+            "--em-surface-1": "#0B0D14", "--em-surface-2": "#10131C", "--em-surface-3": "#161A26", "--em-red": "#FF3355"}
+    for k, v in want.items():
+        if root.get(k, "").upper() != v:
+            bad.append(f":root {k} is {root.get(k)!r}, want {v}")
+elif mode == "scoped":
+    for chain, sel, body in RULES:
+        if "--tier-" not in body:
+            continue
+        if any(not c.startswith(("@media", "@supports")) for c in chain) or sel.startswith("@"):
+            bad.append(f"--tier-* inside an at-rule that is not @media/@supports: {chain} {sel}")
+            continue
+        for part in (p.strip() for p in sel.split(",")):
+            if not SCOPE.match(part):
+                bad.append(f"--tier-* used in a rule whose selector does not start with .diagram/.tier-legend: {part!r}")
+    if "--tier-" in "".join(v for v in root.values()) or any(k.startswith("--tier-") for k in root):
+        bad.append("--tier-* declared or used on :root")
+    vals = tier_values()
+    if sorted(vals) != sorted(TIERS):
+        bad.append(f"tier set is {sorted(vals)}, want {sorted(TIERS)}")
+    for t in TIERS:
+        sels = [sel for _c, sel, body in RULES if re.search(r"--tc\s*:\s*var\(--tier-" + t + r"\)", body)]
+        if not any(f"[data-tier=\"{t}\"]" in s for s in sels):
+            bad.append(f"no [data-tier=\"{t}\"] rule sets --tc: var(--tier-{t})")
+    if "Three Colours Rule" not in raw or "decision 4" not in raw:
+        bad.append("the palette exception comment must name the Three Colours Rule and the architect decision 4")
+elif mode == "contrast":
+    def rgb(h):
+        h = h.strip().lstrip("#")
+        if not re.fullmatch(r"[0-9A-Fa-f]{6}", h):
+            raise SystemExit(f"not a #RRGGBB colour: {h!r}")
+        return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    def lin(c): return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    def lum(h): r, g, b = map(lin, rgb(h)); return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    def ratio(a, b): x, y = sorted((lum(a), lum(b)), reverse=True); return (x + 0.05) / (y + 0.05)
+    def lab(h):
+        r, g, b = map(lin, rgb(h))
+        X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+        Y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+        f = lambda t: t ** (1 / 3) if t > 0.008856 else 7.787 * t + 16 / 116
+        return 116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))
+    def de(a, b): return sum((p - q) ** 2 for p, q in zip(lab(a), lab(b))) ** 0.5
+    def hue(h): return colorsys.rgb_to_hls(*rgb(h))[0] * 360
+    def dhue(a, b): d = abs(hue(a) - hue(b)) % 360; return min(d, 360 - d)
+    body_r = ratio(root["--em-text-2"], root["--em-black"])
+    print("body", root["--em-text-2"], "on", root["--em-black"] + ":", f"{body_r:.2f}")
+    if body_r < 4.5:
+        bad.append(f"body text contrast {body_r:.2f} < 4.5")
+    surf, green = root["--em-surface-1"], root["--em-green"]
+    vals = tier_values()
+    if sorted(vals) != sorted(TIERS):
+        bad.append(f"tier set is {sorted(vals)}, want {sorted(TIERS)}")
+    for t, v in sorted(vals.items()):
+        r, e, h = ratio(v, surf), de(v, green), dhue(v, green)
+        print(f"tier {t} {v}: {r:.2f}:1 on {surf}, dE {e:.1f} and hue {h:.0f} deg from {green}")
+        if r < 3.0:
+            bad.append(f"tier {t} {v} contrast {r:.2f} < 3.0 on {surf}")
+        if not (e >= 20 or h >= 25):
+            bad.append(f"tier {t} {v} too close to laser green (dE {e:.1f}, hue {h:.0f} deg)")
+for b in bad:
+    print("PROBLEM:", b)
+sys.exit(1 if bad else 0)
+'
+theme() { OUT=$(python3 -c "$THEME_PY" "$1" "${2:-$CSS}" 2>&1); RC=$?; }
+
+hd "theme: tokens"
+theme tokens; rc 0
+
+hd "theme: dark only"
+if grep -rIl 'prefers-color-scheme' "$ROOT/site" >/dev/null 2>&1; then bad "a prefers-color-scheme rule in site/"; else ok "no prefers-color-scheme in site/"; fi
+grep -q 'color-scheme: *dark' "$CSS" && ok "site.css declares color-scheme: dark" || bad "site.css lacks color-scheme: dark"
+
+hd "theme: no remote"
+# No http(s) URL anywhere in site/ but the repo's own GitHub URL (and paths under it); no protocol-relative
+# url(//…) / href="//…" / src="//…" / @import either. The verbatim OFL licence texts (site/assets/fonts/OFL-*.txt)
+# are exempt: the licence must ship unmodified and it cites its own FAQ URL. The fonts README writes its source URLs
+# scheme-less so it needs no exemption.
+OUT=$(python3 - "$ROOT/site" <<'PY' 2>&1
+import re, sys
+from pathlib import Path
+base = Path(sys.argv[1]); bad = []
+ALLOW = re.compile(r"https://github\.com/Zenosyne-Technologies/agent-operating-kit(?![\w.-])")
+for f in sorted(base.rglob("*")):
+    if not f.is_file() or (f.parent.name == "fonts" and re.fullmatch(r"OFL-[\w-]+\.txt", f.name)):
+        continue
+    try:
+        t = f.read_bytes().decode("utf-8")
+    except UnicodeDecodeError:
+        continue  # binary (woff2): no text URLs to scan
+    t = ALLOW.sub("", t)
+    for m in re.finditer(r"(?i)\bhttps?://\S*|(?:url\(\s*[\"']?|(?:href|src)\s*=\s*[\"']?)//\S*|@import\b[^;]*", t):
+        bad.append(f"{f.relative_to(base)}: {m.group(0)[:80]}")
+print("\n".join(bad) or "clean"); sys.exit(1 if bad else 0)
+PY
+); RC=$?; rc 0
+OUT=$(python3 - "$ROOT/docs" <<'PY' 2>&1
+import re, sys
+from pathlib import Path
+base = Path(sys.argv[1]); bad = []; n = 0
+SKIP = {"images", "release-notes", "decisions", "superpowers"}
+pat = re.compile(r"(?i)(?:url\(\s*[\"']?|(?:href|src)\s*=\s*[\"']?|@import\s+[\"']?)(?:https?:)?//fonts\.(?:googleapis|gstatic)\.com")
+for f in sorted(base.rglob("*")):
+    rel = f.relative_to(base)
+    if not f.is_file() or rel.parts[0] in SKIP or f.suffix not in (".html", ".css", ".js", ".svg"):
+        continue
+    n += 1
+    if pat.search(f.read_bytes().decode("utf-8", "replace")):
+        bad.append(str(rel))
+print(f"scanned {n} output files; google-fonts refs: {bad or 'none'}"); sys.exit(1 if bad or n == 0 else 0)
+PY
+); RC=$?; rc 0; has 'google-fonts refs: none'
+
+hd "theme: palette scoped"
+theme scoped; rc 0
+if grep -rl -- '--tier-' "$ROOT/site" --include='*.html' --include='*.js' >/dev/null 2>&1; then bad "--tier-* used outside site.css"; else ok "--tier-* only in site.css"; fi
+printf '.diagram, .tier-legend { --tier-orch:#8E9CF5; --tier-heavy:#4FC4DB; --tier-small:#B4CF6A; --tier-micro:#E9B35C; --tier-frontier:#BB9CF2 }\n.chip { border-color: var(--tier-orch) }\n' > "$WORK/leak.css"
+theme scoped "$WORK/leak.css"; [ "$RC" = 1 ] && ok "a --tier-* use outside the scope is caught" || bad "scope leak not caught ($OUT)"
+
+hd "theme: contrast"
+theme contrast; rc 0; has 'body #A7ACBF on #00090C'; has 'tier small'
+printf ':root { --em-black:#00090C; --em-surface-1:#0B0D14; --em-green:#00FF57; --em-text-2:#A7ACBF }\n.diagram { --tier-orch:#8E9CF5; --tier-heavy:#4FC4DB; --tier-small:#10F060; --tier-micro:#E9B35C; --tier-frontier:#BB9CF2 }\n' > "$WORK/green.css"
+theme contrast "$WORK/green.css"; [ "$RC" = 1 ] && ok "a small tier near laser green is caught" || bad "near-green small tier not caught ($OUT)"
+
+hd "theme: fonts self-hosted"
+FONTS_SHA="52de70091213c9eab340e2a7ac59e7b6b2b94e089bf69ef38479b22cfde4274c  ibm-plex-mono-latin-400.woff2
+f17f51948d10b67d907393ccbac551912f2c2bd2c5af19be3aabe2f456f8fe54  ibm-plex-mono-latin-500.woff2
+6438d7b8ea9c7c3992d5e2fd2afdb1ff948570a3ef0bedae76247b51632960ba  montserrat-latin-variable.woff2"
+for d in site/assets/fonts docs/assets/fonts; do
+  if [ -d "$ROOT/$d" ] && (cd "$ROOT/$d" && printf '%s\n' "$FONTS_SHA" | shasum -a 256 -c - >/dev/null 2>&1); then ok "$d woff2 match the recorded sha256"; else bad "$d woff2 missing or sha256 mismatch"; fi
+done
+for f in OFL-Montserrat.txt OFL-IBMPlexMono.txt README.md; do
+  [ -f "$ROOT/site/assets/fonts/$f" ] && cmp -s "$ROOT/site/assets/fonts/$f" "$ROOT/docs/assets/fonts/$f" && ok "$f shipped" || bad "$f missing or differs in docs/"
+done
+grep -rIl 'tereo *Gothic\|StereoGothic' "$ROOT/site" "$ROOT/docs/assets" >/dev/null 2>&1 && bad "a Stereo Gothic reference" || ok "no Stereo Gothic"
+OUT=$(grep -oE 'url\([^)]*\)' "$CSS" | sort -u)
+has 'url(fonts/montserrat-latin-variable.woff2)'; has 'url(fonts/ibm-plex-mono-latin-400.woff2)'; has 'url(fonts/ibm-plex-mono-latin-500.woff2)'
+OUT=$(tr '\n' ' ' < "$CSS"); has 'font-weight: 400 700'; has 'font-display: swap'; has 'unicode-range: U+0000-00FF'
+if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  for p in site/assets/fonts/x.woff2 docs/assets/fonts/x.woff2 docs/images/f/x.png; do
+    OUT=$(git -C "$ROOT" check-attr text -- "$p"); case "$OUT" in *": text: unset") ok "$p is binary to git";; *) bad "$p not binary: $OUT";; esac
+  done
+  OUT=$(git -C "$ROOT" check-attr eol -- site/assets/site.css docs/assets/fonts/OFL-Montserrat.txt docs/assets/fonts/README.md); has 'site/assets/site.css: eol: lf'; has 'OFL-Montserrat.txt: eol: lf'; has 'README.md: eol: lf'
+fi
+
+hd "build: binary assets copied byte-for-byte"
+# a binary asset carrying a BOM, CRLF and lone CR is copied untouched, and --check compares it byte-for-byte
+fx_binary_asset() {
+  local d="$WORK/fx-bin"; mkrepo "$d"; mkdir -p "$d/site/assets/fonts"
+  printf 'wOF2\357\273\277a\r\nb\rc\000\377' > "$d/site/assets/fonts/t.woff2"
+  sbuild "$d" || return 1
+  cmp -s "$d/site/assets/fonts/t.woff2" "$d/docs/assets/fonts/t.woff2" || return 1
+  scheck "$d"; [ "$RC" = 0 ] || return 1
+  printf 'wOF2\357\273\277a\nb\nc\000\377' > "$d/docs/assets/fonts/t.woff2"
+  scheck "$d"; [ "$RC" = 1 ] && printf '%s' "$OUT" | grep -Fq 'STALE docs/assets/fonts/t.woff2'
+}
+fx_binary_asset && ok "woff2 bytes survive the build and a CR-only drift reports STALE" || bad "fx_binary_asset"
+
+hd "theme: site.js scroll-spy"
+JS="$ROOT/site/assets/site.js"
+OUT=$(cat "$JS"); has 'IntersectionObserver'; has 'function initScrollSpy'; has '.sidebar'
+if grep -Eq '\b(import|require)\b|https?:' "$JS"; then bad "site.js pulls a dependency or a URL"; else ok "site.js is dependency-free"; fi
+
 hd "site: the real repo is fresh and hand sources name no model"
 OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
 if grep -rniE '\b(opus|sonnet|haiku|fable|gpt-[0-9])' "$ROOT/site" --include='*.html' --include='*.json' --include='*.md' -l >/dev/null 2>&1; then bad "a model name is hand-typed in site/"; else ok "no model name in site/"; fi
