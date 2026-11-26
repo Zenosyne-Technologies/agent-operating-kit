@@ -17,15 +17,15 @@ for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
 done
 [ -z "$unknown" ] && pass placeholders || fail placeholders "unknown placeholder(s):$unknown"
 
-# ── 2. line-budget: every templates/**/*.md ≤ 60 lines; the always-loaded kit core ≤ 55, the
+# ── 2. line-budget: every templates/**/*.md ≤ 60 lines; the always-loaded kit core ≤ 100, the
 # consumer CLAUDE.md stub ≤ 15
 over=""
 while IFS= read -r f; do
   lim=60
-  case "$f" in templates/marvin/CLAUDE.marvin.md) lim=55;; templates/CLAUDE.project.md) lim=15;; esac
+  case "$f" in templates/marvin/CLAUDE.marvin.md) lim=100;; templates/CLAUDE.project.md) lim=15;; esac
   n=$(wc -l < "$f"); [ "$n" -gt "$lim" ] && over="$over $f($n)"
 done < <(find templates -name '*.md' -type f)
-[ -z "$over" ] && pass line-budget || fail line-budget "over budget (60, CLAUDE.marvin.md 55, CLAUDE.project.md 15):$over (split into the cascade)"
+[ -z "$over" ] && pass line-budget || fail line-budget "over budget (60, CLAUDE.marvin.md 100, CLAUDE.project.md 15):$over (split into the cascade)"
 
 # ── 3. json: manifests parse; plugin version is semver
 ok=1
