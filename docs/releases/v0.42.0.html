@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.42.0 — Session clean-up fix (session worktrees and run state survive clean-up) - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html" aria-current="page">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-42-0-session-clean-up-fix-session-worktrees-and-run-state-survive-clean-up">v0.42.0 — Session clean-up fix (session worktrees and run state survive clean-up)</h1>
+<p><strong>Consumers act once.</strong></p>
+<ol>
+<li>Pre-set <code>ticket_lint</code>, <code>worktree_sweep</code> and <code>docker_lint</code> if you want other than the defaults.</li>
+<li>Run <code>claude plugin update marvin</code>, then <code>/marvin:upgrade-agent-os</code> in one session.</li>
+<li>Restart the other open sessions.</li>
+<li>Run the upgrade again once the sessions it deferred have finished (<code>upgrades/v0.42.0.md</code>).</li>
+</ol>
+<p><strong>Why.</strong> Two architects lost live state. The v0.37 sweep treated every worktree under <code>.claude/worktrees/</code> as disposable. A desktop session that had made no commit of its own and had been quiet for 15 minutes passed every guard, and another session's sweep removed it. The orchestrator's git-ignored ledger, briefs and run reports lived inside that worktree and went with it (CAL-184; Erik's questions).</p>
+<p><strong>Host facts (verified on CLI 2.1.289 and the desktop app).</strong></p>
+<ul>
+<li>SessionEnd fires with reason <code>other</code> on the app's 15-minute idle pause as well as on archive. A hook cannot tell the two apart, so the kit uses no session lock.</li>
+<li><code>/clear</code> changes <code>session_id</code>; resume keeps it.</li>
+<li>The app's archive pools a worktree and keeps its ignored files.</li>
+<li>The app's built-in write guard blocks Write and Edit into the main checkout from worktree sessions and their sub-agents, but not Bash.</li>
+<li>SubagentStop fires before Claude Code removes a clean agent worktree. Its <code>cwd</code> is <code>.claude/worktrees/agent-&lt;agent_id&gt;</code>.</li>
+</ul>
+<p><strong>What changed.</strong></p>
+<ul>
+<li><strong>Sweep scope (AOS-223).</strong>
+<ul>
+<li>A <code>marvin-owned</code> marker is written at SubagentStop for exactly the agent's own isolated worktree. A worktree made by hand is marked with <code>/marvin:clean-worktrees --mark</code>, which refuses one older than 60 minutes.</li>
+<li>The sweep considers only marked worktrees. Everything else is the app's.</li>
+<li>G8 keeps a worktree whose ignored <code>.env*</code> differs from, or is missing in, the main checkout. It does not look inside wholly ignored folders.</li>
+<li>G9 keeps a worktree whose carried run file is not identical in the project.</li>
+<li><code>--at-risk</code> reports both, for every worktree.</li>
+</ul></li>
+<li><p><strong>Run state (AOS-224).</strong> Writers write in their own checkout. Hooks carry the files to <code>&lt;project&gt;/.marvin/runs/&lt;UTC&gt;-&lt;session_id&gt;/&lt;KEY|adhoc&gt;/</code>, which is the only copy readers use:</p>
+<ul>
+<li>SessionStart creates the folder, the <code>.gitignore</code> and seeds the local copies.</li>
+<li>PostToolUse copies the orchestrator's writes; a ledger only when it extends the project copy.</li>
+<li>SubagentStop copies brief-named reports, with clash sidecars.</li>
+<li>Stop catches up a Bash-written ledger or build brief.</li>
+</ul>
+<p>Ledgers chain across sessions (<code>chain:</code> first line). The prune follows the new layout. The key rule admits single-letter prefixes and bare GitHub issue numbers.</p></li>
+<li><strong>Settings (AOS-225, AOS-228, AOS-230).</strong>
+<ul>
+<li><code>worktree_sweep: on | check | off</code>; absent = check.</li>
+<li>An absent <code>ticket_lint</code> means advise.</li>
+<li><code>docker_lint: advise | off</code>.</li>
+<li>A missing mode key never enforces, and hooks never gate on the kit version.</li>
+</ul></li>
+<li><strong>Recovery (AOS-226).</strong> <code>session-recovery.md</code>, with the recreate and prune recipe in <code>worktrees.md</code> <em>Where</em>.</li>
+<li><strong>Windows (AOS-227).</strong> <code>mh_path</code> decodes and normalises hook paths. There is a <code>windows-latest</code> CI job, non-blocking until its first green run, plus LF <code>.gitattributes</code> and a README section.</li>
+<li><strong>Update gate (AOS-229).</strong> U3 needs five bold points and U4 a heading after the last status line, in any language. English stays the documented default.</li>
+<li><strong>Precedence (AOS-231).</strong> Only selective staging and the tagging authority stay gated. The branch model, merge style and push cadence are project-refinable.</li>
+<li><strong>Upgrade readiness (AOS-237).</strong> Step 6b runs on every upgrade. It probes first, and only when there is run state to move does it ask which sessions are open, defer them, run <code>marvin-runs-migrate.sh</code>, report at-risk files and both sweeps' <code>--check</code> output, and ask for a restart.</li>
+</ul>
+<p><strong>Acceptance.</strong></p>
+<ul>
+<li>Gates:
+<ul>
+<li>all 17 test suites green;</li>
+<li><code>validate-kit</code> 22/22, with new checks <code>runs-layout</code> and <code>run-patterns</code>;</li>
+<li>full migration mutation sweep 119/119 caught.</li>
+</ul></li>
+<li>Rule-5 scratch-install walk-throughs passed: install plus run state, recovery, and upgrade readiness. The defects they found are fixed.</li>
+<li>The branch had per-task reviews, a whole-branch review and a merge review against v0.41.0.</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.41.0..HEAD</code>, non-merge commits only; the container epic AOS-222 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>the automatic worktree sweep now removes only worktrees Marvin marked as its own, and run state (ledger, briefs, run reports) lives in the project's <code>.marvin/runs/&lt;session&gt;/&lt;KEY&gt;/</code>, carried there by hooks from any worktree.</strong> Rules: <code>.marvin/agents/worktrees.md</code> and <code>.marvin/agents/briefing.md</code> item 11.</p>
+<ul>
+<li><strong>Before updating the plugin</strong>, decide enforcement in <code>.marvin/PROJECT-INFO.md</code> frontmatter. An absent key never enforces: <code>ticket_lint</code> → advise, <code>worktree_sweep</code> → check (report only), <code>docker_lint</code> → advise. The upgrade writes <code>ticket_lint: block</code>, <code>worktree_sweep: on</code> and <code>docker_lint: advise</code> only where a key is missing, directly after <code>ticket_lint</code>.</li>
+<li>Update with the procedure the SessionStart notice prints. Then run <code>/marvin:upgrade-agent-os</code> in ONE session. It refreshes the cascade (new <code>session-recovery.md</code>; <code>briefing.md</code>, <code>worktrees.md</code>, <code>tidying.md</code>, <code>git-strategy.md</code>, <code>ticket-filing.md</code>, <code>escalation-ladder.md</code>, <code>validation-agent.md</code>, <code>session-budget.md</code>, the kit core). Its new step 6b moves existing run state into the per-session layout with <code>marvin-runs-migrate.sh</code>. It asks which sessions are still open mid-task and defers those.</li>
+<li><strong>Restart every other open session</strong>, because sessions started earlier run the old, unscoped sweep until restarted. <code>/clear</code> or restart the upgrading session before its next task.</li>
+<li><strong>Once the deferred sessions have finished or been cleared</strong>, run <code>/marvin:upgrade-agent-os</code> again. It moves the run state it deferred.</li>
+<li>Agent worktrees made before this release are never swept by the kit; remove them by hand or leave them. Desktop session worktrees are left to the app's own clean-up.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li><code>worktree_sweep: on | check | off</code> in <code>PROJECT-INFO</code> (absent = check, report only); the upgrade writes <code>on</code> when missing.</li>
+<li><code>docker_lint: advise | off</code> in <code>PROJECT-INFO</code> (absent = advise).</li>
+<li>Run-state hooks carry the ledger, build briefs and run reports to the project's <code>.marvin/runs/&lt;UTC&gt;-&lt;session_id&gt;/&lt;KEY|adhoc&gt;/</code> from any worktree (SessionStart, PostToolUse, SubagentStop, and a Stop catch-up for Bash-written ledgers); a clash keeps both copies and saves a <code>.clash-*</code> sidecar.</li>
+<li><code>/marvin:clean-worktrees --mark &lt;path&gt;</code> and the sweep's report-only <code>--at-risk</code> mode.</li>
+<li><code>.marvin/agents/session-recovery.md</code>: the procedure when a session's worktree vanishes mid-task.</li>
+<li>Upgrade step 6b (session readiness) and <code>scripts/marvin-runs-migrate.sh</code>: run state moved into the per-session layout, open sessions deferred, at-risk files and both sweeps' <code>--check</code> lines reported.</li>
+<li>A Windows CI job (Git Bash), a README Windows section and LF <code>.gitattributes</code>; the job is non-blocking until its first green run.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The worktree sweep removes only worktrees Marvin marked as its own (agent worktrees at stop, hand-made ones via <code>--mark</code>); session and older worktrees are never touched. G8/G9 keep a worktree whose ignored <code>.env*</code> or carried run file is not safely in the main checkout.</li>
+<li>Ledgers chain across sessions (the newest earlier ledger for a key is authoritative), and the milestone prune follows the per-session layout.</li>
+<li>An absent <code>ticket_lint</code> now means advise; an unknown explicit value still blocks.</li>
+<li>The update gate checks the structure of callouts and tails, not their English labels, so a project may write them in its own language.</li>
+<li>The precedence clause gates only selective staging and the tagging authority; the branch model, merge style and push cadence are project-refinable.</li>
+<li>Hook stdin paths are decoded and compared in one form (<code>mh_path</code>), so Windows <code>C:\</code> paths work.</li>
+<li>The task key rule admits single-letter prefixes and bare GitHub issue numbers.</li>
+<li>Codex: the forwarder's prompt file is <code>&lt;base&gt;.prompt.txt</code>, and its DATA files are passed as absolute paths under the orchestrator's checkout.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Pre-set <code>ticket_lint</code>, <code>worktree_sweep</code> and <code>docker_lint</code> before updating the plugin if you want other than the defaults. Restart other open sessions after <code>/marvin:upgrade-agent-os</code>, and run the upgrade again once deferred sessions have finished.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

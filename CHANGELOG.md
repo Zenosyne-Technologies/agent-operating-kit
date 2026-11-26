@@ -2,6 +2,21 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.43.1] — 2026-11-26
+
+### Added
+- The GitHub Pages documentation site, built from `site/` into `docs/`: Home, Getting started, concept pages (lifecycle, sizing, escalation, around the loop, fleet), Mods, and generated Settings, Skills & commands, Reference and per-release pages.
+- `scripts/build-docs.sh` (stdlib Python generator `scripts/lib/build_docs.py`); `--check` fails on stale, missing or orphan output.
+- `validate-kit` check `docs-site` (26th) and the `scripts/test-build-docs.sh` suite, mutation-tested and run in CI.
+- Rule-11 screenshot galleries from `docs/images/<feature>/captions.md`; self-hosted Montserrat and IBM Plex Mono (OFL), so visitors' browsers make no third-party requests.
+
+### Changed
+- README slimmed to the pitch, install, contributing and the inventory; everything explanatory moved to the site.
+- Factory: repo rules 8, 10 and 11 (CLAUDE.md and AGENTS.md) name the site, `site/`, `captions.md` and the `docs-site` gate; `validate-kit` `marketplace` scans every page under `docs/` and `site/`.
+
+### Action needed
+- None.
+
 ## [0.43.0] — 2026-11-26
 
 ### Added

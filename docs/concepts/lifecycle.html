@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>Lifecycle - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html" aria-current="page">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../concepts/lifecycle.html" aria-current="page">Lifecycle</a><ul><li><a href="#loop">The loop</a></li><li><a href="#stages">Stage by stage</a></li><li><a href="#profiles">Model profiles</a></li></ul></li><li><a href="../concepts/sizing.html">Sizing</a></li><li><a href="../concepts/escalation.html">Escalation</a></li><li><a href="../concepts/around-the-loop.html">Around the loop</a></li><li><a href="../concepts/fleet.html">Fleet mode</a></li></ul></nav></aside>
+<main id="main">
+<p class="eyebrow">Concepts</p>
+<h1>The task lifecycle</h1>
+<p class="lede">Every tracker task runs one loop. Marvin plans, briefs and sequences. Specialised personas build, check and document, each pinned to a model tier. A task needs a verifiable definition of done (DoD) before it can enter build: builders work to it, and validators try to falsify it.</p>
+<div class="tier-legend" role="group" aria-label="Legend">
+<span data-tier="orch"><span class="dot"></span>Orchestrator</span>
+<span data-tier="heavy"><span class="dot"></span>Heavy worker</span>
+<span data-tier="small"><span class="dot"></span>Small worker</span>
+<span data-tier="micro"><span class="dot"></span>Micro</span>
+<span data-tier="frontier"><span class="dot"></span>Frontier, opt-in</span>
+<span class="sep"></span>
+<span class="lg"><svg class="legend-arrow" width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M28 1L36 5L28 9z" fill="currentColor"/></svg>Gate: the next stage starts only after this one passed</span>
+<span class="lg"><svg class="legend-arrow" width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" fill="none" opacity=".7"/><path d="M28 1L36 5L28 9z" fill="currentColor" opacity=".7"/></svg>Conditional and advisory</span>
+<span class="lg lg--fail"><svg class="legend-arrow" width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M28 1L36 5L28 9z" fill="currentColor"/></svg>Fail loop</span>
+</div>
+
+<h2 id="loop">The loop</h2>
+<p>Each arrow is a gate: the next stage starts only after this one passed. Select any persona in the diagram to see its model, its job and its limits in the panel at the foot of the page.</p>
+<div class="diagram diagram--wide">
+<svg viewBox="0 0 1284 378" role="group" aria-label="Task lifecycle: plan and brief, build picked by size, completion gate, security gate, optional visual review, document gate, close-out, done; a failed gate loops back to build">
+<defs>
+  <marker id="ahI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-ink"/></marker>
+  <marker id="ahM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-mut"/></marker>
+  <marker id="ahF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-fail"/></marker>
+</defs>
+<!-- gates -->
+<path class="gate" d="M172 190H200" marker-end="url(#ahI)"/>
+<path class="gate" d="M354 190H382" marker-end="url(#ahI)"/>
+<path class="gate" d="M536 190H564" marker-end="url(#ahI)"/>
+<path class="gate" d="M718 190H746" marker-end="url(#ahI)"/>
+<path class="gate" d="M900 190H928" marker-end="url(#ahI)"/>
+<path class="gate" d="M1082 190H1110" marker-end="url(#ahI)"/>
+<!-- the advisory visual detour -->
+<path class="opt" d="M642 122V54H655" marker-end="url(#ahM)"/>
+<path class="opt" d="M811 54H824V120" marker-end="url(#ahM)"/>
+<!-- the fail loop -->
+<path class="failp" d="M460 258V326H278V308" marker-end="url(#ahF)"/>
+<path class="failp" d="M642 258V326H460"/>
+<text class="ft" x="460" y="349" text-anchor="middle">FAIL: back to the build tier with the findings, counted as one failed round</text>
+<text class="ft" x="460" y="365" text-anchor="middle">Re-enter at completion validation. Never at document, never at close.</text>
+<!-- plan -->
+<g class="p" data-p="marvin" data-tier="orch" tabindex="0" role="button" aria-label="Marvin, orchestrator">
+  <rect class="node" x="20" y="122" width="152" height="136" rx="8"/>
+  <text class="lbl" x="32" y="142">PLAN &amp; BRIEF</text><circle class="dotf" cx="158" cy="138" r="4.5"/>
+  <text class="pn" x="32" y="162">Marvin</text>
+  <g class="chip"><rect x="32" y="170" width="79" height="13" rx="6.5"/><text class="tier" x="37" y="179.3">orchestrator</text></g>
+  <text class="mdl" x="32" y="198" data-fill="model"></text>
+  <text class="mdl" x="32" y="210" style="font-size:9px" data-fill="alt"></text>
+  <text class="ds" x="32" y="224">Writes the DoD on the</text><text class="ds" x="32" y="238">issue, sizes the task,</text><text class="ds" x="32" y="252">writes the brief.</text>
+</g>
+<!-- build -->
+<rect class="static" x="202" y="88" width="152" height="216" rx="8"/>
+<text class="lbl" x="214" y="108">BUILD · PICKED BY SIZE</text>
+<g class="p" data-p="developer" data-tier="heavy" tabindex="0" role="button" aria-label="developer, size:m+">
+  <rect class="node" x="212" y="116" width="132" height="56" rx="6"/><circle class="dotf" cx="332" cy="127" r="4"/>
+  <text class="pn" x="220" y="133">developer</text>
+  <g class="chip"><rect x="220" y="140" width="39" height="13" rx="6.5"/><text class="tier" x="225" y="149.3">heavy</text></g><text class="mdl" x="265" y="149.5">size:m+</text>
+  <text class="mdl" x="220" y="165" style="font-size:9.5px" data-fill="model"></text>
+</g>
+<g class="p" data-p="developer-small" data-tier="small" tabindex="0" role="button" aria-label="developer-small, size:s">
+  <rect class="node" x="212" y="178" width="132" height="56" rx="6"/><circle class="dotf" cx="332" cy="189" r="4"/>
+  <text class="pn" x="220" y="195">developer-small</text>
+  <g class="chip"><rect x="220" y="202" width="39" height="13" rx="6.5"/><text class="tier" x="225" y="211.3">small</text></g><text class="mdl" x="265" y="211.5">size:s</text>
+  <text class="mdl" x="220" y="227" style="font-size:9.5px" data-fill="model"></text>
+</g>
+<g class="p" data-p="developer-micro" data-tier="micro" tabindex="0" role="button" aria-label="developer-micro, full spec">
+  <rect class="node" x="212" y="240" width="132" height="56" rx="6"/><circle class="dotf" cx="332" cy="251" r="4"/>
+  <text class="pn" x="220" y="257">developer-micro</text>
+  <g class="chip"><rect x="220" y="264" width="39" height="13" rx="6.5"/><text class="tier" x="225" y="273.3">micro</text></g><text class="mdl" x="265" y="273.5">full spec</text>
+  <text class="mdl" x="220" y="289" style="font-size:9.5px" data-fill="model"></text>
+</g>
+<!-- the two gating validators -->
+<g class="p" data-p="validator-completion" data-tier="heavy" tabindex="0" role="button" aria-label="validator-completion">
+  <rect class="node" x="384" y="122" width="152" height="136" rx="8"/>
+  <text class="lbl" x="396" y="142">COMPLETION GATE</text><circle class="dotf" cx="522" cy="138" r="4.5"/>
+  <text class="pn" x="396" y="162">validator-completion</text>
+  <g class="chip"><rect x="396" y="170" width="39" height="13" rx="6.5"/><text class="tier" x="401" y="179.3">heavy</text></g>
+  <text class="mdl" x="396" y="198" data-fill="model"></text>
+  <text class="ds" x="396" y="224">Fresh BA persona tries</text><text class="ds" x="396" y="238">to falsify &quot;done&quot;</text><text class="ds" x="396" y="252">against the DoD.</text>
+</g>
+<g class="p" data-p="validator-security" data-tier="heavy" tabindex="0" role="button" aria-label="validator-security">
+  <rect class="node" x="566" y="122" width="152" height="136" rx="8"/>
+  <text class="lbl" x="578" y="142">SECURITY GATE</text><circle class="dotf" cx="704" cy="138" r="4.5"/>
+  <text class="pn" x="578" y="162">validator-security</text>
+  <g class="chip"><rect x="578" y="170" width="39" height="13" rx="6.5"/><text class="tier" x="583" y="179.3">heavy</text></g>
+  <text class="mdl" x="578" y="198" data-fill="model"></text>
+  <text class="ds" x="578" y="224">Runs only after</text><text class="ds" x="578" y="238">completion passes.</text><text class="ds" x="578" y="252">Hunts regressions.</text>
+</g>
+<!-- visual (advisory) -->
+<g class="p" data-p="validator-visual" data-tier="heavy" tabindex="0" role="button" aria-label="validator-visual, advisory">
+  <rect class="node adv" x="657" y="8" width="152" height="92" rx="8"/>
+  <text class="lbl" x="669" y="26">VISUAL · ADVISORY</text><circle class="dotf" cx="795" cy="22" r="4.5"/>
+  <text class="pn" x="669" y="44">validator-visual</text>
+  <g class="chip"><rect x="669" y="51" width="39" height="13" rx="6.5"/><text class="tier" x="674" y="60.3">heavy</text></g>
+  <text class="mdl" x="669" y="78" data-fill="model"></text>
+  <text class="ds" x="669" y="92">UI only · never gates</text>
+</g>
+<!-- document -->
+<g class="p" data-p="documenter" data-tier="small" tabindex="0" role="button" aria-label="documenter">
+  <rect class="node" x="748" y="122" width="152" height="136" rx="8"/>
+  <text class="lbl" x="760" y="142">DOCUMENT GATE</text><circle class="dotf" cx="886" cy="138" r="4.5"/>
+  <text class="pn" x="760" y="162">documenter</text>
+  <g class="chip"><rect x="760" y="170" width="39" height="13" rx="6.5"/><text class="tier" x="765" y="179.3">small</text></g>
+  <text class="mdl" x="760" y="198" data-fill="model"></text>
+  <text class="ds" x="760" y="224">Only after BOTH</text><text class="ds" x="760" y="238">validators pass. Writes</text><text class="ds" x="760" y="252">docs and handbooks.</text>
+</g>
+<!-- close-out -->
+<rect class="static" x="930" y="122" width="152" height="150" rx="8"/>
+<text class="lbl" x="942" y="142">CLOSE-OUT</text>
+<g class="p" data-p="marvin" data-tier="orch" tabindex="0" role="button" aria-label="Marvin, close-out check">
+  <rect class="row" x="940" y="150" width="132" height="46" rx="6"/><circle class="dotf" cx="952" cy="162" r="4"/>
+  <text class="pn" x="962" y="166">Marvin</text><text class="mdl" x="962" y="178" style="font-size:9px">ticket-filing check</text>
+  <g class="chip"><rect x="962" y="182" width="79" height="13" rx="6.5"/><text class="tier" x="967" y="191.3">orchestrator</text></g>
+</g>
+<g class="p" data-p="ponytail" data-tier="micro" tabindex="0" role="button" aria-label="ponytail, tracker call">
+  <rect class="row" x="940" y="202" width="132" height="46" rx="6"/><circle class="dotf" cx="952" cy="214" r="4"/>
+  <text class="pn" x="962" y="218">ponytail</text><text class="mdl" x="962" y="230" style="font-size:9px">the tracker call</text>
+  <g class="chip"><rect x="962" y="234" width="39" height="13" rx="6.5"/><text class="tier" x="967" y="243.3">micro</text></g>
+</g>
+<text class="ds" x="942" y="264" style="font-size:10px">Closes with commit refs.</text>
+<!-- done -->
+<rect class="done" x="1112" y="122" width="152" height="136" rx="8"/>
+<text class="lbl" x="1124" y="142">DONE</text><path class="tick" d="M1243 134l4 4l8 -9"/>
+<text class="ds" x="1124" y="170">Both validators passed,</text><text class="ds" x="1124" y="184">docs landed, and the</text><text class="ds" x="1124" y="198">branch is merged and</text><text class="ds" x="1124" y="212">deleted.</text>
+<!-- where to next -->
+<a href="escalation.html"><text class="lk" x="1264" y="304" text-anchor="end">Build stuck? See the escalation staircase</text></a>
+<a href="sizing.html"><text class="lk" x="1264" y="326" text-anchor="end">How size routes the work</text></a>
+</svg>
+</div>
+<p class="hint">Personas are buttons: click one, or Tab to it and press Enter. On a narrow screen, scroll the diagram sideways.</p>
+
+<h2 id="stages">Stage by stage</h2>
+<ol>
+<li><strong>Plan and brief.</strong> Marvin writes the DoD on the tracker issue, gives the task its <code>size:</code> label and writes the brief the builder works from (<a href="../reference.html#briefing"><code>briefing.md</code></a>).</li>
+<li><strong>Build.</strong> The size label and how complete the brief is pick the builder. <a href="sizing.html">Sizing</a> shows the four lanes.</li>
+<li><strong>Completion gate.</strong> A fresh validator, never the builder, tries to falsify "done" against the DoD (<a href="../reference.html#validation-agent"><code>validation-agent.md</code></a>).</li>
+<li><strong>Security gate.</strong> Runs only after completion passes, and reviews the changes for security regressions (<a href="../reference.html#security"><code>security.md</code></a>).</li>
+<li><strong>Visual review.</strong> UI tasks only, after both gates pass. It is advisory: it never gates or bounces the task (<a href="../reference.html#visual-validation"><code>visual-validation.md</code></a>).</li>
+<li><strong>Document gate.</strong> Only after both validators pass. The tracker issue cannot close before the docs and handbooks land (<a href="../reference.html#documentation-agent"><code>documentation-agent.md</code></a>).</li>
+<li><strong>Close-out.</strong> Marvin runs the close-out check, a micro persona makes the tracker call, and the issue closes with its commit refs (<a href="../reference.html#ticket-filing"><code>ticket-filing.md</code></a>).</li>
+</ol>
+<p>A failed gate sends the task back to its build tier with the findings, and counts as one failed round. The fixed build re-enters at the completion gate, never at document or close. What Marvin does after a failed round is on <a href="escalation.html">Escalation</a>.</p>
+
+<h2 id="profiles">Model profiles</h2>
+<p>Each tier runs on the model the project's model profile picks. The chips and the persona panel show the default profile. The table lists every profile this kit version declares. A profile can put the orchestrator a tier above the heavy worker, but no sub-agent runs above the heavy tier's model unless you ask for it.</p>
+<div class="tier-legend">
+<table>
+<thead><tr><th>Tier</th><th>opus <small>default</small></th><th>fable</th></tr></thead>
+<tbody>
+<tr><td><span data-tier="orch"><span class="dot"></span>orchestrator</span></td><td>Opus 5.5<br><small>medium</small></td><td>Fable 5.2<br><small>medium</small></td></tr>
+<tr><td><span data-tier="heavy"><span class="dot"></span>heavy worker</span></td><td>Opus 5.5<br><small>medium</small></td><td>Opus 5.5<br><small>medium</small></td></tr>
+<tr><td><span data-tier="small"><span class="dot"></span>small worker</span></td><td>Sonnet 5.5<br><small>high</small></td><td>Sonnet 5.5<br><small>high</small></td></tr>
+<tr><td><span data-tier="micro"><span class="dot"></span>micro</span></td><td>Haiku 5.5<br><small>high</small></td><td>Haiku 5.5<br><small>high</small></td></tr>
+<tr><td><span data-tier="frontier"><span class="dot"></span>frontier</span></td><td>Fable 5.2<br><small>inherits the session&#x27;s</small></td><td>none</td></tr>
+</tbody>
+</table>
+</div>
+<p>A project runs one profile, set by <a href="../settings.html#model_profile"><code>model_profile</code></a>. The profiles are declared in <a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/model-profile.md"><code>model-profile.md</code></a>.</p>
+
+<p class="hint">Source: the kit core in <code>templates/marvin/CLAUDE.marvin.md</code>, the persona files in <code>agents/</code>, and the guides on the <a href="../reference.html">Reference</a> page. Every persona ships as <code>marvin:&lt;name&gt;</code>.</p>
+<aside class="diagram insp" id="insp" aria-live="polite" aria-label="Persona details">
+<p class="hint">Select any persona to see its model, job and limits.</p>
+</aside>
+<script type="application/json" id="marvin-data">{"codex": [{"effort": "high", "lane": "build-micro", "model": "gpt-5.6-luna", "tier": "codex fast"}, {"effort": "medium", "lane": "build", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "plan", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "review", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "security", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "medium", "lane": "design", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "xhigh", "lane": "diagnose", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "astra", "model": "gpt-6-astra", "tier": "codex frontier"}], "default": "opus", "personas": {"codex": {"description": "Marvin's Codex forwarder \u2014 runs ONE Codex lane (plan, review, security, design, diagnose, build, build-micro) per .marvin/agents/codex.md through the plugin's marvin-codex.sh and maps Codex's JSON onto the FINAL MESSAGE contract, adding no judgement of its own. Dispatched by the orchestrator (validation strategies, tollgates) and the /marvin:codex skills; build and write-evidence runs are dispatched with isolation: worktree.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "developer": {"description": "Marvin's heavy build persona \u2014 executes ONE briefed size:m or larger implementation task \u2014 for a size:m, its design-bearing core \u2014 to its DoD. Dispatch with a full brief per .marvin/agents/briefing.md. Never validates its own work.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "developer-micro": {"description": "Marvin's micro-tier build persona \u2014 executes ONE fully-specified build to its DoD: a size:s task, a size:m task's peripheral piece, or a correction fix list whose brief passes .marvin/agents/briefing.md's fully-specified test (every file named, behaviour and tests exact, no approach left to choose). Stops on any choice the brief did not make. Dispatch with a full brief per .marvin/agents/briefing.md.", "effort": "high", "model": "Haiku 5.5", "tier": "micro"}, "developer-small": {"description": "Marvin's small-tier build persona \u2014 executes ONE clearly-defined size:s task (tests, QA sweeps, imports, config), a size:m task's peripheral piece, or a correction that needs judgement, to its DoD; also runs the brief falsifier before size:m+ builds and the planning-research survey for size:l/xl passes (writes no code in either mode). Dispatch with a full brief per .marvin/agents/briefing.md.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "documenter": {"description": "Marvin's documentation persona \u2014 documents ONE completed task per .marvin/agents/documentation-agent.md and grows the product handbooks per .marvin/agents/handbooks.md. Mandatory gate before a tracker issue closes; dispatched only after BOTH the completion and security validators pass.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "escalation-frontier": {"description": "Marvin's escalation persona, the opt-in frontier tier \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung \u2014 when the round signals at marvin:escalation-xhigh say climb AND the user explicitly chose to swap THIS task to the frontier tier. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "inherits the session's", "model": "Fable 5.2", "tier": "frontier"}, "escalation-high": {"description": "Marvin's escalation persona, the ceiling model at high effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the first ceiling-model rung, when a BUILD task's round signals say climb (Stuck, or the N-round cap) at marvin:developer or at marvin:escalation-small-xhigh \u2014 never for research, docs or validation, which stay off the ladder. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "high", "model": "Opus 5.5", "tier": "heavy"}, "escalation-max": {"description": "Marvin's escalation persona, the ceiling model at max effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung \u2014 when the round signals at marvin:escalation-xhigh say climb AND the user chose max, gave no answer or picked neither option, or the session was unattended (the orchestrator records which). Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "max", "model": "Opus 5.5", "tier": "heavy"}, "escalation-small-xhigh": {"description": "Marvin's escalation persona, the small tier at xhigh effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the small tier's rung \u2014 when a BUILD task built at marvin:developer-small (including one that tiered up from marvin:developer-micro) has round signals that say climb (Stuck, or the N-round cap); the next rung above it is marvin:escalation-high. Never for research, docs or validation, which stay off the ladder. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "xhigh", "model": "Sonnet 5.5", "tier": "small"}, "escalation-xhigh": {"description": "Marvin's escalation persona, the ceiling model at xhigh effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the second rung \u2014 when the round signals at marvin:escalation-high say climb (Stuck, or the N-round cap). Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "xhigh", "model": "Opus 5.5", "tier": "heavy"}, "ponytail": {"description": "Marvin's micro persona \u2014 executes ONE size:xs mechanical, zero-discretion micro-task per .marvin/agents/ponytail.md (tracker bookkeeping, release mechanics, index/row updates, label backfills, DB/fixture copies, restatement grep sweeps (report only), pre-flight gate runs, exact-lookup reads for the orchestrator, renames, moves, single-file mechanical edits) \u2014 any step whose content is already decided; it may prepare a tag message, never tag, never publish a forge release.", "effort": "high", "model": "Haiku 5.5", "tier": "micro"}, "researcher": {"description": "Marvin's planning-research persona \u2014 runs the SYNTHESIS stage of the plan-validation and solution-research passes for size:l/size:xl tasks per .marvin/agents/planning-research.md, from a marvin:developer-small survey's facts and file:line citations, and the read-only RETHINK pass (a different approach for a build task whose failure pattern says the approach is wrong) per .marvin/agents/escalation.md. Produces a research memo (a RETHINK pass writes its run report instead); changes no code.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-completion": {"description": "Fresh completion validator (BA persona) \u2014 adversarially falsifies a \"done\" task against its DoD per .marvin/agents/validation-agent.md. Never the builder; runs after build, before the security validator.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-security": {"description": "Fresh security validator \u2014 reviews a completed task's changes for security regressions per .marvin/agents/validation-agent.md and .marvin/agents/security.md. Dispatched ONLY after the completion validator passes; never the builder.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-visual": {"description": "Fresh visual/design validator \u2014 adversarially reviews a done UI task's surfaces against the generic design checklist per .marvin/agents/visual-validation.md. Dispatched ONLY after the completion and security validators pass; never the builder; cites visual-validation.md.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}}, "profiles": {"fable": {"frontier": {"effort": "", "model": ""}, "heavy": {"effort": "medium", "model": "Opus 5.5"}, "micro": {"effort": "high", "model": "Haiku 5.5"}, "orch": {"effort": "medium", "model": "Fable 5.2"}, "small": {"effort": "high", "model": "Sonnet 5.5"}}, "opus": {"frontier": {"effort": "inherits the session's", "model": "Fable 5.2"}, "heavy": {"effort": "medium", "model": "Opus 5.5"}, "micro": {"effort": "high", "model": "Haiku 5.5"}, "orch": {"effort": "medium", "model": "Opus 5.5"}, "small": {"effort": "high", "model": "Sonnet 5.5"}}}}</script>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

@@ -380,9 +380,15 @@ done
 # ── 25. marketplace: every `claude plugin marketplace add` that names a Zenosyne-Technologies repo names
 # the emprove marketplace, the one whose marketplace.json lists marvin and its companions (AOS-297: the
 # install skill's telemetry advice named the kit repo, which has none). Third-party marketplaces are not checked.
-mk=$(grep -rnoiE 'marketplace add +zenosyne-technologies/[A-Za-z0-9._-]+' skills templates commands README.md BOOTSTRAP.md docs/index.html 2>/dev/null \
+# The docs site counts too: every *.html under docs/ (the local docs/superpowers/ aside) and everything under site/.
+mk=$(grep -rnoiE 'marketplace add +zenosyne-technologies/[A-Za-z0-9._-]+' skills templates commands README.md BOOTSTRAP.md site \
+  $(find docs -name '*.html' -not -path 'docs/superpowers/*' 2>/dev/null | sort) 2>/dev/null \
   | grep -vE ':marketplace add +Zenosyne-Technologies/emprove-marketplace$' | tr '\n' ' ')
 [ -z "$mk" ] && pass marketplace || fail marketplace "marketplace add must name Zenosyne-Technologies/emprove-marketplace: ${mk% }"
+
+# ── 26. docs-site: the GitHub Pages site in docs/ is exactly what site/ builds to (AOS-299) — no stale,
+# missing or orphan output. Fix by running `bash scripts/build-docs.sh` and committing docs/.
+ds=$(bash scripts/build-docs.sh --check 2>&1) && pass docs-site || fail docs-site "$(printf '%s' "$ds" | tr '\n' ' ')"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

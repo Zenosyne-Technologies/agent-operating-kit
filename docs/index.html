@@ -3,502 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Interactive map of the Marvin orchestrator: the task lifecycle, size routing, the escalation staircase, and every agent persona by model tier.">
-<title>Marvin Orchestration Map</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-<style>
-/* Layout: a schematic. One loop diagram on top (the task lifecycle), then three bands that explain what feeds it
-   (planning by size), what rescues it (the escalation staircase) and what surrounds it. Persona chips are the one
-   repeated object; a sticky inspector explains whichever persona is selected. */
-:root {
-  --bg: #EDF0F3; --surface: #FFFFFF; --surface-2: #F5F7F9; --ink: #142030; --ink-2: #36475A; --muted: #5A6A7A;
-  --line: #C3CCD5; --sel: #E1E9FF; --shadow: 0 6px 24px rgba(20, 32, 48, .12);
-  --t-orch: #3447C9; --t-heavy: #0B7285; --t-small: #2B8A4B; --t-micro: #B7701A; --t-frontier: #7B3FD6;
-  --fail: #C92A2A; --ok: #2B8A4B;
-  --sans: "Familjen Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0D131A; --surface: #152029; --surface-2: #1B2833; --ink: #E7EDF3; --ink-2: #BCC9D5; --muted: #8CA0B2;
-    --line: #2E3E4E; --sel: #1F2F55; --shadow: 0 6px 24px rgba(0, 0, 0, .5);
-    --t-orch: #8C9BFF; --t-heavy: #3CC3DA; --t-small: #62D08E; --t-micro: #F0B054; --t-frontier: #BC95F5;
-    --fail: #FF7B72; --ok: #62D08E; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0D131A; --surface: #152029; --surface-2: #1B2833; --ink: #E7EDF3; --ink-2: #BCC9D5; --muted: #8CA0B2;
-  --line: #2E3E4E; --sel: #1F2F55; --shadow: 0 6px 24px rgba(0, 0, 0, .5);
-  --t-orch: #8C9BFF; --t-heavy: #3CC3DA; --t-small: #62D08E; --t-micro: #F0B054; --t-frontier: #BC95F5;
-  --fail: #FF7B72; --ok: #62D08E; color-scheme: dark;
-}
-* { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; margin: 0; }
-.wrap {
-  max-width: 1240px; margin: 0 auto; padding-block: 32px 24px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.05; margin: 0 0 10px; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
-h2 { font-size: 22px; margin: 0 0 4px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
-p { margin: 0; }
-.repo { margin: 0 0 12px; font-family: var(--mono); font-size: 12.5px; }
-.repo a { color: var(--t-orch); }
-.lede { max-width: 66ch; color: var(--ink-2); font-size: 17px; }
-.sec { margin-top: 44px; }
-.sec > .sub { color: var(--muted); max-width: 70ch; margin-bottom: 16px; }
-[data-t="orch"] { --tc: var(--t-orch); } [data-t="heavy"] { --tc: var(--t-heavy); }
-[data-t="small"] { --tc: var(--t-small); } [data-t="micro"] { --tc: var(--t-micro); } [data-t="frontier"] { --tc: var(--t-frontier); }
-code, .mono { font-family: var(--mono); font-size: .88em; }
-
-/* legend */
-.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 22px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; align-items: center; }
-.lg { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-.lg .dot { width: 11px; height: 11px; }
-.lg small { color: var(--muted); font-family: var(--mono); font-size: 11px; }
-.lg svg { display: block; }
-.legend .sep { flex-basis: 100%; height: 0; }
-
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--tc); flex: none; display: inline-block; }
-
-/* persona chip */
-.chip {
-  display: inline-grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left;
-  font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--tc); border-radius: 8px;
-  padding: 6px 10px; cursor: pointer; min-width: 0;
-}
-.chip .dot { grid-row: 1 / span 2; }
-.chip .cn { font-family: var(--mono); font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
-.chip .cm { font-size: 11.5px; color: var(--muted); line-height: 1.25; }
-.chip:hover, svg .p:hover .card { border-width: 2.5px; }
-.chip:focus-visible, svg .p:focus-visible { outline: 3px solid var(--t-orch); outline-offset: 2px; }
-.chip.sel { background: var(--sel); box-shadow: 0 0 0 2px var(--tc); }
-
-/* lifecycle svg */
-.diagram { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-x: auto; margin-top: 16px; }
-.diagram svg { display: block; min-width: 1100px; width: 100%; height: auto; }
-.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
-svg .card { fill: var(--surface); stroke: var(--tc, var(--line)); stroke-width: 1.5; }
-svg .card.adv { stroke-dasharray: 5 4; }
-svg .static { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
-svg .p { cursor: pointer; }
-svg .p.sel .card, svg .p.sel .row { fill: var(--sel); stroke-width: 3; }
-svg .row { fill: var(--surface-2); stroke: var(--tc); stroke-width: 1.5; }
-svg .dotf { fill: var(--tc); }
-svg .lbl { font: 600 9px var(--sans); letter-spacing: .09em; fill: var(--muted); }
-svg .pn { font: 500 10px var(--mono); fill: var(--ink); }
-svg .mdl { font: 400 10px var(--mono); fill: var(--muted); }
-svg .ds { font: 400 10.5px var(--sans); fill: var(--ink-2); }
-svg .ft { font: 500 11.5px var(--sans); fill: var(--fail); }
-svg .lk { font: 500 11.5px var(--sans); fill: var(--t-orch); cursor: pointer; text-decoration: underline; }
-svg .gate { fill: none; stroke: var(--ink); stroke-width: 1.6; }
-svg .opt { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 4 3; }
-svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
-.ah-ink { fill: var(--ink); } .ah-mut { fill: var(--muted); } .ah-fail { fill: var(--fail); }
-
-/* lanes */
-.lanes { display: grid; gap: 10px; }
-.lane { display: grid; grid-template-columns: 150px 1fr; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-.lh b { font-family: var(--mono); font-size: 15px; display: block; }
-.lh span { font-size: 12.5px; color: var(--muted); line-height: 1.3; display: block; margin-top: 2px; }
-.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; min-width: 0; }
-.st { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
-.st .cap { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.st .tx { font-size: 13.5px; color: var(--ink-2); max-width: 30ch; line-height: 1.35; }
-.st .stack { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.st .row2 { display: flex; flex-wrap: wrap; gap: 6px; }
-.ar { align-self: center; color: var(--muted); font-family: var(--mono); font-size: 16px; padding-top: 14px; }
-
-/* escalation staircase */
-.stair { display: flex; align-items: flex-end; gap: 8px; }
-.rung { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--tc, var(--line)); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-.rung .cap { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.rung p { font-size: 13px; color: var(--ink-2); line-height: 1.35; }
-.rung .chip { align-self: flex-start; max-width: 100%; }
-.rung .note { font-size: 12px; color: var(--muted); margin-top: auto; }
-.rung.h1 { min-height: 150px; } .rung.h2 { min-height: 190px; } .rung.h3 { min-height: 230px; }
-.rung.h4 { min-height: 270px; } .rung.h5 { min-height: 310px; }
-.rung.gate { border-top-color: var(--fail); }
-.rung .opts { display: grid; gap: 8px; }
-.rec { font-size: 11px; font-weight: 600; color: var(--ok); text-transform: uppercase; letter-spacing: .06em; }
-.opt-card { border: 1px dashed var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; }
-.stop { margin-top: 12px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--fail); border-radius: 10px; font-size: 14px; color: var(--ink-2); }
-.stop b { color: var(--fail); }
-.signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
-.sig { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; align-content: start; }
-.sig .k { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.sig b { font-size: 15px; }
-.sig p { font-size: 13px; color: var(--ink-2); }
-.sig .chip { margin-top: 4px; justify-self: start; }
-
-/* around the loop */
-.around { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.ac { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
-.ac h3 { margin: 0; font-size: 16px; font-weight: 600; }
-.ac p { font-size: 13.5px; color: var(--ink-2); }
-.ac .cs { display: flex; flex-wrap: wrap; gap: 6px; }
-
-/* inspector */
-.insp { position: sticky; bottom: 0; margin-top: 36px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 16px 14px; z-index: 5; }
-.insp .ih { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: 8px; }
-.insp .in { font-family: var(--mono); font-size: 16px; font-weight: 500; }
-.insp .pill { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); border: 1.5px solid var(--tc); border-radius: 999px; padding: 1px 9px; }
-.insp .im { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.insp .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 20px; }
-.insp .cols div { min-width: 0; }
-.insp .k { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: block; }
-.insp .v { font-size: 13.5px; color: var(--ink-2); line-height: 1.38; }
-.foot { margin-top: 20px; font-size: 12.5px; color: var(--muted); }
-@media (max-width: 760px) {
-  .lane { grid-template-columns: 1fr; gap: 8px; }
-  .stair { flex-direction: column; align-items: stretch; }
-  .rung[class*="h"] { min-height: 0; }
-  .insp { padding: 10px 12px; } .insp .cols { grid-template-columns: 1fr; }
-  .insp .v { font-size: 13px; }
-}
-@media (prefers-reduced-motion: no-preference) { .chip, svg .card { transition: background .12s, border-width .12s; } }
-</style>
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>Home - Marvin</title>
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Marvin Orchestration Map</h1>
-    <p class="repo"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit">Zenosyne-Technologies/agent-operating-kit</a></p>
-    <p class="lede">Marvin plans, briefs and sequences. Specialised personas build, check and document, each pinned to a model tier. Select any persona to see its model, job and limits.</p>
-    <p class="lede" style="font-size:14px; margin-top:8px">The tiers' models come from the project's model profile, <code>model_profile</code> in <code>.marvin/PROJECT-INFO.md</code>: <code>opus</code> (the default) runs the orchestrator and heavy worker on Opus 5.5 with Fable 5.2 as the opt-in frontier tier; <code>fable</code> runs only the orchestrator on Fable 5.2, above the heavy worker, and has no frontier tier.</p>
-    <div class="legend" aria-label="Legend">
-      <span class="lg" data-t="orch"><i class="dot"></i>Orchestrator <small>Opus 5.5 · fable profile: Fable 5.2</small></span>
-      <span class="lg" data-t="heavy"><i class="dot"></i>Heavy worker <small>Opus 5.5</small></span>
-      <span class="lg" data-t="small"><i class="dot"></i>Small worker <small>Sonnet 5.5</small></span>
-      <span class="lg" data-t="micro"><i class="dot"></i>Micro <small>Haiku 5.5</small></span>
-      <span class="lg" data-t="frontier"><i class="dot"></i>Frontier, opt-in <small>Fable 5.2 · opus profile only</small></span>
-      <span class="sep"></span>
-      <span class="lg"><svg width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M28 1L36 5L28 9z" fill="currentColor"/></svg>Gate: next stage starts only after this one passed</span>
-      <span class="lg"><svg width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" fill="none" opacity=".7"/><path d="M28 1L36 5L28 9z" fill="currentColor" opacity=".7"/></svg>Conditional and advisory</span>
-      <span class="lg" style="color:var(--fail)"><svg width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M28 1L36 5L28 9z" fill="currentColor"/></svg>Fail loop</span>
-    </div>
-  </header>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="index.html" aria-current="page">Home</a><a href="start.html">Getting started</a><a href="concepts/lifecycle.html">Concepts</a><a href="settings.html">Settings</a><a href="skills.html">Skills &amp; commands</a><a href="reference.html">Reference</a><a href="mods/index.html">Mods</a><a href="releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
 
-  <section class="sec" style="margin-top:32px">
-    <h2>The task lifecycle</h2>
-    <p class="sub">Every tracker task runs this loop. A task needs a verifiable definition of done (DoD) before it can enter build, builders work to it and validators try to falsify it.</p>
-    <div class="diagram">
-      <svg viewBox="0 0 1284 372" role="group" aria-label="Task lifecycle: plan, build, completion validation, security validation, optional visual validation, documentation, close-out, done">
-        <defs>
-          <marker id="ahI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-ink"/></marker>
-          <marker id="ahM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-mut"/></marker>
-          <marker id="ahF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-fail"/></marker>
-        </defs>
+<main id="main">
+<section class="hero wire-grid">
+<p class="eyebrow">The Agentic Operating System</p>
+<h1>Give your AI software team an <span class="signal">operating system</span></h1>
+<p class="lede">Not another enormous prompt. Marvin is an orchestrator with a name, a personality and a memory. It plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements.</p>
+<p class="cta-row"><a class="cta" href="start.html">Get started</a><a class="cta cta--ghost" href="concepts/lifecycle.html">How a task runs</a></p>
+</section>
 
-        <!-- arrows (gates) -->
-        <path class="gate" d="M172 190H200" marker-end="url(#ahI)"/>
-        <path class="gate" d="M354 190H382" marker-end="url(#ahI)"/>
-        <path class="gate" d="M536 190H564" marker-end="url(#ahI)"/>
-        <path class="gate" d="M718 190H746" marker-end="url(#ahI)"/>
-        <path class="gate" d="M900 190H928" marker-end="url(#ahI)"/>
-        <path class="gate" d="M1082 190H1110" marker-end="url(#ahI)"/>
-        <!-- advisory visual detour -->
-        <path class="opt" d="M642 130V56H655" marker-end="url(#ahM)"/>
-        <path class="opt" d="M811 56H824V128" marker-end="url(#ahM)"/>
-        <!-- fail loop -->
-        <path class="failp" d="M460 250V318H278V286" marker-end="url(#ahF)"/>
-        <path class="failp" d="M642 250V318H460"/>
-        <text class="ft" x="460" y="341" text-anchor="middle">FAIL: back to the build tier with the findings, counted as one failed round</text>
-        <text class="ft" x="460" y="357" text-anchor="middle">Re-enter at completion validation. Never at document, never at close.</text>
+<h2 id="what">What Marvin is</h2>
+<p><strong>Marvin</strong> is a reusable agentic operating system for AI-assisted software projects, installed as a Claude Code plugin. Install it into a repo and that repo gets an orchestrator, plus the machinery that makes agent work auditable: size-routed model-tier dispatch, a cascading ruleset that keeps context proportional to the task, task lifecycles gated by a definition of done (DoD) with two adversarial validators in sequence, a versioned label registry feeding collect-once reporting, three living product handbooks, and, with the companion <strong>token-telemetry</strong> plugin, token and dollar cost down to the individual tracker issue.</p>
+<p>It is for anyone running real software delivery through Claude Code and tired of "done" without evidence. It works with <strong>Linear, Jira, GitHub Issues or a Local</strong> markdown tracker, and installs a lean, self-contained payload in any repo. Marvin is built and operated under the same rules it installs.</p>
 
-        <!-- plan -->
-        <g class="p" data-p="marvin" data-t="orch" tabindex="0" role="button" aria-label="Marvin, orchestrator">
-          <rect class="card" x="20" y="130" width="152" height="120" rx="8"/>
-          <text class="lbl" x="32" y="150">PLAN &amp; BRIEF</text><circle class="dotf" cx="158" cy="146" r="4.5"/>
-          <text class="pn" x="32" y="170">Marvin</text>
-          <text class="mdl" x="32" y="185">Opus 5.5 · medium</text>
-          <text class="mdl" x="32" y="197" style="font-size:9px">fable: Fable 5.2</text>
-          <text class="ds" x="32" y="214">Writes the DoD on the</text><text class="ds" x="32" y="228">issue, sizes the task,</text><text class="ds" x="32" y="242">writes the brief.</text>
-        </g>
+<h2 id="map-title">The 30-second map</h2>
+<p>Every tracker task walks one loop. Each stage is run by a persona pinned to a model tier, and each arrow is a gate.</p>
+<div class="diagram home-map" id="map">
+<div class="flow">
+<div class="st"><span class="cap">1 · Plan and brief</span><span class="chip" data-p="marvin" data-tier="orch"><span class="dot"></span><span class="cn">Marvin</span><span class="cm"><span class="tier">orchestrator</span></span></span><span class="tx">Writes the DoD on the issue, sizes the task, writes the brief.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">2 · Build, picked by size</span><div class="stack"><span class="chip" data-p="developer" data-tier="heavy"><span class="dot"></span><span class="cn">developer</span><span class="cm"><span class="tier">heavy</span> · size:m+</span></span><span class="chip" data-p="developer-small" data-tier="small"><span class="dot"></span><span class="cn">developer-small</span><span class="cm"><span class="tier">small</span> · size:s</span></span><span class="chip" data-p="developer-micro" data-tier="micro"><span class="dot"></span><span class="cn">developer-micro</span><span class="cm"><span class="tier">micro</span> · full spec</span></span></div></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">3 · Completion gate</span><span class="chip" data-p="validator-completion" data-tier="heavy"><span class="dot"></span><span class="cn">validator-completion</span><span class="cm"><span class="tier">heavy</span></span></span><span class="tx">A fresh agent tries to falsify "done".</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">4 · Security gate</span><span class="chip" data-p="validator-security" data-tier="heavy"><span class="dot"></span><span class="cn">validator-security</span><span class="cm"><span class="tier">heavy</span></span></span><span class="tx">Reviews the change for security regressions.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">5 · Document</span><span class="chip" data-p="documenter" data-tier="small"><span class="dot"></span><span class="cn">documenter</span><span class="cm"><span class="tier">small</span></span></span><span class="tx">Handbooks and the issue log, before the issue may close.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">6 · Close-out</span><span class="chip" data-p="ponytail" data-tier="micro"><span class="dot"></span><span class="cn">ponytail</span><span class="cm"><span class="tier">micro</span></span></span><span class="tx">Closes the issue with its commit refs.</span></div>
+</div>
+<p class="map-note"><span class="fail">A failed gate</span> sends the task back to its build tier with the findings. <a href="concepts/lifecycle.html">The full lifecycle</a> lets you select any persona for its model, job and limits.</p>
+</div><!-- /map -->
+<p>Before build, <a href="concepts/sizing.html">sizing</a> decides who works. When a build is stuck, <a href="concepts/escalation.html">escalation</a> reads the failure pattern and climbs, rethinks or asks you. <a href="concepts/around-the-loop.html">Around the loop</a> covers everything else that keeps it honest, and <a href="concepts/fleet.html">fleet mode</a> runs several epics at once.</p>
 
-        <!-- build -->
-        <rect class="static" x="202" y="96" width="152" height="188" rx="8"/>
-        <text class="lbl" x="214" y="116">BUILD · PICKED BY SIZE</text>
-        <g class="p" data-p="developer" data-t="heavy" tabindex="0" role="button" aria-label="developer">
-          <rect class="card" x="212" y="126" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="137" r="4"/>
-          <text class="pn" x="220" y="145">developer</text><text class="mdl" x="220" y="160" style="font-size:9.5px">size:m+ · Opus med</text>
-        </g>
-        <g class="p" data-p="developer-small" data-t="small" tabindex="0" role="button" aria-label="developer-small">
-          <rect class="card" x="212" y="176" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="187" r="4"/>
-          <text class="pn" x="220" y="195">developer-small</text><text class="mdl" x="220" y="210" style="font-size:9.5px">size:s · Sonnet high</text>
-        </g>
-        <g class="p" data-p="developer-micro" data-t="micro" tabindex="0" role="button" aria-label="developer-micro">
-          <rect class="card" x="212" y="226" width="132" height="44" rx="6"/><circle class="dotf" cx="332" cy="237" r="4"/>
-          <text class="pn" x="220" y="245">developer-micro</text><text class="mdl" x="220" y="260" style="font-size:9.5px">full spec · Haiku high</text>
-        </g>
-
-        <!-- completion -->
-        <g class="p" data-p="validator-completion" data-t="heavy" tabindex="0" role="button" aria-label="validator-completion">
-          <rect class="card" x="384" y="130" width="152" height="120" rx="8"/>
-          <text class="lbl" x="396" y="150">COMPLETION GATE</text><circle class="dotf" cx="522" cy="146" r="4.5"/>
-          <text class="pn" x="396" y="170">validator-completion</text>
-          <text class="mdl" x="396" y="185">Opus 5.5 · medium</text>
-          <text class="ds" x="396" y="208">Fresh BA persona tries</text><text class="ds" x="396" y="222">to falsify "done"</text><text class="ds" x="396" y="236">against the DoD.</text>
-        </g>
-
-        <!-- security -->
-        <g class="p" data-p="validator-security" data-t="heavy" tabindex="0" role="button" aria-label="validator-security">
-          <rect class="card" x="566" y="130" width="152" height="120" rx="8"/>
-          <text class="lbl" x="578" y="150">SECURITY GATE</text><circle class="dotf" cx="704" cy="146" r="4.5"/>
-          <text class="pn" x="578" y="170">validator-security</text>
-          <text class="mdl" x="578" y="185">Opus 5.5 · medium</text>
-          <text class="ds" x="578" y="208">Runs only after</text><text class="ds" x="578" y="222">completion passes.</text><text class="ds" x="578" y="236">Hunts regressions.</text>
-        </g>
-
-        <!-- visual (advisory) -->
-        <g class="p" data-p="validator-visual" data-t="heavy" tabindex="0" role="button" aria-label="validator-visual, advisory">
-          <rect class="card adv" x="657" y="14" width="152" height="84" rx="8"/>
-          <text class="lbl" x="669" y="32">VISUAL · ADVISORY</text><circle class="dotf" cx="795" cy="28" r="4.5"/>
-          <text class="pn" x="669" y="50">validator-visual</text>
-          <text class="mdl" x="669" y="64">Opus 5.5 · medium</text>
-          <text class="ds" x="669" y="85">UI only · never gates</text>
-        </g>
-
-        <!-- document -->
-        <g class="p" data-p="documenter" data-t="small" tabindex="0" role="button" aria-label="documenter">
-          <rect class="card" x="748" y="130" width="152" height="120" rx="8"/>
-          <text class="lbl" x="760" y="150">DOCUMENT GATE</text><circle class="dotf" cx="886" cy="146" r="4.5"/>
-          <text class="pn" x="760" y="170">documenter</text>
-          <text class="mdl" x="760" y="185">Sonnet 5.5 · high</text>
-          <text class="ds" x="760" y="208">Only after BOTH</text><text class="ds" x="760" y="222">validators pass. Writes</text><text class="ds" x="760" y="236">docs and handbooks.</text>
-        </g>
-
-        <!-- close-out -->
-        <rect class="static" x="930" y="130" width="152" height="120" rx="8"/>
-        <text class="lbl" x="942" y="150">CLOSE-OUT</text>
-        <g class="p" data-p="marvin" data-t="orch" tabindex="0" role="button" aria-label="Marvin, close-out check">
-          <rect class="row" x="940" y="157" width="132" height="30" rx="6"/><circle class="dotf" cx="952" cy="172" r="4"/>
-          <text class="pn" x="962" y="170">Marvin</text><text class="mdl" x="962" y="182" style="font-size:9px">ticket-filing check</text>
-        </g>
-        <g class="p" data-p="ponytail" data-t="micro" tabindex="0" role="button" aria-label="ponytail, tracker call">
-          <rect class="row" x="940" y="192" width="132" height="30" rx="6"/><circle class="dotf" cx="952" cy="207" r="4"/>
-          <text class="pn" x="962" y="205">ponytail</text><text class="mdl" x="962" y="217" style="font-size:9px">tracker call · Haiku</text>
-        </g>
-        <text class="ds" x="942" y="242" style="font-size:10px">Close with commit refs.</text>
-
-        <!-- done -->
-        <rect class="card" x="1112" y="130" width="152" height="120" rx="8" style="stroke:var(--ok)"/>
-        <text class="lbl" x="1124" y="150">DONE</text>
-        <path d="M1243 142l4 4l8 -9" fill="none" stroke="var(--ok)" stroke-width="2.2"/>
-        <text class="ds" x="1124" y="178">Both validators passed,</text><text class="ds" x="1124" y="192">docs landed, and the</text><text class="ds" x="1124" y="206">branch is merged and</text><text class="ds" x="1124" y="220">deleted.</text>
-
-        <text class="lk" id="toLadder" x="20" y="318">Build stuck? See the escalation staircase</text>
-        <text class="lk" id="toSize" x="20" y="340">How size routes the work</text>
-      </svg>
-    </div>
-    <p class="hint">On a narrow screen, scroll the diagram sideways.</p>
-  </section>
-
-  <section class="sec">
-    <h2>Before build: size decides who works</h2>
-    <p class="sub">The <code>size:</code> label and how complete the brief is route each task to a tier. Bigger tasks get extra planning passes first.</p>
-    <div class="lanes" id="lanes"></div>
-  </section>
-
-  <section class="sec" id="ladder">
-    <h2>When a build is stuck: the escalation staircase</h2>
-    <p class="sub">Only build work climbs. Marvin reads the failure pattern after each failed round, never a bare count. Effort rises within a tier first, then the task moves to the next tier, and never above the heavy tier's model without asking you. The orchestrator runs on that model in the default <code>opus</code> profile; in <code>fable</code> it runs on Fable 5.2, above it, and the max gate offers <code>max</code> only.</p>
-    <div class="stair" id="stair"></div>
-    <div class="stop"><b>Still stuck on the last rung: stop.</b> The ladder ends, never loops back down. The full attempt history goes on the tracker issue and Marvin brings it to you.</div>
-    <div class="signals" id="signals"></div>
-  </section>
-
-  <section class="sec">
-    <h2>Around the loop</h2>
-    <p class="sub">The pieces that feed the lifecycle or wrap a group of tasks.</p>
-    <div class="around" id="around"></div>
-  </section>
-
-  <p class="foot">Source: the kit core in <code>templates/marvin/CLAUDE.marvin.md</code>, the persona files in <code>agents/</code>, and the cascade guides under <code>templates/marvin/agents/</code>. Models come from <code>model-profile.md</code>. All personas are shipped as <code>marvin:&lt;name&gt;</code>.</p>
-
-  <aside class="insp" id="insp" aria-live="polite"></aside>
+<h2 id="what-you-get">What you get</h2>
+<div class="card-grid">
+<div class="card"><h3>An orchestrator with a name</h3><p>Marvin stays in character for the project's lifetime, with a memory file it manages itself that survives context compaction.</p></div>
+<div class="card"><h3>Size-routed dispatch</h3><p>Every task carries a <code>size:</code> label, and the label plus the brief's completeness decide which model tier builds it, down to a micro tier for mechanical work. The heavy tier's model is the sub-agent ceiling. After each failed round Marvin reads the failure pattern, and only at <code>max</code> does it ask you (<a href="concepts/escalation.html">Escalation</a>).</p></div>
+<div class="card"><h3>A DoD-gated lifecycle</h3><p>No task enters build without verifiable done-statements on the tracker issue. Fresh validators, never the builder, try to falsify them afterwards: completion first, then security. Anything web-facing is checked in a real browser (Playwright or direct browser driving), because an API-level curl check is not browser end-to-end testing.</p></div>
+<div class="card"><h3>A cascading ruleset</h3><p>One always-loaded core (your <code>CLAUDE.md</code> plus the kit core it imports) holds only what applies to every turn. Per-activity rules live beside it and are <em>cited</em> in briefs, never pasted in.</p></div>
+<div class="card"><h3>A versioned label registry</h3><p>Type, area, severity, origin and size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all.</p></div>
+<div class="card"><h3>Collect-once reporting</h3><p>One stats snapshot per collection run, three renders on top of it: architect digest, milestone close-out, and a stakeholder page with no agent internals.</p></div>
+<div class="card"><h3>Three living handbooks</h3><p>Developer, user and admin wikis in the project's docs, Obsidian-compatible, each page naming the code paths it documents so the docs agent amends instead of duplicating.</p></div>
+<div class="card"><h3>Security discipline</h3><p>Secrets never committed or pasted into the tracker, dependency changes vetted and pinned, every brief naming its security surface, and security-critical design kept with Marvin.</p></div>
+<div class="card"><h3>Your PM tool, set up</h3><p>A labelled, deduped intake structure created for you in Linear, Jira or GitHub Issues, or a self-contained markdown tracker inside the repo (<a href="start.html#pm-tools">PM tools</a>).</p></div>
+<div class="card"><h3>Cost visibility, optional</h3><p>With the token-telemetry companion: dollars per issue, per milestone and per tier, in the same snapshots and reports. Everything degrades silently without it.</p></div>
 </div>
 
-<script>
-(function () {
-  var TIER = { orch: "Orchestrator", heavy: "Heavy worker", small: "Small worker", micro: "Micro", frontier: "Frontier" };
-  var P = {
-    "marvin": { t: "orch", m: "Opus 5.5 · medium (fable profile: Fable 5.2)", f: "CLAUDE.marvin.md",
-      does: "Plans, decomposes, briefs, sequences and verifies. Reads to act, never to learn, and never bulk-implements.",
-      when: "The main session, from install until it leaves the project. Raises effort to high when a task needs it.",
-      limit: "No sub-agent runs above its model by default. In the fable profile it runs a tier above the heavy worker." },
-    "developer": { t: "heavy", m: "Opus 5.5 · medium", f: "briefing.md",
-      does: "Builds one briefed size:m+ task to its DoD. On a decomposed size:m it builds the design-bearing core. Also cross-cutting debugging.",
-      when: "The task is size:m or larger and the brief is complete.",
-      limit: "Never validates its own work. Effort pinned at medium, the ladder's base rung." },
-    "developer-small": { t: "small", m: "Sonnet 5.5 · high", f: "briefing.md",
-      does: "Builds size:s tasks that need judgement, QA sweeps and peripheral pieces. Also runs the brief falsifier, the planning survey and reader summaries.",
-      when: "A size:s task, a size:m peripheral piece, or a correction that is not fully specified.",
-      limit: "As falsifier or survey it writes no code and commits nothing." },
-    "developer-micro": { t: "micro", m: "Haiku 5.5 · high", f: "briefing.md",
-      does: "Builds one fully specified task: every file named, nothing left to decide.",
-      when: "A size:s task, peripheral piece or fix list that passes the fully-specified test in briefing.md.",
-      limit: "If it gets stuck, the task tiers up to developer-small. Effort pinned at high." },
-    "ponytail": { t: "micro", m: "Haiku 5.5 · high", f: "ponytail.md",
-      does: "Zero-discretion size:xs work: every tracker call, release mechanics, index rows, label backfills and exact-lookup reads.",
-      when: "Whenever the content is already decided, so tracker payloads stay out of Marvin's context.",
-      limit: "May prepare a tag message. Never tags and never publishes a release." },
-    "researcher": { t: "heavy", m: "Opus 5.5 · medium", f: "planning-research.md",
-      does: "Synthesis stage of plan validation and solution research for size:l and size:xl, working from a survey's citations. Also the read-only RETHINK pass.",
-      when: "size:l/xl planning, or a build whose failure pattern says the approach is wrong.",
-      limit: "Changes no code." },
-    "validator-completion": { t: "heavy", m: "Opus 5.5 · medium", f: "validation-agent.md",
-      does: "Fresh business-analyst persona that adversarially tries to falsify \"done\" against the DoD.",
-      when: "After every build, before the security validator.",
-      limit: "Never the builder. A FAIL returns the task to its build tier and counts as one failed round." },
-    "validator-security": { t: "heavy", m: "Opus 5.5 · medium", f: "validation-agent.md",
-      does: "Reviews the completed changes for security regressions.",
-      when: "Only after the completion validator passes.",
-      limit: "Never the builder. A FAIL returns the task to its build tier." },
-    "validator-visual": { t: "heavy", m: "Opus 5.5 · medium", f: "visual-validation.md",
-      does: "Reviews a finished UI task's surfaces against the generic design checklist, with screenshots where it can.",
-      when: "UI tasks only, after both gating validators pass.",
-      limit: "Advisory. It never gates or bounces the task." },
-    "documenter": { t: "small", m: "Sonnet 5.5 · high", f: "documentation-agent.md",
-      does: "Documents one completed task and grows the product handbooks.",
-      when: "Only after BOTH validators pass.",
-      limit: "A mandatory gate: the tracker issue cannot close before documentation lands." },
-    "codex": { t: "small", m: "Sonnet 5.5 · high", f: "codex.md",
-      does: "Forwarder that runs one Codex lane (plan, review, security, design, diagnose, build, build-micro) and maps its JSON onto the final-message contract.",
-      when: "A Codex lane is chosen under the handover consent switch.",
-      limit: "Adds no judge of its own. Falls back when Codex is unavailable." },
-    "escalation-small-xhigh": { t: "small", m: "Sonnet 5.5 · xhigh", f: "escalation-ladder.md",
-      does: "The small tier's only rung: the same model with more effort.",
-      when: "A developer-small build is stuck, including one that tiered up from micro.",
-      limit: "Keeps the task's size label. Never self-escalates." },
-    "escalation-high": { t: "heavy", m: "Opus 5.5 · high", f: "escalation-ladder.md",
-      does: "First heavy-tier rung: the heavy worker's model at more effort.",
-      when: "A stuck small-tier build climbs here. A stuck developer build enters the ladder here.",
-      limit: "Receives the brief, the DoD and every prior attempt's findings." },
-    "escalation-xhigh": { t: "heavy", m: "Opus 5.5 · xhigh", f: "escalation-ladder.md",
-      does: "Second heavy-tier rung.",
-      when: "Round signals say climb at escalation-high.",
-      limit: "Never self-escalates." },
-    "escalation-max": { t: "heavy", m: "Opus 5.5 · max", f: "escalation-ladder.md",
-      does: "The max-gate rung on the heavy tier's model.",
-      when: "You choose max, give no answer, pick neither option, or the session is unattended. The outcome is recorded.",
-      limit: "Last rung. A further climb signal stops the ladder." },
-    "escalation-frontier": { t: "frontier", m: "Fable 5.2 · session effort", f: "escalation-ladder.md",
-      does: "The opt-in frontier rung, one model tier above the heavy worker. Exists in the opus profile only.",
-      when: "Only when you explicitly choose the frontier swap for this task at the max gate.",
-      limit: "Never reached by default or by silence." }
-  };
+<h2 id="marvin">Who is Marvin</h2>
+<p>Named for the Hitchhiker's android: the brain the size of a planet is canon, the depression is not. Smart, thorough, with a keen eye for detail and management; young and snappy. Marvin questions everything that does not add up: a brief that contradicts the code, a "done" without evidence, a number that appears from nowhere.</p>
+<p>Its memory is its own to manage. Noteworthy findings (decisions, surprises, hard-won gotchas) go into <code>MEMORY.md</code> as they happen, <em>before</em> context compaction can lose them. Marvin reads it when a session starts and tidies it at milestone close so it never rots. Nothing goes in that the repo, the tracker or the handbooks already record.</p>
+<p>That memory is also what lets Marvin keep sessions short. A plugin hook measures the session's context from its transcript (no telemetry needed), and Marvin plans, winds down and stops cleanly on the 400k / 700k budgets and the 70 / 80 / 90 % context steps. It writes the handoff and suggests <code>/compact</code> or a fresh session with a one-line resume prompt. Nothing is ever blocked. A project can move the budgets and the window with <a href="settings.html"><code>session_soft_ktokens</code>, <code>session_hard_ktokens</code> and <code>context_window_ktokens</code></a> (<a href="reference.html#session-budget"><code>session-budget.md</code></a>).</p>
 
-  function chip(id, sub, name) {
-    var p = P[id];
-    return '<button type="button" class="chip" data-p="' + id + '" data-t="' + p.t + '"><span class="dot"></span>' +
-      '<span class="cn">' + (name || id) + '</span><span class="cm">' + (sub || p.m) + '</span></button>';
-  }
-  function st(cap, body) { return '<div class="st"><span class="cap">' + cap + '</span>' + body + '</div>'; }
-  function tx(s) { return '<span class="tx">' + s + '</span>'; }
-  var AR = '<span class="ar" aria-hidden="true">→</span>';
+<h2 id="discipline">The discipline stack</h2>
+<p>Each of these is one guide in the installed cascade. <a href="reference.html">Reference</a> lists them all, and <a href="concepts/around-the-loop.html">Around the loop</a> shows where each one acts.</p>
+<ul>
+<li><strong>Context proportionality.</strong> <code>CLAUDE.md</code> and the kit core it imports (<code>.marvin/CLAUDE.marvin.md</code>) are the only always-loaded files, and they hold only rules that apply to <em>every</em> turn. Everything else lives in the <code>.marvin/agents/</code> cascade and is loaded only while that activity is happening. Briefs cite the file; they never paste its content.</li>
+<li><strong>Brief discipline.</strong> Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch plus autocommit instructions, idempotency, and a machine-read final message of 25 lines at most. The full report goes to a gitignored run report under <code>.marvin/runs/</code> that Marvin opens only to act on a finding. No policy changes mid-run (<a href="reference.html#briefing"><code>briefing.md</code></a>).</li>
+<li><strong>Guardrails, the DO NOT framework.</strong> One guide owns what an agent must not do. Every prohibition resolves to one of four dispositions: do the safe thing instead, stop and clarify, ask for approval from above, or skip and report. A blocked sub-agent follows a fixed chain (sub-agent → Marvin → you), commits whatever safe work it finished and names the block; no agent treats silence as approval (<a href="reference.html#guardrails"><code>guardrails.md</code></a>).</li>
+<li><strong>Labels as infrastructure.</strong> A self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus backfill-on-touch for unlabelled legacy issues. An unlabelled item is invisible to reporting. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide inside the tracker (<a href="reference.html#label-syntax"><code>label-syntax.md</code></a>).</li>
+<li><strong>Collect once, render many.</strong> A per-tracker stats brief snapshots every label dimension into versioned JSON. The three renders read that snapshot as is, and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: product progress only (<a href="reference.html#reporting"><code>reporting.md</code></a>).</li>
+<li><strong>Traceability by convention.</strong> One guide owns everything git: a gitflow branch model, annotated tags only Marvin may cut, and semver classified by what a consumer must do. Agents autocommit finished work, atomic and selectively staged, and every commit message starts with its tracker key as <code>&lt;KEY&gt;: &lt;message&gt;</code>, so commits, branches and costs all resolve back to the PM tool (<a href="reference.html#git-strategy"><code>git-strategy.md</code></a>).</li>
+<li><strong>The DoD as the contract.</strong> The planner writes it onto the issue before build starts. It is what the builder targets, what two independent validators attack, what the documentation agent documents against, and what the close comment quotes.</li>
+<li><strong>Security and secrets.</strong> Secrets are never committed and never pasted into PM-tool surfaces. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized <code>m</code> or larger and get advisory checks with pinned versions (<a href="reference.html#security"><code>security.md</code></a>).</li>
+<li><strong>Handbooks that stay alive.</strong> The developer handbook explains the software's logic and the why behind it; the user and admin handbooks give plain-language guides per module. Pages carry <code>sources:</code> frontmatter naming the code paths they document, so the documentation agent finds every affected page with one grep and amends it (<a href="reference.html#handbooks"><code>handbooks.md</code></a>).</li>
+<li><strong>Code that documents its own surface.</strong> Every new or changed public class or method carries a contract docblock (summary, parameters, return, errors) in its ecosystem's own idiom: PHPDoc, TSDoc, Javadoc, PEP 257, rustdoc, GoDoc. It states WHAT the contract is; a non-obvious inline comment explains WHY (<a href="reference.html#documentation-agent"><code>documentation-agent.md</code></a>).</li>
+<li><strong>Token economics.</strong> With telemetry installed, Marvin writes a context sidecar (issue key, project, size, a one-line summary) at each task start, and the telemetry hooks stamp it onto every captured event. Cost joins to issues, milestones and tiers for free, an effective-dated price table turns tokens into dollars at query time (every figure carries the date of the rate it used), and closed issues get a one-line cost figure. Without telemetry every cost output is omitted silently (<a href="reference.html#token-economics"><code>token-economics.md</code></a>).</li>
+</ul>
 
-  /* size lanes */
-  var lanes = [
-    { k: "size:xs", d: "Mechanical, zero discretion",
-      f: st("Marvin has decided", tx("Every detail of the step is already known.")) + AR +
-         st("Runs on", chip("ponytail")) + AR +
-         st("Typical work", tx("Tracker calls, release mechanics, label backfills, index rows, exact lookups.")) },
-    { k: "size:s", d: "One clear task",
-      f: st("Marvin tests the brief", tx("Fully specified? Every file named, nothing left to decide.")) + AR +
-         st("Yes", '<div class="stack">' + chip("developer-micro") + '</div>') +
-         st("Needs judgement", '<div class="stack">' + chip("developer-small") + tx("QA sweeps and fuzzier fixes.") + '</div>') },
-    { k: "size:m", d: "Decompose, then falsify the brief",
-      f: st("Brief falsifier", '<div class="stack">' + chip("developer-small", "read-only, writes no code") + tx("A brief-gaps verdict blocks the build.") + '</div>') + AR +
-         st("Design-bearing core", '<div class="stack">' + chip("developer") + tx("Builds first and commits its interface.") + '</div>') + AR +
-         st("Peripheral pieces", '<div class="stack"><div class="row2">' + chip("developer-micro", "fully specified") + chip("developer-small", "needs judgement") + chip("ponytail", "size:xs") + '</div>' + tx("Dispatched once the core has committed.") + '</div>') + AR +
-         st("Then", tx("One validation pass over the core and every piece together.")) },
-    { k: "size:l / xl", d: "Two research passes first",
-      f: st("Plan validation", '<div class="stack">' + chip("developer-small", "survey") + chip("researcher", "synthesis") + '</div>') + AR +
-         st("Solution research", '<div class="stack">' + chip("developer-small", "survey") + chip("researcher", "synthesis") + '</div>') + AR +
-         st("Brief falsifier", '<div class="stack">' + chip("developer-small", "read-only") + '</div>') + AR +
-         st("Build", tx("Decomposed and run like size:m: core, pieces, one validation pass.")) }
-  ];
-  document.getElementById("lanes").innerHTML = lanes.map(function (l) {
-    return '<div class="lane"><div class="lh"><b>' + l.k + '</b><span>' + l.d + '</span></div><div class="flow">' + l.f + '</div></div>';
-  }).join("");
+<h2 id="next">Where to go next</h2>
+<div class="card-grid">
+<a class="card" href="start.html"><h3>Getting started</h3><p>Install, the first session, PM tools, upgrading, Windows.</p></a>
+<a class="card" href="concepts/lifecycle.html"><h3>Lifecycle</h3><p>The loop every task walks, persona by persona.</p></a>
+<a class="card" href="concepts/sizing.html"><h3>Sizing</h3><p>How the size label picks who builds.</p></a>
+<a class="card" href="concepts/escalation.html"><h3>Escalation</h3><p>What happens when a build is stuck.</p></a>
+<a class="card" href="concepts/around-the-loop.html"><h3>Around the loop</h3><p>Reporting, handbooks, worktrees, budgets, Codex and more.</p></a>
+<a class="card" href="concepts/fleet.html"><h3>Fleet mode</h3><p>Several epics at once, one child orchestrator each.</p></a>
+<a class="card" href="settings.html"><h3>Settings</h3><p>Every <code>PROJECT-INFO.md</code> key.</p></a>
+<a class="card" href="skills.html"><h3>Skills &amp; commands</h3><p>Everything you can run.</p></a>
+<a class="card" href="reference.html"><h3>Reference</h3><p>Every guide in the installed cascade.</p></a>
+<a class="card" href="mods/index.html"><h3>Mods</h3><p>What Marvin shows you in Claude Code.</p></a>
+<a class="card" href="releases/index.html"><h3>Releases</h3><p>Every version, its upgrade steps and changes.</p></a>
+</div>
 
-  /* escalation staircase */
-  var stair = document.getElementById("stair");
-  stair.innerHTML =
-    '<div class="rung h1" data-t="micro"><span class="cap">Micro build</span>' + chip("developer-micro") +
-      '<p>Effort is already pinned at high, so nothing is left to climb.</p><span class="note">Stuck: tier up.</span></div>' +
-    '<div class="rung h2" data-t="small"><span class="cap">Tier-up</span>' + chip("developer-small") +
-      '<p>Same task, next tier. Also where a small build starts.</p><span class="note">Stuck: climb effort.</span></div>' +
-    '<div class="rung h3" data-t="small"><span class="cap">Small-tier rung</span>' + chip("escalation-small-xhigh") +
-      '<p>Sonnet at xhigh, the small tier\'s last step.</p><span class="note">Stuck: move to Opus.</span></div>' +
-    '<div class="rung h4" data-t="heavy"><span class="cap">Rung 1</span>' + chip("escalation-high") +
-      '<p>First heavy-tier rung. A <b>developer</b> build enters the ladder here.</p><span class="note">Stuck: climb effort.</span></div>' +
-    '<div class="rung h5" data-t="heavy"><span class="cap">Rung 2</span>' + chip("escalation-xhigh") +
-      '<p>Opus at xhigh, the last rung before the gate.</p><span class="note">Stuck: the max gate.</span></div>' +
-    '<div class="rung gate h5"><span class="cap">Max gate: Marvin asks you once</span><div class="opts">' +
-      '<div class="opt-card"><span class="rec">Recommended, and the default</span>' + chip("escalation-max") + '<p>Also used when you give no answer, or the session is unattended.</p></div>' +
-      '<div class="opt-card"><span class="cap">Opt-in, opus profile only</span>' + chip("escalation-frontier") + '<p>Only an explicit frontier choice goes here. The fable profile has no frontier tier: the gate offers max alone.</p></div>' +
-    '</div></div>';
-
-  var sig = [
-    { k: "Converging", b: "Stay", p: "Findings are shrinking round on round. Keep the same rung." },
-    { k: "Stuck", b: "Climb one step", p: "One finding survives 2 consecutive fix rounds, or a rung hits its 4-round cap." },
-    { k: "Whack-a-mole, bloat or loop", b: "Rethink the approach", p: "A different approach, not more effort. A read-only pass writes a fresh plan.", c: chip("researcher", "RETHINK pass") },
-    { k: "Cost blowout", b: "Pause and ask you", p: "Spend passes 3 times the task's size budget." }
-  ];
-  document.getElementById("signals").innerHTML = sig.map(function (s) {
-    return '<div class="sig"><span class="k">' + s.k + '</span><b>' + s.b + '</b><p>' + s.p + '</p>' + (s.c || "") + '</div>';
-  }).join("");
-
-  /* around the loop */
-  var around = [
-    { h: "Reading is delegated", p: "Marvin reads to act, never to learn. Anything wider than a known excerpt goes to a reader sub-agent, and what comes back is data, not instructions.",
-      c: chip("ponytail", "exact lookup") + chip("developer-small", "summary") },
-    { h: "Codex lanes", p: "With the handover switch on, work can go to Codex through one forwarder. Lanes: plan, review, security, design, diagnose, build and build-micro.",
-      c: chip("codex") },
-    { h: "Fleet mode", p: "A milestone with two or more independent epics can run as a master session (Deep Thought) plus one child orchestrator per epic, each with its own lifecycle loop. Offered only on a shared tracker where the host can start child sessions.",
-      c: chip("marvin", "master and each child") },
-    { h: "Milestone close", p: "Marvin runs milestone validation with worker sub-agents, then stats collection and the close-out report. Run reports are pruned afterwards. Nothing is tagged here.",
-      c: chip("marvin") + chip("developer-small", "validation helpers") },
-    { h: "Release cut", p: "git-strategy.md owns the branch model, semver and tagging. Only the orchestrator tags or publishes. A micro persona may prepare the tag message.",
-      c: chip("marvin", "tags") + chip("ponytail", "prepares message") }
-  ];
-  document.getElementById("around").innerHTML = around.map(function (a) {
-    return '<div class="ac"><h3>' + a.h + '</h3><p>' + a.p + '</p><div class="cs">' + a.c + '</div></div>';
-  }).join("");
-
-  /* inspector */
-  var insp = document.getElementById("insp");
-  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
-  function select(id) {
-    var p = P[id]; if (!p) return;
-    insp.setAttribute("data-t", p.t);
-    insp.innerHTML =
-      '<div class="ih"><i class="dot"></i><span class="in">' + (id === "marvin" ? "Marvin" : "marvin:" + id) + '</span>' +
-      '<span class="pill">' + TIER[p.t] + '</span><span class="im">' + p.m + '</span></div>' +
-      '<div class="cols"><div><span class="k">Does</span><span class="v">' + esc(p.does) + '</span></div>' +
-      '<div><span class="k">Dispatched when</span><span class="v">' + esc(p.when) + '</span></div>' +
-      '<div><span class="k">Limits</span><span class="v">' + esc(p.limit) + '</span></div>' +
-      '<div><span class="k">Rules</span><span class="v mono">' + (id === "marvin" ? ".marvin/" : ".marvin/agents/") + p.f + '</span></div></div>';
-    var all = document.querySelectorAll("[data-p]");
-    for (var i = 0; i < all.length; i++) all[i].classList.toggle("sel", all[i].getAttribute("data-p") === id);
-  }
-  document.addEventListener("click", function (e) {
-    var el = e.target.closest ? e.target.closest("[data-p]") : null;
-    if (el) select(el.getAttribute("data-p"));
-  });
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    var el = e.target.closest ? e.target.closest("svg [data-p]") : null;
-    if (el) { e.preventDefault(); select(el.getAttribute("data-p")); }
-  });
-  function go(id) { return function () { var n = document.getElementById(id); if (n) n.scrollIntoView({ behavior: "smooth", block: "start" }); }; }
-  document.getElementById("toLadder").addEventListener("click", go("ladder"));
-  document.getElementById("toSize").addEventListener("click", function () { document.getElementById("lanes").scrollIntoView({ behavior: "smooth", block: "center" }); });
-  select("marvin");
-})();
-</script>
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="assets/site.js" defer></script>
 </body>
 </html>
