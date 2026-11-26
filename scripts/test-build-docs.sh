@@ -4,6 +4,7 @@
 # blockquotes and rules; HTML in a source is escaped, never passed through; any construct outside the subset fails with
 # file:line; a YAML header never leaks into a page; every real release note, upgrade note and the CHANGELOG renders;
 # CRLF input renders byte-identically.
+# AOS-306 adds the concept pages: tier marking, the inspector's data, the old-anchor redirect, the sidebar's in-page headings.
 # AOS-305 adds the rule-11 galleries (docs/images/<feature>/captions.md -> a See it in Claude Code section, inline shot markers) and the Mods page.
 # AOS-301 adds the site build and the --check gate: pages wrapped in the shell, links relative from nested pages, the
 # nav, determinism, stale/missing/orphan reporting that never touches docs/images|release-notes|decisions|superpowers|
@@ -1130,6 +1131,201 @@ python3 "$MOD" --root "$MR" >/dev/null 2>&1; [ "$?" = 0 ] && ok "the real tree b
 if grep -rl 'atlassian.net' "$MR/docs" "$ROOT/site" 2>/dev/null | grep -q .; then bad "atlassian.net found in the output or site/"; else ok "no output file or site source contains atlassian.net"; fi
 grep -Fq 'class="gallery"' "$MR/docs/mods/index.html" && bad "the real Mods page renders a gallery" || ok "the real Mods page renders no gallery (no feature folder yet)"
 grep -Fq 'href="../mods/index.html"' "$MR/docs/index.html" 2>/dev/null; grep -Fq 'mods/index.html' "$MR/docs/index.html" && ok "the nav links Mods" || bad "nav lacks Mods"
+
+# ---------------------------------------------------------------- concept pages (AOS-306)
+# The five Concepts pages are hand bodies in site/concepts/. Every tiered node in a diagram carries data-tier and a
+# mono tier chip (tier is never colour alone), the persona inspector reads #marvin-data (no model typed by hand), the
+# old single page's anchors redirect from the root, the sidebar lists the current concept page's h2s (so the
+# scroll-spy has targets), and every Around-the-loop card cites its guide on the Reference page.
+CONCEPTS="lifecycle sizing escalation around-the-loop fleet"
+hd "concepts: pages"
+python3 - "$ROOT/site/pages.json" <<'PY' && ok "the five concept pages are registered in order, hand-written" || bad "concept registry entries"
+import json, sys
+want = ["concepts/lifecycle.html", "concepts/sizing.html", "concepts/escalation.html", "concepts/around-the-loop.html", "concepts/fleet.html"]
+e = sorted((p for p in json.load(open(sys.argv[1])) if p["section"] == "concepts"), key=lambda p: p["order"])
+assert [p["path"] for p in e] == want, [p["path"] for p in e]
+assert all(p["source"] == "hand" and "feature" not in p for p in e), e
+assert len({p["order"] for p in e}) == 5, "orders must be distinct"
+PY
+for c in $CONCEPTS; do
+  [ -f "$ROOT/site/concepts/$c.html" ] && ok "site/concepts/$c.html exists" || bad "site/concepts/$c.html missing"
+  [ -f "$ROOT/docs/concepts/$c.html" ] && ok "docs/concepts/$c.html built" || bad "docs/concepts/$c.html not built"
+done
+OUT=$(cat "$ROOT/docs/settings.html" 2>/dev/null); has '<a href="concepts/lifecycle.html">Concepts</a>'
+OUT=$(cat "$ROOT/docs/concepts/sizing.html" 2>/dev/null); has '<a href="../concepts/lifecycle.html" aria-current="page">Concepts</a>'
+if grep -REq 'https?://[^"]*atlassian|/Users/|/home/' "$ROOT"/site/concepts/*.html 2>/dev/null; then bad "a concept page carries a tracker link or a local path"; else ok "no tracker link or local path in site/concepts/"; fi
+
+# TIERS_PY <built page>...: every tiered node is marked and chipped, every chip is scoped, every persona's hand-marked
+# tier is the generated one, and every interactive SVG node is keyboard-reachable.
+TIERS_PY='
+import sys, pathlib, importlib.util as u
+from html.parser import HTMLParser
+root = pathlib.Path(sys.argv[1]); pages = sys.argv[2:]
+s = u.spec_from_file_location("bd", root / "scripts/lib/build_docs.py"); m = u.module_from_spec(s); sys.modules["bd"] = m; s.loader.exec_module(m)
+d = m.profile_data(root)
+TIER = {k: v["tier"] for k, v in d["personas"].items()}; TIER["marvin"] = "orch"
+NAME = {"orch": "orchestrator", "heavy": "heavy", "small": "small", "micro": "micro", "frontier": "frontier"}
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+class Tree(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True); self.stack = []; self.nodes = []
+    def node(self, tag, attrs):
+        a = dict(attrs); n = {"tag": tag, "a": a, "cls": set((a.get("class") or "").split()), "up": self.stack[-1] if self.stack else None, "text": [], "kids": []}
+        if n["up"]: n["up"]["kids"].append(n)
+        self.nodes.append(n); return n
+    def handle_starttag(self, tag, attrs):
+        n = self.node(tag, attrs)
+        if tag not in VOID: self.stack.append(n)
+    def handle_startendtag(self, tag, attrs): self.node(tag, attrs)
+    def handle_endtag(self, tag):
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i]["tag"] == tag: del self.stack[i:]; break
+    def handle_data(self, t):
+        for n in self.stack: n["text"].append(t)
+def up(n):
+    while n: yield n; n = n["up"]
+def down(n):
+    for k in n["kids"]: yield k; yield from down(k)
+def tier_of(n): return next((x["a"]["data-tier"] for x in up(n) if "data-tier" in x["a"]), None)
+def text(n): return "".join(n["text"]).strip().lower()
+bad = []; counts = {}
+for p in pages:
+    t = Tree(); t.feed(open(p, encoding="utf-8").read()); name = pathlib.Path(p).name; c = counts[name] = {"chips": 0, "nodes": 0}
+    for n in t.nodes:
+        a, cls = n["a"], n["cls"]
+        indiag = any("diagram" in x["cls"] for x in up(n))
+        tag, pid0 = n["tag"], a.get("data-p")
+        if "data-t" in a: bad.append(f"{name}: old data-t attribute on <{tag}>")
+        if "chip" in cls:
+            c["chips"] += 1
+            if not any(x["cls"] & {"diagram", "tier-legend"} for x in up(n)): bad.append(f"{name}: a .chip outside .diagram/.tier-legend (its hue would not apply)")
+            tr = tier_of(n)
+            if tr not in NAME: bad.append(f"{name}: a .chip with no data-tier on it or an ancestor: {a}")
+            elif not any("tier" in k["cls"] and text(k) == NAME[tr] for k in down(n)): bad.append(f"{name}: a {tr} chip whose .tier text is not {NAME[tr]!r}")
+        if indiag and "data-tier" in a and "diagram" not in cls:
+            tr = a["data-tier"]
+            if tr not in NAME: bad.append(f"{name}: unknown data-tier {tr!r}")
+            elif "chip" not in cls and not any("chip" in k["cls"] and tier_of(k) == tr for k in down(n)): bad.append(f"{name}: a data-tier={tr} node with no {tr} chip inside: {a}")
+        if indiag and "p" in cls and n["tag"] == "g":
+            c["nodes"] += 1
+            for k, v in (("tabindex", "0"), ("role", "button")):
+                if a.get(k) != v: bad.append(f"{name}: SVG persona node {pid0} lacks {k}={v}")
+            if not a.get("aria-label"): bad.append(f"{name}: SVG persona node without aria-label")
+            if "data-tier" not in a: bad.append(f"{name}: SVG persona node without data-tier")
+        if n["tag"] == "button" and "chip" in cls and a.get("type") != "button": bad.append(f"{name}: chip button without type=button")
+        if "data-p" in a:
+            pid = a["data-p"]
+            if pid not in TIER: bad.append(f"{name}: data-p={pid!r} is not a shipped persona (or marvin)")
+            elif tier_of(n) != TIER[pid]: bad.append(f"{name}: {pid} is marked {tier_of(n)!r}, the generated tier is {TIER[pid]!r}")
+for k, v in sorted(counts.items()): print(k, v)
+for b in bad: print("PROBLEM:", b)
+sys.exit(1 if bad else 0)
+'
+hd "concepts: tiers marked"
+OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$ROOT"/docs/concepts/*.html 2>&1); RC=$?; rc 0
+has 'lifecycle.html {'; has 'sizing.html {'; has 'escalation.html {'; has 'around-the-loop.html {'
+python3 - "$ROOT" <<'PY' && ok "lifecycle has >=10 keyboard SVG nodes; sizing, escalation, around have chips" || bad "concept pages lost their persona nodes"
+import re, sys, pathlib
+r = pathlib.Path(sys.argv[1]) / "docs/concepts"
+lc = (r / "lifecycle.html").read_text()
+assert len(re.findall(r'<g class="p"[^>]*tabindex="0"', lc)) >= 10
+for f in ("sizing", "escalation", "around-the-loop"):
+    assert len(re.findall(r'<button type="button" class="chip"', (r / f"{f}.html").read_text())) >= 3, f
+PY
+# the checker itself catches each defect shape
+mkdir -p "$WORK/tiers"
+printf '<div class="diagram"><button type="button" class="chip" data-p="developer" data-tier="heavy"><span class="tier">small</span></button></div>\n' > "$WORK/tiers/a.html"
+printf '<div class="diagram"><div class="rung" data-tier="small"><p>no chip</p></div></div>\n' > "$WORK/tiers/b.html"
+printf '<p><button type="button" class="chip" data-p="ponytail" data-tier="micro"><span class="tier">micro</span></button></p>\n' > "$WORK/tiers/c.html"
+printf '<div class="diagram"><button type="button" class="chip" data-p="developer" data-tier="small"><span class="tier">small</span></button></div>\n' > "$WORK/tiers/d.html"
+printf '<div class="diagram"><svg><g class="p" data-p="ponytail" data-tier="micro"><g class="chip"><text class="tier">micro</text></g></g></svg></div>\n' > "$WORK/tiers/e.html"
+printf '<div class="diagram"><span class="lg" data-t="heavy">x</span></div>\n' > "$WORK/tiers/f.html"
+for f in a b c d e f; do OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$WORK/tiers/$f.html" 2>&1); [ "$?" = 1 ] && ok "defect $f caught" || bad "defect $f not caught ($OUT)"; done
+printf '<div class="diagram"><svg><g class="p" data-p="ponytail" data-tier="micro" tabindex="0" role="button" aria-label="ponytail"><g class="chip"><text class="tier">micro</text></g></g></svg><button type="button" class="chip" data-p="marvin" data-tier="orch"><span class="tier">orchestrator</span></button></div>\n' > "$WORK/tiers/good.html"
+OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$WORK/tiers/good.html" 2>&1); [ "$?" = 0 ] && ok "a well-marked fragment passes" || bad "good fragment rejected ($OUT)"
+
+hd "concepts: inspector data"
+OUT=$(cat "$ROOT/docs/concepts/lifecycle.html" 2>/dev/null)
+has '<script type="application/json" id="marvin-data">'; has 'id="insp"'; has 'aria-live="polite"'; has '<div class="tier-legend">'; has 'settings.html#model_profile'
+for f in lifecycle sizing escalation around-the-loop; do grep -Fq '<!-- data: profiles -->' "$ROOT/site/concepts/$f.html" 2>/dev/null && ok "$f carries the data marker" || bad "$f lacks <!-- data: profiles -->"; done
+grep -Fq '<!-- table: profiles -->' "$ROOT/site/concepts/lifecycle.html" 2>/dev/null && ok "lifecycle carries the profiles table" || bad "lifecycle lacks <!-- table: profiles -->"
+grep -Fq '<!-- table: codex -->' "$ROOT/site/concepts/around-the-loop.html" 2>/dev/null && ok "around the loop carries the codex table" || bad "around-the-loop lacks <!-- table: codex -->"
+OUT=$(cat "$JS"); has 'function initInspector'; has 'getElementById("marvin-data")'; has 'JSON.parse'
+python3 - "$ROOT" <<'PY' && ok "site.js persona notes cover exactly the shipped personas plus marvin" || bad "site.js NOTES drifted from agents/"
+import re, sys, pathlib, importlib.util as u
+root = pathlib.Path(sys.argv[1])
+s = u.spec_from_file_location("bd", root / "scripts/lib/build_docs.py"); m = u.module_from_spec(s); sys.modules["bd"] = m; s.loader.exec_module(m)
+js = (root / "site/assets/site.js").read_text()
+blk = re.search(r"var NOTES = \{\n(.*?)\n  \};", js, re.S)
+assert blk, "no NOTES block"
+keys = set(re.findall(r'^    "([a-z-]+)": \{', blk.group(1), re.M))
+want = set(m.profile_data(root)["personas"]) | {"marvin"}
+assert keys == want, (sorted(keys - want), sorted(want - keys))
+for stem in re.findall(r'rules: "([a-z-]+)"', blk.group(1)):
+    assert (root / "templates/marvin/agents" / f"{stem}.md").is_file(), stem
+PY
+
+hd "redirect: old anchors"
+python3 - "$ROOT" <<'PY' && ok "site.js maps the old page's six anchors to the concept page that carries each id" || bad "old-anchor map"
+import re, sys, pathlib
+root = pathlib.Path(sys.argv[1]); js = (root / "site/assets/site.js").read_text()
+blk = re.search(r"var OLD_ANCHORS = \{(.*?)\};", js, re.S)
+assert blk, "no OLD_ANCHORS block"
+got = dict(re.findall(r'"(#[a-z]+)": "(concepts/[a-z-]+\.html)"', blk.group(1)))
+want = {"#ladder": "concepts/escalation.html", "#stair": "concepts/escalation.html", "#signals": "concepts/escalation.html",
+        "#lanes": "concepts/sizing.html", "#around": "concepts/around-the-loop.html", "#insp": "concepts/lifecycle.html"}
+assert got == want, got
+for h, t in want.items():
+    assert f'id="{h[1:]}"' in (root / "docs" / t).read_text(), (h, t)
+assert "location.replace(" in js
+PY
+OUT=$(sed -n '/function initOldAnchors/,/^});/p' "$JS"); has 'location.replace('; has 'rootPrefix() !== ""'; has 'index\.html'
+
+hd "sidebar: in-page headings"
+fx_toc() {
+  local d="$WORK/fx-toc"; mkrepo "$d"
+  printf '<h1>X</h1>\n<h2 id="alpha">Alpha <code>b</code> &amp; c</h2>\n<p>t</p>\n<h2 id="beta">Beta</h2>\n<h3 id="gamma">Gamma</h3>\n' > "$d/site/concepts/x.html"
+  printf '<h1>Y</h1>\n<h2 id="why">Why</h2>\n' > "$d/site/concepts/y.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"},
+  {"path": "concepts/y.html", "title": "Concept Y", "section": "concepts", "order": 2, "source": "hand"}
+]
+JSON
+  sbuild "$d" || return 1
+  OUT=$(cat "$d/docs/concepts/x.html")
+  printf '%s' "$OUT" | grep -Fq '<li><a href="../concepts/x.html" aria-current="page">Concept X</a><ul><li><a href="#alpha">Alpha b &amp; c</a></li><li><a href="#beta">Beta</a></li></ul></li><li><a href="../concepts/y.html">Concept Y</a></li>' || return 1
+  printf '%s' "$OUT" | grep -Fq 'href="#gamma"' && return 1
+  grep -Fq '<li><a href="../concepts/x.html">Concept X</a></li><li><a href="../concepts/y.html" aria-current="page">Concept Y</a><ul><li><a href="#why">Why</a></li></ul></li>' "$d/docs/concepts/y.html"
+}
+fx_toc && ok "the current concept page's h2s nest under its sidebar entry, other entries stay flat" || bad "fx_toc"
+OUT=$(cat "$ROOT/docs/concepts/lifecycle.html" 2>/dev/null); has 'aria-current="page">Lifecycle</a><ul><li><a href="#'
+OUT=$(cat "$ROOT/docs/releases/index.html" 2>/dev/null); lacks '<ul><li><a href="#'
+
+hd "concepts: guide links resolve"
+python3 - "$ROOT" <<'PY' && ok "every Around-the-loop card cites its guide, and every ../reference.html# link on a concept page resolves" || bad "a concept page cites a missing guide anchor"
+import re, sys, pathlib
+root = pathlib.Path(sys.argv[1]); docs = root / "docs"
+ids = set(re.findall(r'\bid="([^"]+)"', (docs / "reference.html").read_text()))
+sids = set(re.findall(r'\bid="([^"]+)"', (docs / "settings.html").read_text())) | set(re.findall(r'\bid="([^"]+)"', (docs / "skills.html").read_text()))
+missing = []
+for f in sorted((docs / "concepts").glob("*.html")):
+    t = f.read_text()
+    for a in re.findall(r'href="\.\./reference\.html#([^"]+)"', t):
+        if a not in ids: missing.append((f.name, "reference", a))
+    for page, a in re.findall(r'href="\.\./(settings|skills)\.html#([^"]+)"', t):
+        if a not in sids: missing.append((f.name, page, a))
+assert not missing, missing
+around = (docs / "concepts/around-the-loop.html").read_text()
+cards = re.findall(r'<article class="card">(.*?)</article>', around, re.S)
+assert len(cards) >= 8, len(cards)
+nolink = [c[:60] for c in cards if not re.search(r'href="\.\./reference\.html#[a-z-]+"', c)]
+assert not nolink, nolink
+fl = (docs / "concepts/fleet.html").read_text()
+for need in ('href="../reference.html#fleet"', 'href="../reference.html#fleet-child"', "<svg", "/marvin:fleet stop"):
+    assert need in fl, need
+PY
 
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite

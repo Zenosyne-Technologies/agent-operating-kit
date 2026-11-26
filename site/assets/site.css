@@ -274,10 +274,11 @@ a.card:focus-visible { outline: 2px solid var(--em-green); outline-offset: 2px; 
 .release-block--changes { border-left: 2px solid var(--em-white-24); }
 
 /* ---------------------------------------------------------------- galleries and the CSS-only lightbox
-   Markup (Task 6): <div class="gallery" id="g-<feature>"> then per screenshot
-   <figure class="shot" id="shot-<feature>-<n>"><a class="shot__open" href="#shot-<feature>-<n>"><img ...></a>
+   Markup (Task 6): <div class="gallery" id="g-<feature>"> then per screenshot <stem>.png
+   <figure class="shot" id="<feature>-<stem>"><a class="shot__open" href="#<feature>-<stem>"><img ...></a>
    <figcaption>...</figcaption><a class="shot__close" href="#g-<feature>">Close</a></figure>. Targeting a .shot
-   opens it full-screen; the close link targets the gallery again. */
+   opens it full-screen; the close link targets the gallery again. An inline copy in the prose (<!-- shot: -->) is
+   <figure class="shot" id="<feature>-<stem>-inline">, and its open link targets the gallery copy's id. */
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 20px; margin: 0 0 2em; }
 .shot { margin: 0; min-width: 0; }
 .shot__open {
@@ -398,6 +399,110 @@ a.card:focus-visible { outline: 2px solid var(--em-green); outline-offset: 2px; 
 .diagram .ah-fail { fill: var(--em-red); }
 .diagram .fail { color: var(--em-red); }
 .diagram .rec { font-family: var(--em-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--em-green); }
+
+/* tier chips inside an SVG diagram: a hairline pill in the tier hue around the mono tier name */
+.diagram svg .chip { cursor: inherit; }
+.diagram svg .chip rect { fill: var(--em-surface-1); stroke: var(--tc, var(--em-white-24)); stroke-width: 1; }
+.diagram svg .chip .tier { font: 500 8.5px var(--em-mono); letter-spacing: .08em; text-transform: uppercase; fill: var(--tc, var(--em-text-2)); }
+.diagram svg .p:focus { outline: none; }
+.diagram svg .p:focus-visible .node, .diagram svg .p:focus-visible .row { stroke: var(--em-green); stroke-width: 3; }
+.diagram svg .done { fill: var(--em-surface-2); stroke: var(--em-green-40); stroke-width: 1.5; }
+.diagram svg .tick { fill: none; stroke: var(--em-green); stroke-width: 2.2; }
+.diagram svg a:focus-visible .lk { outline: none; fill: var(--em-green); }
+.diagram svg .lane-line { fill: none; stroke: var(--em-white-24); stroke-width: 1.4; }
+.diagram svg .relay { fill: none; stroke: var(--em-text-2); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.diagram svg .lease { fill: var(--em-surface-3); stroke: var(--em-green-20); stroke-width: 1; }
+.diagram svg .ttl { font: 700 12px var(--em-sans); letter-spacing: .04em; text-transform: uppercase; fill: var(--em-text); }
+.diagram--mid > svg { min-width: 720px; }
+
+/* ---------------------------------------------------------------- concept pages (AOS-306)
+   The persona inspector, the size lanes, the escalation staircase and its signals, the Around-the-loop cards. Each
+   block that holds tier chips sits inside .diagram (often .diagram--plain) so the scoped palette reaches them. */
+.legend-arrow { display: block; flex: none; }
+.tier-legend .lg--fail { color: var(--em-red); }
+
+/* the inspector: sticks to the bottom of the viewport while its page scrolls */
+.diagram.insp {
+  position: sticky; bottom: 0; z-index: 5; margin: 40px 0 0; padding: 12px 16px 14px; overflow: auto; max-height: 46vh;
+  background: var(--em-surface-2); border-color: var(--em-green-20);
+}
+.insp .hint { margin: 0; }
+.insp .ih { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: 8px; }
+.insp .ih .dot { width: 11px; height: 11px; }
+.insp .in { font-family: var(--em-mono); font-size: 15px; font-weight: 500; color: var(--em-text); }
+.insp .pill {
+  padding: 1px 9px; border: 1px solid var(--tc, var(--em-white-24)); border-radius: 999px;
+  font-family: var(--em-mono); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--tc, var(--em-text));
+}
+.insp .im { font-family: var(--em-mono); font-size: 12px; color: var(--em-text-2); }
+.insp .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px 20px; }
+.insp .cols > div { min-width: 0; }
+.insp .k { display: block; font-family: var(--em-mono); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--em-white-72); }
+.insp .v { display: block; font-size: 13.5px; line-height: 1.4; color: var(--em-text-2); }
+.insp a.v { color: var(--em-text); font-size: 12.5px; }
+
+/* size lanes */
+.lanes { display: grid; gap: 10px; }
+.lane {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; padding: 14px 16px;
+  background: var(--em-surface-1); border: 1px solid var(--em-line); border-radius: var(--em-radius-card);
+}
+.lane .lh b { display: block; font-family: var(--em-mono); font-size: 15px; font-weight: 500; color: var(--em-text); }
+.lane .lh span { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.35; color: var(--em-text-2); }
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 8px; min-width: 0; }
+.st { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.st .cap, .rung .cap, .sig .k {
+  font-family: var(--em-mono); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--em-white-72);
+}
+.st .tx { max-width: 30ch; font-size: 13.5px; line-height: 1.38; color: var(--em-text-2); }
+.st .stack { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.st .row2 { display: flex; flex-wrap: wrap; gap: 6px; }
+.ar { align-self: center; padding-top: 14px; font-family: var(--em-mono); font-size: 16px; color: var(--em-white-48); }
+
+/* the escalation staircase: five rungs rise left to right; the max gate, red-topped, spans the row beneath them */
+.stair { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.rung {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  background: var(--em-surface-1); border: 1px solid var(--em-line); border-top: 3px solid var(--tc, var(--em-white-24)); border-radius: var(--em-radius);
+}
+.rung p { margin: 0; font-size: 13px; line-height: 1.38; color: var(--em-text-2); }
+.rung .chip { align-self: flex-start; }
+.rung .note { margin-top: auto; font-size: 12px; color: var(--em-white-72); }
+.rung.h1 { min-height: 210px; } .rung.h2 { min-height: 245px; } .rung.h3 { min-height: 280px; }
+.rung.h4 { min-height: 315px; } .rung.h5 { min-height: 350px; }
+.rung.gate { flex-basis: 100%; min-height: 0; border-top-color: var(--em-red); }
+.rung .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
+.opt-card { display: grid; gap: 6px; padding: 8px; border: 1px dashed var(--em-white-24); border-radius: var(--em-radius); }
+.stop {
+  margin: 12px 0 0; padding: 12px 16px; font-size: 14px; color: var(--em-text-2);
+  background: var(--em-surface-1); border: 1px solid var(--em-red); border-radius: var(--em-radius-card);
+}
+.stop b { color: var(--em-red); font-weight: 600; }
+.signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.sig {
+  display: grid; align-content: start; gap: 4px; padding: 12px 14px;
+  background: var(--em-surface-1); border: 1px solid var(--em-line); border-radius: var(--em-radius-card);
+}
+.sig b { font-size: 15px; font-weight: 600; color: var(--em-text); }
+.sig p { margin: 0; font-size: 13px; line-height: 1.4; color: var(--em-text-2); }
+.sig .chip { justify-self: start; margin-top: 4px; }
+
+/* Around the loop: one card per piece, its chips, then the guide it cites */
+.card .cs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.card .cite { margin: 0; font-size: 12.5px; color: var(--em-white-72); }
+.card h3 { font-size: 15px; }
+.card p { font-size: 14px; }
+
+@media (max-width: 760px) {
+  .lane { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .stair { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .stair .rung { flex: 0 0 auto; min-height: 0; }
+  .diagram.insp { padding: 10px 12px; max-height: 30vh; }
+  .insp .ih { margin-bottom: 4px; }
+  .insp .in { font-size: 14px; }
+  .insp .cols { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .insp .v { font-size: 13px; }
+}
 
 /* ---------------------------------------------------------------- reduced motion: no transitions, no animation,
    no Home wireframe grid */

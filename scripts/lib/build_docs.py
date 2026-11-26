@@ -586,7 +586,19 @@ def _nav(pages: list[Page], cur: Page, prefix: str) -> str:
     return '<nav class="top-nav" aria-label="Primary">' + "".join(rows) + "</nav>"
 
 
-def _sidebar(pages: list[Page], cur: Page, prefix: str) -> str:
+_H2 = re.compile(r'<h2\b[^>]*\bid="([^"<>]+)"[^>]*>(.*?)</h2>', re.S)
+
+
+def _toc(body: str) -> str:
+    """A concept page's h2s as a nested sidebar list (the scroll-spy's targets); "" when it has none."""
+    rows = []
+    for m in _H2.finditer(body):
+        label = html.unescape(re.sub(r"<[^>]*>", "", m.group(2))).strip()
+        rows.append(f'<li><a href="#{m.group(1)}">{html.escape(label, quote=False)}</a></li>')
+    return "<ul>" + "".join(rows) + "</ul>" if rows else ""
+
+
+def _sidebar(pages: list[Page], cur: Page, prefix: str, body: str = "") -> str:
     if cur.section not in ("concepts", "releases"):
         return ""
     rows = []
@@ -595,7 +607,8 @@ def _sidebar(pages: list[Page], cur: Page, prefix: str) -> str:
             continue
         mark = ' aria-current="page"' if p.path == cur.path else ""
         label = p.title.split(" — ", 1)[0] if cur.section == "releases" else p.title  # 55 entries: the version, not the headline
-        rows.append(f'<li><a href="{prefix}{html.escape(p.path)}"{mark}>{html.escape(label)}</a></li>')
+        toc = _toc(body) if p.path == cur.path and cur.section == "concepts" else ""
+        rows.append(f'<li><a href="{prefix}{html.escape(p.path)}"{mark}>{html.escape(label)}</a>{toc}</li>')
     return '<aside class="sidebar"><nav aria-label="In this section"><ul>' + "".join(rows) + "</ul></nav></aside>"
 
 
@@ -629,7 +642,7 @@ def render_site(root: Path) -> dict[str, bytes]:
         _claim(seen, pg.path)
         prefix = "../" * pg.path.count("/")
         vals = {"TITLE": html.escape(pg.title), "ROOT": prefix, "NAV": _nav(pages, pg, prefix),
-                "SIDEBAR": _sidebar(pages, pg, prefix), "BODY": body}
+                "SIDEBAR": _sidebar(pages, pg, prefix, body), "BODY": body}
         page_html = _TOKENS.sub(lambda m: vals[m.group(1)], shell)
         if 'href="/' in page_html or 'src="/' in page_html:
             raise BuildError(f"{pg.path}: root-absolute href/src (the site lives under a project URL; use a relative link)")  # GUARD:abs-link

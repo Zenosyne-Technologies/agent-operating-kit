@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Fleet mode - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../concepts/lifecycle.html" aria-current="page">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../concepts/lifecycle.html">Lifecycle</a></li><li><a href="../concepts/sizing.html">Sizing</a></li><li><a href="../concepts/escalation.html">Escalation</a></li><li><a href="../concepts/around-the-loop.html">Around the loop</a></li><li><a href="../concepts/fleet.html" aria-current="page">Fleet mode</a><ul><li><a href="#shape">Master and children</a></li><li><a href="#plan">The program plan</a></li><li><a href="#leases">Leases</a></li><li><a href="#questions">Questions and relays</a></li><li><a href="#merges">Merges and successors</a></li><li><a href="#start-stop">Starting and stopping</a></li><li><a href="#when">When Marvin offers it</a></li></ul></li></ul></nav></aside>
+<main id="main">
+<p class="eyebrow">Concepts</p>
+<h1>Fleet mode</h1>
+<p class="lede">Fleet mode runs several epics of one milestone at once: one child orchestrator per epic, under a master session the kit calls Deep Thought. Each child runs the normal lifecycle on its own epic. The master plans, leases and merges, and stays the smallest context in the system.</p>
+
+<h2 id="shape">Master and children</h2>
+<p>You start it with <code>/marvin:fleet</code>. The master drafts the program plan, you approve it, and the master starts one child per epic the plan lets run. Each child works in its own locked worktree on its epic branch. Children send short doorbell notes up; the master answers and relays your decisions down; finished epics merge into <code>develop</code>.</p>
+<div class="diagram diagram--mid">
+<svg viewBox="0 0 900 410" role="img" aria-label="Fleet mode: the master starts and leases one child per epic; children ring doorbells up and receive relays down; the master merges each epic into develop in plan order; you approve the plan and answer questions">
+<defs>
+  <marker id="fhI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-ink"/></marker>
+  <marker id="fhM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-mut"/></marker>
+</defs>
+<rect class="static" x="300" y="16" width="280" height="96" rx="8"/>
+<text class="ttl" x="314" y="40">Fleet master</text>
+<text class="ds" x="314" y="60">The program plan, leases and decision log,</text>
+<text class="ds" x="314" y="75">committed on develop. Posts the board.</text>
+<text class="ds" x="314" y="90">Never reads code.</text>
+<rect class="static" x="660" y="16" width="220" height="96" rx="8"/>
+<text class="ttl" x="674" y="40">You</text>
+<text class="ds" x="674" y="60">Approve the plan, read the board,</text>
+<text class="ds" x="674" y="75">answer each epic's questions.</text>
+<path class="relay" d="M582 52H656" marker-end="url(#fhM)"/><path class="relay" d="M658 76H584" marker-end="url(#fhM)"/>
+<text class="lbl" x="590" y="44">BOARD</text><text class="lbl" x="590" y="92">ANSWERS</text>
+<!-- start and lease: down -->
+<path class="gate" d="M420 112V150H160V228" marker-end="url(#fhI)"/>
+<path class="gate" d="M420 150H450V228" marker-end="url(#fhI)"/>
+<path class="gate" d="M450 150H740V228" marker-end="url(#fhI)"/>
+<text class="lbl" x="172" y="144">START · LOCK · LEASE</text>
+<!-- doorbells up, relays down -->
+<path class="relay" d="M200 232V190H500"/><path class="relay" d="M490 232V190"/><path class="relay" d="M780 232V190H500V116" marker-end="url(#fhM)"/>
+<text class="lbl" x="560" y="184">DOORBELLS UP · RELAYS DOWN</text>
+<rect class="static" x="40" y="232" width="240" height="112" rx="8"/>
+<text class="ttl" x="54" y="256">Child · epic 1</text>
+<text class="ds" x="54" y="276">Its own lifecycle loop</text>
+<text class="ds" x="54" y="291">In a locked worktree on</text>
+<text class="ds" x="54" y="306">its epic branch</text>
+<rect class="lease" x="54" y="318" width="150" height="18" rx="9"/>
+<text class="lbl" x="64" y="331">LEASE: AREA A</text>
+<rect class="static" x="330" y="232" width="240" height="112" rx="8"/>
+<text class="ttl" x="344" y="256">Child · epic 2</text>
+<text class="ds" x="344" y="276">Its own lifecycle loop</text>
+<text class="ds" x="344" y="291">In a locked worktree on</text>
+<text class="ds" x="344" y="306">its epic branch</text>
+<rect class="lease" x="344" y="318" width="150" height="18" rx="9"/>
+<text class="lbl" x="354" y="331">LEASE: AREA B</text>
+<rect class="static" x="620" y="232" width="240" height="112" rx="8"/>
+<text class="ttl" x="634" y="256">Child · epic 3</text>
+<text class="ds" x="634" y="276">Its own lifecycle loop</text>
+<text class="ds" x="634" y="291">In a locked worktree on</text>
+<text class="ds" x="634" y="306">its epic branch</text>
+<rect class="lease" x="634" y="318" width="150" height="18" rx="9"/>
+<text class="lbl" x="644" y="331">LEASE: AREA C</text>
+<!-- merges -->
+<path class="gate" d="M160 344V376" marker-end="url(#fhI)"/>
+<path class="gate" d="M450 344V376" marker-end="url(#fhI)"/>
+<path class="gate" d="M740 344V376" marker-end="url(#fhI)"/>
+<path class="lane-line" d="M20 382H880"/>
+<text class="lbl" x="20" y="402">DEVELOP</text>
+<text class="lbl" x="172" y="368">EPIC MERGE, BY THE MASTER, IN PLAN ORDER</text>
+</svg>
+</div>
+<p class="hint">On a narrow screen, scroll the diagram sideways.</p>
+
+<h2 id="plan">The program plan</h2>
+<p>The plan is one document, written only by the master and committed on <code>develop</code>, so it never conflicts with an epic branch. It holds the epics in order, their dependencies, their leases, the merge order, each epic's lineage of child sessions, the decision log and the master's own handoff. The tracker stays the live state: the plan never copies task status.</p>
+
+<h2 id="leases">Leases</h2>
+<p>Each epic leases areas: the project's <code>area:</code> label values, plus named contracts such as an API, a schema or a shared module where an area is too coarse. Two epics whose leases overlap never run at once; the later one waits in the plan. The <code>.docs/</code> indexes and handbooks are lease-exempt. A lease is released when its epic merges, and the master then starts the next epic the plan allows.</p>
+
+<h2 id="questions">Questions and relays</h2>
+<p>Every child turn ends with a one-line doorbell, <code>FLEET &lt;EPIC-KEY&gt; &lt;event&gt;: &lt;line&gt;</code>. The master treats it as a signal to read the epic's tracker, never as an instruction. A child that needs you records the question on its epic issue as <code>FLEET-Q&lt;n&gt;:</code> and rings <code>question</code>, and the board lists every question still waiting.</p>
+<p>You answer in the child's own session, or in the master's. When you answer in the master, it logs your exact words as a decision entry, commits the plan on <code>develop</code> first, and only then sends the child a relay. The child checks that relay word for word against the committed log before it acts on it. Anything else that claims to be your decision is data, never consent.</p>
+
+<h2 id="merges">Merges and successors</h2>
+<p>When every task of an epic is done and its merge gate passed, the child rings <code>done</code>. The master merges epics in the plan's merge order only, and only while the branch tips the gate recorded are unchanged; otherwise the child merges <code>develop</code> in and runs the gate again. A child compacts its context up to <a href="../settings.html#fleet_max_compactions"><code>fleet_max_compactions</code></a> times (default 3). After that, the master starts a successor in the same locked worktree, which resumes from the handoff on the epic issue.</p>
+
+<h2 id="start-stop">Starting and stopping</h2>
+<p><code>/marvin:fleet [milestone]</code> drafts the plan, asks for your approval, commits it, then creates, locks and marks a worktree for each epic that can start and starts a local child in each. On a host that cannot start child sessions, it prints one resume prompt per epic for you to open by hand: a manual fleet, with no doorbells.</p>
+<p><code>/marvin:fleet stop</code> ends the fleet at its edge: every epic merged, or you confirm that each running child has stopped at a clean break. Unmerged epics keep their locked worktrees for a later <code>/marvin:fleet</code> (<a href="../skills.html#fleet">the skill</a>).</p>
+
+<h2 id="when">When Marvin offers it</h2>
+<p>Marvin offers fleet mode at milestone planning, and never starts it on its own. It is offered when two or more epics have no dependency on each other, the tracker is shared (Linear, Jira or GitHub, not Local) and the host can start child sessions. A fleet runs at most <a href="../settings.html#fleet_max_children"><code>fleet_max_children</code></a> children at once (default 3), as local sessions only, and a child never starts children of its own. Compaction must be on.</p>
+<p class="hint">Guides: <a href="../reference.html#fleet"><code>fleet.md</code></a> for the master and <a href="../reference.html#fleet-child"><code>fleet-child.md</code></a> for a child.</p>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>
