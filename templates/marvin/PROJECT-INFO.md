@@ -15,6 +15,7 @@ project_size: {{PROJECT_SIZE}}
 app_type: {{APP_TYPE}}
 screens_guide: {{SCREENS_GUIDE}}
 visual_validation: {{VISUAL_VALIDATION}}
+model_profile: {{MODEL_PROFILE}}
 docs_location: {{DOCS_LOCATION}}
 issue_log_path: {{DOCS_ISSUE_LOG_PATH}}
 telemetry: {{TELEMETRY}}
@@ -42,7 +43,7 @@ Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Th
 
 - Repository layout: {{MONOREPO_OR_SINGLE + one-line top-level map}}
 - Hierarchy details, virtual milestones, severity/size native mappings: `.marvin/agents/tracker-config.md`
-- `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`)
+- `screens_guide` points into the UI screen catalog (`.docs/handbooks/developer/screens/index.md` by default) — the declared surface source design/visual review resolves against; `visual_validation` sets when that review runs (`per-task` | `milestone` | `off`); `model_profile` picks the model set the tiers run (`opus` | `fable`; absent reads as the `opus` profile, any other value is a must-act finding) — `.marvin/agents/model-profile.md`; to switch, edit it and run `/marvin:upgrade-agent-os`
 - `update_gate` sets the user-update format check (`advise` | `block` | `off`, `.marvin/agents/user-updates.md` *Enforcement*); `context_window_ktokens`, `session_soft_ktokens` and `session_hard_ktokens` are optional overrides for `.marvin/agents/session-budget.md`; `fleet_max_children` (1–9), `fleet_max_compactions` (0–9) and `fleet_restart_max_pct` (1–99) are optional overrides for `.marvin/agents/fleet.md` / `fleet-child.md`
 - `ticket_lint` sets the tracker-write label check (`block` | `advise` | `off`; absent or empty = `advise`; an unknown value = `block`) — `.marvin/agents/ticket-filing.md`
 - `worktree_sweep` sets the automatic worktree sweep (`on` | `check` | `off`; absent or invalid = `check`, which reports what it would remove and removes nothing) — `.marvin/agents/worktrees.md`
