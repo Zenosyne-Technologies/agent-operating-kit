@@ -46,6 +46,8 @@ jobs:
         run: bash scripts/test-codex.sh
       - name: Run placeholder check tests
         run: bash scripts/test-placeholder-check.sh
+      - name: Run docs-site build tests
+        run: bash scripts/test-build-docs.sh
   windows:
     # Git Bash on windows-latest: the hooks are bash scripts. First run pending (cannot be verified before a push).
     continue-on-error: true   # until its first green run — then remove this line

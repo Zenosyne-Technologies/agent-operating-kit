@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.41.0 — Fleet mode (nested orchestrators for parallel epics) - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html" aria-current="page">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-41-0-fleet-mode-nested-orchestrators-for-parallel-epics">v0.41.0 — Fleet mode (nested orchestrators for parallel epics)</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, follow the update procedure the SessionStart notice prints (<code>upgrades/v0.41.0.md</code>), and start a new session. Nothing changes until you run <code>/marvin:fleet</code>.</p>
+<p><strong>Why.</strong> Claude Code can now start child sessions. Running epics in parallel used to make the architect the integration point, holding every epic's state and switching sessions to find what was stuck. Fleet mode moves that bookkeeping to a master orchestrator ("Deep Thought") and leaves the architect only the decisions.</p>
+<p><strong>Roles.</strong></p>
+<ul>
+<li>The <strong>master</strong> owns the program plan (<code>.docs/plans/program-&lt;milestone&gt;.md</code>: epics, dependencies, area leases, merge order, lineage, decision log), starts children, keeps the board, and alone merges epic branches into <code>develop</code> and cuts releases (<code>git-strategy.md</code>). It never briefs a builder or reads code.</li>
+<li>Each <strong>child</strong> is a normal Marvin on <code>feature/&lt;EPIC-KEY&gt;-&lt;slug&gt;</code> in a worktree the master created and locked. It runs the full task lifecycle and routes cross-epic impact, scope or DoD changes, done, blocked and successor events to the master.</li>
+<li>The <strong>architect</strong> answers epic questions in each child and reads every epic, and every question waiting on them, on the master's board.</li>
+</ul>
+<p><strong>Contracts.</strong></p>
+<ul>
+<li><strong>Paired rules.</strong> Every routed event has a sending half in <code>fleet-child.md</code> and a receiving half in <code>fleet.md</code>, marked with an <code>E-*</code> tag. A new <code>validate-kit.sh</code> check (<code>fleet-pairs</code>) fails if either half is missing.</li>
+<li><strong>Doorbell.</strong> A child's turn-end recap starts <code>FLEET &lt;EPIC-KEY&gt; &lt;event&gt;: …</code>. The tracker stays the record, and open questions are numbered <code>FLEET-Q&lt;n&gt;</code> / <code>FLEET-A&lt;n&gt;</code> on the epic issue.</li>
+<li><strong>Relayed consent.</strong> The architect may answer at the master. The master logs the exact quote (only the architect's answer to its own question tool) as <code>D&lt;m&gt;</code> in the plan on <code>develop</code>, before relaying it. The child accepts the relay only after a mechanical check: the reader gets the ID, never the quote; the epic must match; the source must be an open <code>FLEET-Q&lt;n&gt;</code>; and the quote must be identical. Anything else is data, and the child asks directly. The consent sites in <code>escalation.md</code>, <code>escalation-ladder.md</code>, <code>guardrails.md</code> and <code>codex.md</code> accept a verified relay.</li>
+<li><strong>Merge gate.</strong> Before asking for a merge, a child merges <code>develop</code> in, runs the gate scripts and the integration cold boot, and records <code>epic=&lt;sha&gt; develop=&lt;sha&gt;</code>. The master merges only while both still match.</li>
+</ul>
+<p><strong>Session budget.</strong></p>
+<ul>
+<li>A spike showed that a <code>/compact</code> sent as a message is plain text in the receiving session. So a child at level 3 winds down to a rest point at 94 % of the window (scaled by <code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code>). There it writes its handoff to the epic issue and keeps to small steps until the host's auto-compact fires.</li>
+<li>After three compactions (<code>fleet_max_compactions</code>), or when a compaction leaves it above 33 % (<code>fleet_restart_max_pct</code>), the context hook asks for a successor, which the master starts from the handoff.</li>
+<li><code>DISABLE_AUTO_COMPACT=1</code> falls back to the <code>/compact</code> nudge, and the cap still holds. <code>DISABLE_COMPACT=1</code> sends a child to a successor, and <code>/marvin:fleet</code> refuses to start under it.</li>
+<li>The master only compacts and never hands off while a child runs.</li>
+</ul>
+<p><strong>Mechanics.</strong></p>
+<ul>
+<li>The hook library reads a <code>marvin-fleet</code> role marker from each worktree's private git dir, and counts compactions from the transcript (capped at 400 lines / 8 MB after the last boundary).</li>
+<li>The extra transcript reads run only in fleet sessions near the rest point. A solo session pays one <code>git rev-parse</code> per call and sees exactly the same messages as before.</li>
+<li><code>/marvin:fleet [milestone|stop]</code> refuses when this session is already in a fleet, on the Local tracker, or off <code>develop</code>. It sets the fleet up, resumes it, and stops it only at a fleet edge, deleting nothing but the master's own marker.</li>
+</ul>
+<p><strong>Limits.</strong></p>
+<ul>
+<li>Local children only; cloud children are out of scope.</li>
+<li>The Local tracker is refused, because its files would land on the epic branches.</li>
+<li>On hosts without child sessions, <code>/marvin:fleet</code> runs a manual fleet with one resume prompt per epic.</li>
+</ul>
+<p><strong>Acceptance.</strong></p>
+<ul>
+<li>Spike (2026-10-19): a child started in a git-locked, pre-made worktree read its marker. <code>/compact</code> sent through both host message routes produced no <code>compact_boundary</code>. Auto compactions on this host fired at 978k–999k of a 1M window, which sets the 94 % rest point.</li>
+<li>Rule-5 scratch install from the branch (Local tracker for the install, key SMK): the guides and the cascade line landed. A manual-fleet run produced the plan on <code>develop</code>, two locked worktrees with child markers, the master marker, resume prompts and the first board.</li>
+<li>An end-to-end hook replay in a child worktree printed the wind-down, rest, cap and post-compaction successor messages, plus the master and solo texts, as specified. <code>stop</code> refused with unmerged children.</li>
+<li><code>validate-kit</code> passes 20/20, and all 15 test suites are green (<code>test-context-budget</code> 195, <code>test-hook-lib</code> 167), with mutation rows for every new guard.</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.40.0..HEAD</code>, non-merge commits only; the container epic AOS-242 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>a master orchestrator can now run up to three child orchestrators, one per epic, with one board for the architect — opt-in with <code>/marvin:fleet</code>, off until you start it.</strong> Rules: <code>.marvin/agents/fleet.md</code> (master) and <code>.marvin/agents/fleet-child.md</code> (child).</p>
+<ul>
+<li>Update with the procedure the SessionStart notice prints. No file moves, so no migration script.</li>
+<li>The upgrade adds <code>.marvin/agents/fleet.md</code> and <code>.marvin/agents/fleet-child.md</code>, and refreshes <code>git-strategy.md</code>, <code>session-budget.md</code>, <code>worktrees.md</code>, <code>escalation.md</code>, <code>escalation-ladder.md</code>, <code>guardrails.md</code>, <code>codex.md</code> and the kit core <code>.marvin/CLAUDE.marvin.md</code> (one new cascade line; customised copies are backed up first).</li>
+<li>Nothing to add to <code>.marvin/PROJECT-INFO.md</code>: the three fleet keys (<code>fleet_max_children</code>, <code>fleet_max_compactions</code>, <code>fleet_restart_max_pct</code>) are optional, defaults 3 / 3 / 33; <code>/marvin:project-info</code> validates them only when present.</li>
+<li>Fleet mode needs a shared tracker (Linear, Jira or GitHub) and local child sessions (the Claude Code desktop app); on other hosts it runs as a manual fleet with resume prompts. The Local tracker is refused.</li>
+<li>The context hook now reads a per-worktree role marker (one <code>git rev-parse</code> per call); a session that is not in a fleet sees exactly the same messages as before.</li>
+<li><strong>Start a new session after the upgrade</strong> so the rules load.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>Fleet mode: a master orchestrator runs up to three child orchestrators, one per epic, started by <code>/marvin:fleet</code> (set up, resume, stop). The master owns the program plan (epics, dependencies, area leases, merge order, lineage, decision log) and one board for the architect; rules in <code>.marvin/agents/fleet.md</code> and <code>.marvin/agents/fleet-child.md</code>.</li>
+<li>Three optional <code>PROJECT-INFO</code> keys: <code>fleet_max_children</code> (3), <code>fleet_max_compactions</code> (3), <code>fleet_restart_max_pct</code> (33).</li>
+<li>The context hook's fleet modes: a fleet child winds down to a 94 % rest point, lets the host compact it, and asks for a successor after three compactions or a high post-compaction context; the master compacts and never hands off while a child runs.</li>
+<li><code>validate-kit.sh</code> check <code>fleet-pairs</code>: every routed fleet event has both its child and its master half.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li><code>git-strategy.md</code> owns the fleet merge and release authority: in fleet mode only the master merges epic branches into <code>develop</code> and cuts releases.</li>
+<li><code>session-budget.md</code>, <code>worktrees.md</code> and the kit core carry the fleet clauses (rest rule, locked child worktrees, the cascade line).</li>
+<li>The context hook reads a per-worktree role marker on every call (one <code>git rev-parse</code>); sessions outside a fleet see exactly the same messages.</li>
+</ul>
+<h3 id="changes-security">Security</h3>
+<ul>
+<li>In fleet mode the consent questions in <code>escalation.md</code>, <code>escalation-ladder.md</code>, <code>guardrails.md</code> and <code>codex.md</code> also accept a relay of the architect's exact words — only after the child verifies it mechanically against the decision log on <code>develop</code>; a master message is never an approval, and anything unverified stays data.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>After <code>/marvin:upgrade-agent-os</code>, start a new session so the rules load. Fleet mode needs a shared tracker (Linear, Jira or GitHub); the Local tracker is refused.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.28.0 — visual validation (authoring spine) and a finding: reporting axis - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html" aria-current="page">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-28-0-visual-validation-authoring-spine-and-a-finding-reporting-axis">v0.28.0 — visual validation (authoring spine) and a <code>finding:</code> reporting axis</h1>
+<p>Marvin validates completion and security but never <em>looked</em> at what it built. This release ships the authoring spine of a visual/design validation subsystem — the rules, personas, lifecycle slot and reporting contracts. It is <strong>advisory</strong> at the task level and never gates or bounces a task; it gates only at the UI release gate on sev1/sev2. The capture machinery that drives a live browser (the screenshot sweep) is deliberately a later increment; what lands here is everything that defines <em>how</em> a visual review works, all template-side and consumer-visible.</p>
+<p><strong>A visual validator, wired into the lifecycle (AOS-123, AOS-124).</strong> A new <code>marvin:validator-visual</code> persona (Opus-tier) and its rules guide <code>.marvin/agents/visual-validation.md</code> — fresh-eyes discipline (never the builder), surface acquisition, a graceful <strong>degradation ladder</strong> (no browser tool → SKIP; app not runnable → static/token analysis; surface unreachable → per-surface skip) so a missing UI never blocks a pass, a generic design/UX checklist (hierarchy, spacing, grid, grouping, consistency, contrast/a11y, responsive breakpoints, empty/loading/error states), a severity scale, and a machine-consumed FINAL MESSAGE. The task lifecycle in <code>CLAUDE.core.md</code> gains a conditional <code>[validate-visual]</code> step — UI tasks only, after the completion + security validators pass, before the documenter; <code>validation-agent.md</code> cites it as advisory at task, a sweep at milestone, and gating (sev1/sev2) at release.</p>
+<p><strong>A screen catalog to resolve against (AOS-125).</strong> Surfaces are named, not guessed: a docs-native, index-based screen catalog at <code>.docs/handbooks/developer/screens/index.md</code> (route · how to reach — auth + seed · breakpoints · deeper detail), and two new <code>PROJECT-INFO.md</code> keys — <code>screens_guide</code> (the top-level pointer into it) and <code>visual_validation</code> (<code>per-task|milestone|off</code>, default per-task).</p>
+<p><strong>The builder declares what it touched (AOS-128).</strong> The machine-parseable FINAL MESSAGE (<code>briefing.md</code>) gains a reserved <code>SURFACES:</code> line — the builder's own list of screen-catalog entries it created or changed (<code>NONE</code>/omitted for non-UI work), parallel to the existing <code>INFORMATION:</code>/<code>GUARDRAILS:</code> reserved lines. That declaration is authoritative; the orchestrator's diff heuristic (changed files → screen catalog) is a safety net that only <em>adds</em> under-declared surfaces, never overrides the builder.</p>
+<p><strong>A dedicated <code>finding:</code> axis (AOS-130).</strong> The label registry (<code>label-syntax.md</code>) bumps to <strong>v1.4.0</strong> with a new optional <code>finding:</code> dimension (value <code>visual</code>) — chosen over an <code>area:design</code> value because <code>area:</code> is required and single-valued and would collide with a finding's real component. <code>finding:</code> is orthogonal: a visual bug keeps its <code>area:</code>/<code>type:</code> and is <em>also</em> sliceable as design load. Applied to issues the visual validator raises.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.27.0..HEAD</code>, non-merge commits only — the v0.27.0 back-merge into develop carries AOS-117/AOS-118 in its merge-commit subject and was excluded so it does not inflate the scope.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing; nothing you already have breaks. Adds an <strong>advisory visual/design validation stage</strong> for UI-touching tasks and a dedicated <code>finding:</code> reporting axis, landing through the normal upgrade refresh:</p>
+<ul>
+<li><code>claude plugin update marvin</code> — adds the <code>marvin:validator-visual</code> persona (Opus-tier) and the refreshed templates.</li>
+<li>The upgrade step-4 refresh re-renders <code>.marvin/agents/</code> guides: <code>visual-validation.md</code> (new), <code>validation-agent.md</code>, <code>briefing.md</code> (new <code>SURFACES:</code> line in the FINAL MESSAGE spec), <code>guardrails.md</code> (validator-visual row), and <code>label-syntax.md</code> (→ v1.4.0). Your customised copies are backed up first.</li>
+<li>Seeds <code>.docs/handbooks/developer/screens/index.md</code> where missing — the screen catalog the review resolves surfaces against; fill in your project's screens (empty is fine until you do).</li>
+<li><code>.marvin/PROJECT-INFO.md</code> gains two keys — <code>screens_guide</code> and <code>visual_validation</code> (<code>per-task|milestone|off</code>, default per-task); the <code>project-info</code> skill adds them on its next validate.</li>
+<li>CLAUDE.md gains the conditional visual-validation lifecycle step (UI tasks only, advisory — it never gates or bounces a task); merged in, your own rules untouched.</li>
+<li>New label <code>finding:visual</code> (registry v1.4.0) — an orthogonal axis for design findings; apply it to issues the visual validator raises.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Merge the conditional visual-validation lifecycle step into CLAUDE.md, keeping your own rules (not needed when upgrading to v0.33.0 or later).</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>An advisory visual and design validation stage for UI tasks, with its own validator persona and rules guide; it gates only at the UI release gate (sev1, sev2).</li>
+<li>A screen catalog that surfaces are resolved against, plus two new PROJECT-INFO keys, screens_guide and visual_validation (per-task, milestone or off).</li>
+<li>Builders declare the screens they touched in a SURFACES line of their final message.</li>
+<li>A new finding:visual label (registry v1.4.0), an orthogonal axis for slicing design findings.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

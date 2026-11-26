@@ -1,0 +1,14 @@
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "start.html", "title": "Getting started", "section": "start", "order": 0, "source": "hand"},
+  {"path": "concepts/lifecycle.html", "title": "Lifecycle", "section": "concepts", "order": 10, "source": "hand"},
+  {"path": "concepts/sizing.html", "title": "Sizing", "section": "concepts", "order": 20, "source": "hand"},
+  {"path": "concepts/escalation.html", "title": "Escalation", "section": "concepts", "order": 30, "source": "hand"},
+  {"path": "concepts/around-the-loop.html", "title": "Around the loop", "section": "concepts", "order": 40, "source": "hand"},
+  {"path": "concepts/fleet.html", "title": "Fleet mode", "section": "concepts", "order": 50, "source": "hand"},
+  {"path": "settings", "title": "Settings", "section": "reference", "order": 10, "source": "generated:settings"},
+  {"path": "skills", "title": "Skills & commands", "section": "reference", "order": 20, "source": "generated:skills"},
+  {"path": "reference", "title": "Reference", "section": "reference", "order": 30, "source": "generated:reference"},
+  {"path": "mods/index.html", "title": "Mods", "section": "mods", "order": 0, "source": "hand"},
+  {"path": "releases", "title": "Releases", "section": "releases", "order": 0, "source": "generated:releases"}
+]

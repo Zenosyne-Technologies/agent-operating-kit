@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.24.0 — installs that interview and scaffold, docs that stand alone, and a sharper Marvin - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html" aria-current="page">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-24-0-installs-that-interview-and-scaffold-docs-that-stand-alone-and-a-sharper-marvin">v0.24.0 — installs that interview and scaffold, docs that stand alone, and a sharper Marvin</h1>
+<p><strong>A greenfield install now interviews instead of guessing.</strong> Until now install assumed an existing codebase and read the stack and layout off the repo — which leaves nothing to read in an empty project. This release splits install into greenfield and brownfield: a repo carrying no source (only docs, config, git metadata, or bare build manifests and lockfiles) takes an interview path — audience (personal · intra-team · restricted-public · public), estimated size, application type, and tech stack, with a stack advisory that offers a few coherent, well-supported combinations and a "you choose" option rather than reaching for something niche. The answers become PROJECT-INFO facts (<code>audience</code>, <code>project_size</code>, <code>app_type</code>, <code>stack</code>). A brownfield repo keeps the old code-discovery path untouched.</p>
+<p><strong>And it can scaffold.</strong> As the last step, a greenfield install with a chosen stack may scaffold it — which is not a side effect but tracked work: it plans the baseline documents first, creates "Milestone 0 — scaffolding and installing project dependencies" in the tracker, and runs the scaffold and dependency install as normal-lifecycle tasks under it. A brownfield or "files only" install skips scaffolding and proceeds straight to the commit.</p>
+<p><strong>The documentation estate now stands on its own.</strong> <code>.docs/</code> used to point into <code>.marvin/</code> for its authoring rules — which meant a project that wanted to hand off or expose its documentation could not do so without exposing the agent machinery. The dependency is now one-way: a <code>.marvin/</code> guide may point into <code>.docs/</code>, but nothing under <code>.docs/</code> references <code>.marvin/</code> or names the orchestrator. The estate states its own navigation and header conventions at its root, and the authoring standard stays reachable for an agent through the cascade rather than through a pointer embedded in a document. A new static-gate check (<code>docs-self-contained</code>) fails the build if the coupling is ever reintroduced.</p>
+<p><strong>Marvin trusts nothing unproven.</strong> The orchestrator persona leans into a productive, work-directed skepticism: it assumes unverified work is broken until the evidence says otherwise, and treats a "done", a passing check, or a number from nowhere as a claim to falsify rather than a fact to accept. The pessimism is aimed at the work and guarded against paralysis and self-pity — it catches defects early and moves the instant the evidence lands. It is the same stance the kit's validators already run on, now stated in the persona that dispatches them.</p>
+<p><strong>For consumers</strong>: <code>upgrades/v0.24.0.md</code> is the whole upgrade. Nothing moves or is renamed, so this release ships no migration script; the kit-owned refresh brings the one-way-dependency rule in <code>document-standard.md</code>, and the interview, scaffolding, self-contained seeds and persona nudge are adopted by new installs — existing projects are unaffected unless they choose to adopt them.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.23.0..HEAD</code> — the previous release's tag — taking each commit's leading <code>&lt;KEY&gt;:</code> prefix and deduping, then dropping the container epic AOS-56 so only work-carrying keys remain.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Nothing moves or is renamed, so there is no <code>migrate-v0.24.0.sh</code> — the steps below are the whole upgrade. As on every release, the kit-owned guides in <code>.marvin/agents/</code> are re-rendered from the current templates and anything replaced is backed up to <code>.marvin/backups/v0.24.0/</code>; reconcile customisations from there.</p>
+<ol>
+<li><strong>The docs estate is now self-contained.</strong> The refresh updates <code>.marvin/agents/document-standard.md</code> with the one-way-dependency rule: a <code>.marvin/</code> guide may point into <code>.docs/</code>, but a <code>.docs/</code> document never references <code>.marvin/</code>. Your OWN <code>.docs/</code> seeds are NOT overwritten, so they may still cite <code>.marvin/</code>; to make them self-contained (so <code>.docs/</code> can be shared without exposing the agent machinery), drop the <code>.marvin/</code> pointers from each <code>index.md</code> by hand or re-render from <code>templates/docs/</code>.</li>
+<li><strong>New installs interview and can scaffold; existing projects are unaffected.</strong> The greenfield interview (audience, size, app type, tech stack) and the optional "Milestone 0" scaffolding live in the install skill and apply only to fresh installs. To record the new facts on an existing project, add <code>audience</code>, <code>project_size</code> and <code>app_type</code> to <code>.marvin/PROJECT-INFO.md</code>.</li>
+<li><strong>Marvin's persona nudge is optional to adopt.</strong> <code>CLAUDE.md</code> is yours and is not overwritten; to pick up the sharper, skeptical persona, copy the "You are Marvin" paragraph from the current <code>CLAUDE.core.md</code>.</li>
+<li>Restamp <code>.marvin/PROJECT-INFO.md</code>: <code>kit_version: 0.24.0</code>.</li>
+</ol>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Optional: drop the <code>.marvin/</code> pointers from your own <code>.docs/</code> index files by hand, so <code>.docs/</code> can be shared without exposing the agent machinery.</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>Greenfield installs interview you (audience, size, app type, stack) and can scaffold the chosen stack as a tracked Milestone 0; existing projects are unchanged.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The <code>.docs/</code> estate is self-contained: Marvin guides may point into it, but nothing in it references Marvin, and a check fails the build if that returns.</li>
+<li>Marvin's persona leans into work-directed skepticism: unverified work is assumed broken until the evidence says otherwise. New installs get it.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>
