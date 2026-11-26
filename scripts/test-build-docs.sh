@@ -233,6 +233,38 @@ JSON
     [ "$(cat "$d/docs/$p")" = keep ] || return 1
   done
 }
+# fx_path_bypass: aliases of a protected path (dot segment, other case) and a generator path with '..' all exit 2 and leave
+# the protected file alone. Registry entries go through the CLI; generator paths through the module, as build() calls it.
+fx_path_bypass() {
+  local d="$WORK/fx-bypass" p
+  for p in ./images/keep.png Images/keep.png IMAGES/keep.png ./.nojekyll .NOJEKYLL a/../images/keep.png images//keep.png 'x\\y.html' /abs.html C:/x.html; do
+    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/keep.png"; printf 'keep' > "$d/docs/.nojekyll"
+    mkdir -p "$d/site/images"; printf '<p>x</p>\n' > "$d/site/images/keep.png"; printf '<p>x</p>\n' > "$d/site/Images.html"
+    cat > "$d/site/pages.json" <<JSON
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "$p", "title": "P", "section": "concepts", "order": 1, "source": "hand"}
+]
+JSON
+    python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
+    [ "$(cat "$d/docs/images/keep.png")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
+  done
+  for p in a/../images/keep.png ./images/keep.png Images/keep.png ./.nojekyll; do
+    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/keep.png"; printf 'keep' > "$d/docs/.nojekyll"
+    cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "gen", "title": "G", "section": "concepts", "order": 1, "source": "generated:t"}
+]
+JSON
+    PYTHONDONTWRITEBYTECODE=1 python3 -c "
+import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); import build_docs as b
+b.GENERATORS['t'] = lambda root: {sys.argv[3]: ('T', '<p>x</p>')}
+try: b.build(Path(sys.argv[2]), Path(sys.argv[2]) / 'docs')
+except b.BuildError: sys.exit(2)
+" "$(dirname "$MOD")" "$d" "$p" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
+    [ "$(cat "$d/docs/images/keep.png")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
+  done
+}
 
 hd "build: wraps pages"
 R="$WORK/r1"; mkrepo "$R"; python3 "$MOD" --root "$R" >/dev/null 2>&1; RC=$?; rc 0
@@ -285,6 +317,7 @@ hd "registry: duplicate path"
 fx_registry_dup && ok "a duplicate path exits 2" || bad "fx_registry_dup"
 hd "registry: protected path"
 fx_registry_protected && ok "an entry under a protected docs/ path exits 2 and the file is untouched" || bad "fx_registry_protected"
+fx_path_bypass && ok "dot-segment, case-aliased, '..', backslash and absolute output paths exit 2, protected files untouched" || bad "fx_path_bypass"
 hd "registry: unknown section"
 fx_registry_section && ok "an unknown section exits 2" || bad "fx_registry_section"
 R4="$WORK/r4"; mkrepo "$R4"; sed -i.bak 's/"source": "hand"}$/"source": "generated:nope"}/' "$R4/site/pages.json"
@@ -311,6 +344,7 @@ MUTATIONS=(
   "registry-dup:fx_registry_dup"
   "registry-section:fx_registry_section"
   "registry-protected:fx_registry_protected"
+  "path-shape:fx_path_bypass"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

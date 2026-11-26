@@ -470,6 +470,9 @@ GENERATORS: dict[str, Callable[[Path], dict[str, tuple[str, str]]]] = {}
 
 def _claim(seen: set[str], path: str) -> None:
     """The one choke point every output path (registry, generated, asset) passes through."""
+    segs = path.split("/")
+    if not path or "\\" in path or path.startswith("/") or ":" in segs[0] or any(x in ("", ".", "..") for x in segs):
+        raise BuildError(f"malformed output path (empty, '.'/'..' segment, backslash, leading '/' or ':'): {path!r}")  # GUARD:path-shape
     if _protected(path):
         raise BuildError(f"output path is under a protected docs/ path (never written by the build): {path}")  # GUARD:registry-protected
     if path in seen:
@@ -624,7 +627,8 @@ def render_site(root: Path) -> dict[str, bytes]:
 
 
 def _protected(rel: str) -> bool:
-    return rel.split("/", 1)[0] in PROTECTED or rel in PROTECTED_FILES
+    first = rel.split("/", 1)[0].casefold()  # case-folded: a case-insensitive filesystem would alias Images/ to images/
+    return first in PROTECTED or rel.casefold() in PROTECTED_FILES
 
 
 def _existing(docs: Path) -> list[str]:
