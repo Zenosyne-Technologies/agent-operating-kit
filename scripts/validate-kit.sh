@@ -377,6 +377,13 @@ for k in project description brief owner tracker_coordinates stack dev_command; 
 done
 [ -z "$fq" ] && pass frontmatter-quoting || fail frontmatter-quoting "${fq# }"
 
+# ── 25. marketplace: every `claude plugin marketplace add` that names a Zenosyne-Technologies repo names
+# the emprove marketplace, the one whose marketplace.json lists marvin and its companions (AOS-297: the
+# install skill's telemetry advice named the kit repo, which has none). Third-party marketplaces are not checked.
+mk=$(grep -rnoiE 'marketplace add +zenosyne-technologies/[A-Za-z0-9._-]+' skills templates commands README.md BOOTSTRAP.md docs/index.html 2>/dev/null \
+  | grep -vE ':marketplace add +Zenosyne-Technologies/emprove-marketplace$' | tr '\n' ' ')
+[ -z "$mk" ] && pass marketplace || fail marketplace "marketplace add must name Zenosyne-Technologies/emprove-marketplace: ${mk% }"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"
