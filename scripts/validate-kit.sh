@@ -159,8 +159,9 @@ fi
 # names count too: astra|luna as whole words, and gpt-<digit> anywhere. The skill `/marvin:codex-astra`
 # and the flag `--astra` are not model names — those two literal tokens are stripped before matching.
 MP=templates/marvin/agents/model-profile.md
+MPC=templates/marvin/agents/model-profile-codex.md
 [ -d templates ] || fail model-names "templates/ missing"
-mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" '$1 != mp' | sed 's/codex-astra//g; s/--astra//g')
+mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" -v mpc="$MPC" '$1 != mp && $1 != mpc' | sed 's/codex-astra//g; s/--astra//g')
 mn=$( { printf '%s\n' "$mncand" | grep -iwE 'opus|sonnet|haiku|fable|astra|luna'; printf '%s\n' "$mncand" | grep -iE 'gpt-[0-9]'; } | sort -u )
 if [ -z "$mn" ]; then
   pass model-names

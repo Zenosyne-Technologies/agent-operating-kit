@@ -386,6 +386,7 @@ templates/
     escalation.md                  round signals — converging, stuck, whack-a-mole, bloat, loop, cost blowout — their precedence, the round cap, and the Rethink step
     escalation-ladder.md           the escalation climb — micro → small tier-up, the small tier's xhigh rung, then high → xhigh on the orchestrator's model → the ask-at-max gate (max recommended, frontier opt-in) → stop at the user
     model-profile.md               the version's declared model set — tier → concrete model → context window → default effort, model-specific rules, validated-set statement
+    model-profile-codex.md         the Codex lanes' profile — tier → Codex model → default effort per lane, the Astra and effort-ceiling rules, validated-set statement (read by marvin-codex.sh)
     session-budget.md              how long a session runs — the 400k / 700k budgets, the 70 / 80 / 90 % context ladder, the stop-and-compact nudge, the handoff
     guardrails.md                  the DO NOT framework — four dispositions, the escalation chain, a generic baseline table, per-persona additions
     information-guide.md           the dynamic rule system — what earns a file, tagging, index, briefing duty, lifecycle
