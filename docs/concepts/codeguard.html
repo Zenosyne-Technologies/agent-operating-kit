@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>CodeGuard rules - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html" aria-current="page">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../concepts/lifecycle.html">Lifecycle</a></li><li><a href="../concepts/sizing.html">Sizing</a></li><li><a href="../concepts/escalation.html">Escalation</a></li><li><a href="../concepts/around-the-loop.html">Around the loop</a></li><li><a href="../concepts/fleet.html">Fleet mode</a></li><li><a href="../concepts/codeguard.html" aria-current="page">CodeGuard rules</a><ul><li><a href="#switch">The switch</a></li><li><a href="#install">How it gets turned on</a></li><li><a href="#task">How a task uses it</a></li><li><a href="#selection">Which rules a task gets</a></li><li><a href="#validators">What the validators do</a></li><li><a href="#missing">When the plugin is missing</a></li><li><a href="#license">License</a></li></ul></li></ul></nav></aside>
+<main id="main">
+<p class="eyebrow">Concepts</p>
+<h1>CodeGuard security rules</h1>
+<p class="lede">Project CodeGuard (CoSAI / OASIS, CC BY 4.0) is an optional companion plugin of third-party security rules. On a project that turns it on, the brief names the rules a task touches, and the security validator checks them, as does the Codex security lane when it runs (the Codex handover and its <code>security</code> lane on). It adds checks on top of the kit's own security checklist and never replaces any of it.</p>
+
+<h2 id="switch">The switch</h2>
+<p>One setting decides it: <a href="../settings.html#security_rules"><code>security_rules</code></a> in <code>.marvin/PROJECT-INFO.md</code>, either <code>kit</code> or <code>codeguard</code>. Absent, empty or any other value reads as <code>kit</code>, and the kit checklist runs alone, as it always has. The kit pins the CodeGuard version it was validated against, v1.5.0, and installs it at project scope, so the plugin is recorded in the project's <code>.claude/settings.json</code> and teammates are offered it too (<a href="../reference.html#codeguard"><code>codeguard.md</code></a>).</p>
+
+<h2 id="install">How it gets turned on</h2>
+<p>Install runs its own step, 6e, on every install; it asks a question only when the plugin is not ready. Upgrade runs the same step once, only when <code>security_rules</code> is missing.</p>
+<div class="diagram diagram--plain lanes">
+<div class="lane"><div class="lh"><b>Install step 6e</b><span>Runs on every install</span></div><div class="flow"><div class="st"><span class="cap">Check</span><span class="tx">A read-only script reports <code>ready</code>, <code>disabled</code>, <code>not-installed</code> or an error.</span></div><span class="ar" aria-hidden="true">→</span><div class="st"><span class="cap">Tell</span><span class="tx">One line: CodeGuard is compatible, adds rules to the security review and replaces nothing.</span></div><span class="ar" aria-hidden="true">→</span><div class="st"><span class="cap">Ask by status</span><span class="tx">Not installed: "Install CodeGuard for this project" or "Not now". Disabled in the project: "Enable for this project" or "Not now". Ready: no question.</span></div><span class="ar" aria-hidden="true">→</span><div class="st"><span class="cap">On a yes</span><span class="tx">Install: adds the marketplace pinned to <code>'cosai-oasis/project-codeguard#v1.5.0'</code> (only when the project's <code>.claude/settings.json</code> does not already declare <code>project-codeguard</code>) and installs the plugin, both at project scope. Enable: turns the plugin on in <code>.claude/settings.json</code> and installs nothing.</span></div><span class="ar" aria-hidden="true">→</span><div class="st"><span class="cap">Write the key</span><span class="tx"><code>codeguard</code> when the plugin is ready, otherwise <code>kit</code>. Active from the next session.</span></div></div></div>
+</div>
+<p>A failed install is reported with its output and never retried unpinned; the setting stays <code>kit</code> and the install carries on. An unanswered question runs no command. A re-install keeps a <code>security_rules</code> value that was already committed: one person's local plugin state never flips a project-wide setting, and only a yes that leaves the plugin ready changes it, to <code>codeguard</code> (<a href="../skills.html#install-agent-os">install</a>, <a href="../skills.html#upgrade-agent-os">upgrade</a>).</p>
+<p>On a <code>codeguard</code> project, each upgrade's check raises an issue callout when the plugin is disabled, removed or has drifted from the validated version, and never changes the setting. <a href="../skills.html#project-info"><code>/marvin:project-info</code></a> reads an absent key as <code>kit</code> and leaves it for upgrade to ask; <a href="../skills.html#info"><code>/marvin:info</code></a> shows the CodeGuard status beside the setting.</p>
+
+<h2 id="task">How a task uses it</h2>
+<p>Rules are named, never pasted: the brief lists rule IDs, and the builder and validators load only those, so context grows only by what the task touches. Select a persona to see its model and limits.</p>
+<div class="diagram diagram--mid">
+<svg viewBox="0 0 900 510" role="group" aria-label="CodeGuard in a task: the security_rules switch; Marvin checks its own skill list; a missing plugin gives one notice and the kit checklist alone; otherwise the brief names the always-apply and tag-matched rules, the builder reads only those, and the Claude security validator and the Codex security lane check the same named set and grade a violation alike">
+<defs>
+  <marker id="cgI" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-ink"/></marker>
+  <marker id="cgM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="ah-mut"/></marker>
+</defs>
+<!-- row 1: switch, availability, brief -->
+<rect class="static" x="20" y="16" width="200" height="96" rx="8"/>
+<text class="ttl" x="34" y="40">The switch</text>
+<text class="ds" x="34" y="60">security_rules: codeguard</text>
+<text class="ds" x="34" y="75">in PROJECT-INFO.md.</text>
+<text class="ds" x="34" y="90">Anything else: kit alone.</text>
+<path class="gate" d="M222 64H256" marker-end="url(#cgI)"/>
+<g class="p" data-p="marvin" data-tier="orch" tabindex="0" role="button" aria-label="Marvin, orchestrator">
+  <rect class="node" x="260" y="16" width="240" height="96" rx="8"/>
+  <text class="lbl" x="272" y="36">AVAILABILITY</text><circle class="dotf" cx="486" cy="32" r="4.5"/>
+  <text class="pn" x="272" y="54">Marvin</text>
+  <g class="chip"><rect x="272" y="61" width="79" height="13" rx="6.5"/><text class="tier" x="277" y="70.3">orchestrator</text></g>
+  <text class="ds" x="272" y="90">Checks its own session's skill</text>
+  <text class="ds" x="272" y="104">list for the CodeGuard skill.</text>
+</g>
+<path class="gate" d="M502 64H552" marker-end="url(#cgI)"/>
+<text class="lbl" x="506" y="56">PRESENT</text>
+<rect class="static" x="556" y="16" width="324" height="96" rx="8"/>
+<text class="ttl" x="570" y="40">Brief, item 4</text>
+<text class="ds" x="570" y="60">Names the 3 always-apply rules, plus the topic</text>
+<text class="ds" x="570" y="75">rules whose tags match the security surface,</text>
+<text class="ds" x="570" y="90">chosen within the stack's language row.</text>
+<text class="ds" x="570" y="105">Never the whole row.</text>
+<!-- the missing branch -->
+<path class="opt" d="M380 112V148" marker-end="url(#cgM)"/>
+<text class="lbl" x="388" y="136">MISSING</text>
+<rect class="static" x="20" y="150" width="480" height="80" rx="8"/>
+<text class="ttl" x="34" y="174">Plugin missing</text>
+<text class="ds" x="34" y="194">One notice per session, with the install command. The brief says</text>
+<text class="ds" x="34" y="209">CodeGuard: unavailable, and the task runs on the kit checklist alone.</text>
+<text class="ds" x="34" y="224">Never a FAIL, never a block.</text>
+<!-- row 2: build -->
+<path class="gate" d="M718 112V148" marker-end="url(#cgI)"/>
+<rect class="static" x="556" y="150" width="324" height="80" rx="8"/>
+<text class="ttl" x="570" y="174">Build</text>
+<text class="ds" x="570" y="194">The builder loads the CodeGuard skill and reads</text>
+<text class="ds" x="570" y="209">only the named rules, as constraints.</text>
+<!-- row 3: the two security checks -->
+<path class="gate" d="M718 230V254H440V278" marker-end="url(#cgI)"/>
+<path class="gate" d="M718 254H740V278" marker-end="url(#cgI)"/>
+<text class="lbl" x="452" y="248">BOTH CHECK THE SAME NAMED SET</text>
+<rect class="static" x="20" y="280" width="250" height="210" rx="8"/>
+<text class="ttl" x="34" y="304">Adds, never replaces</text>
+<text class="ds" x="34" y="324">Every kit checklist item, safety</text>
+<text class="ds" x="34" y="339">gate and severity rule stays in</text>
+<text class="ds" x="34" y="354">force. A CodeGuard rule never</text>
+<text class="ds" x="34" y="369">softens or removes one.</text>
+<text class="ds" x="34" y="394">A project rule in CLAUDE.md wins</text>
+<text class="ds" x="34" y="409">a conflict, and Marvin names the</text>
+<text class="ds" x="34" y="424">conflict to you once.</text>
+<g class="p" data-p="validator-security" data-tier="heavy" tabindex="0" role="button" aria-label="validator-security, the Claude security stage">
+  <rect class="node" x="300" y="280" width="280" height="120" rx="8"/>
+  <text class="lbl" x="312" y="300">CLAUDE SECURITY STAGE</text><circle class="dotf" cx="566" cy="296" r="4.5"/>
+  <text class="pn" x="312" y="318">validator-security</text>
+  <g class="chip"><rect x="312" y="325" width="39" height="13" rx="6.5"/><text class="tier" x="317" y="334.3">heavy</text></g>
+  <text class="mdl" x="312" y="354" data-fill="model"></text>
+  <text class="ds" x="312" y="374">Named and always-apply rules. May scan</text>
+  <text class="ds" x="312" y="389">the row: an extra hit is a note, unless exploitable.</text>
+</g>
+<g class="p" data-p="codex" data-tier="small" tabindex="0" role="button" aria-label="codex, the Codex security lane">
+  <rect class="node" x="600" y="280" width="280" height="120" rx="8"/>
+  <text class="lbl" x="612" y="300">CODEX SECURITY LANE</text><circle class="dotf" cx="866" cy="296" r="4.5"/>
+  <text class="pn" x="612" y="318">codex</text>
+  <g class="chip"><rect x="612" y="325" width="39" height="13" rx="6.5"/><text class="tier" x="617" y="334.3">small</text></g>
+  <text class="mdl" x="612" y="354">only when the security lane is on</text>
+  <text class="ds" x="612" y="374">Gets a ### Rules block: the named and</text>
+  <text class="ds" x="612" y="389">always-apply rules' text, never the row.</text>
+</g>
+<!-- row 4: grading -->
+<path class="gate" d="M440 400V428" marker-end="url(#cgI)"/>
+<path class="gate" d="M740 400V428" marker-end="url(#cgI)"/>
+<rect class="static" x="300" y="430" width="580" height="60" rx="8"/>
+<text class="ttl" x="314" y="452">Grading, the same in both</text>
+<text class="ds" x="314" y="470">FAIL only for a violation that is itself an exploitable defect at the must-fix bar;</text>
+<text class="ds" x="314" y="484">a hygiene-only violation is a note. The rule ID goes in the finding.</text>
+</svg>
+</div>
+<p class="hint">On a narrow screen, scroll the diagram sideways.</p>
+
+<h2 id="selection">Which rules a task gets</h2>
+<p>At brief time Marvin uses the project's <code>stack</code> and the task's changed files to pick a row of the skill's language table. That row only narrows the candidates. From within it, the brief's security-surface item names just the topic rules whose tags match the task's security surface, never the whole row, plus three rules that always apply: <code>codeguard-1-hardcoded-credentials</code>, <code>codeguard-1-crypto-algorithms</code> and <code>codeguard-1-digital-certificates</code>. The tables stay in the skill; the kit cites them and never copies them, since they change upstream (<a href="../reference.html#briefing"><code>briefing.md</code></a>).</p>
+
+<h2 id="validators">What the validators do</h2>
+<p>The Claude security validator loads the skill and checks the change against the named and always-apply rules. It may also scan the rest of the language row: an extra hit there goes in its run report as a note, unless it is itself an exploitable defect, which makes it an ordinary finding. A rule the brief should have named but did not goes in the run report only, since the builder cannot fix the brief (<a href="../reference.html#validation-agent"><code>validation-agent.md</code></a>).</p>
+<p>Codex cannot load Claude skills, so Marvin reads the named and always-apply rule files and the forwarder renders them as a <code>### Rules</code> block in the Codex security lane's prompt. The lane never gets the rest of the row, which would bloat its prompt. That rules text is transient: never committed, never filed (<a href="../reference.html#codex-security"><code>codex/security.md</code></a>).</p>
+<p>Both grade a violation by the kit's severity scale, by its impact if exploited, never by CodeGuard's own wording. One sentence carries that grading, word for word, in both validators, and the static gate's <code>codeguard-grading</code> check keeps the copies identical.</p>
+
+<h2 id="missing">When the plugin is missing</h2>
+<p>A missing plugin never fails or blocks anything: not a task, not a validator, not a release. Marvin tells you once per session, with the command that installs it, and the task runs on the kit checklist alone. An install is recorded per checkout path, so a copied or moved checkout reads as unavailable until the plugin is installed there again with the same command.</p>
+
+<h2 id="license">License</h2>
+<p>CodeGuard is CC BY 4.0, from CoSAI / OASIS. The kit never copies its rule files into a repo, a tracker or the docs. A rule quoted in a run report carries the line "Project CodeGuard (CoSAI), CC BY 4.0".</p>
+<aside class="diagram insp" id="insp" aria-live="polite" aria-label="Persona details">
+<p class="hint">Select any persona to see its model, job and limits.</p>
+</aside>
+<script type="application/json" id="marvin-data">{"codex": [{"effort": "high", "lane": "build-micro", "model": "gpt-5.6-luna", "tier": "codex fast"}, {"effort": "medium", "lane": "build", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "plan", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "review", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "security", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "medium", "lane": "design", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "xhigh", "lane": "diagnose", "model": "gpt-5.6-sol", "tier": "codex workhorse"}, {"effort": "high", "lane": "astra", "model": "gpt-6-astra", "tier": "codex frontier"}], "default": "opus", "personas": {"codex": {"description": "Marvin's Codex forwarder \u2014 runs ONE Codex lane (plan, review, security, design, diagnose, build, build-micro) per .marvin/agents/codex.md through the plugin's marvin-codex.sh and maps Codex's JSON onto the FINAL MESSAGE contract, adding no judgement of its own. Dispatched by the orchestrator (validation strategies, tollgates) and the /marvin:codex skills; build and write-evidence runs are dispatched with isolation: worktree.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "developer": {"description": "Marvin's heavy build persona \u2014 executes ONE briefed size:m or larger implementation task \u2014 for a size:m, its design-bearing core \u2014 to its DoD. Dispatch with a full brief per .marvin/agents/briefing.md. Never validates its own work.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "developer-micro": {"description": "Marvin's micro-tier build persona \u2014 executes ONE fully-specified build to its DoD: a size:s task, a size:m task's peripheral piece, or a correction fix list whose brief passes .marvin/agents/briefing.md's fully-specified test (every file named, behaviour and tests exact, no approach left to choose). Stops on any choice the brief did not make. Dispatch with a full brief per .marvin/agents/briefing.md.", "effort": "high", "model": "Haiku 5.5", "tier": "micro"}, "developer-small": {"description": "Marvin's small-tier build persona \u2014 executes ONE clearly-defined size:s task (tests, QA sweeps, imports, config), a size:m task's peripheral piece, or a correction that needs judgement, to its DoD; also runs the brief falsifier before size:m+ builds and the planning-research survey for size:l/xl passes (writes no code in either mode). Dispatch with a full brief per .marvin/agents/briefing.md.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "documenter": {"description": "Marvin's documentation persona \u2014 documents ONE completed task per .marvin/agents/documentation-agent.md and grows the product handbooks per .marvin/agents/handbooks.md. Mandatory gate before a tracker issue closes; dispatched only after BOTH the completion and security validators pass.", "effort": "high", "model": "Sonnet 5.5", "tier": "small"}, "escalation-frontier": {"description": "Marvin's escalation persona, the opt-in frontier tier \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung \u2014 when the round signals at marvin:escalation-xhigh say climb AND the user explicitly chose to swap THIS task to the frontier tier. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "inherits the session's", "model": "Fable 5.2", "tier": "frontier"}, "escalation-high": {"description": "Marvin's escalation persona, the ceiling model at high effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the first ceiling-model rung, when a BUILD task's round signals say climb (Stuck, or the N-round cap) at marvin:developer or at marvin:escalation-small-xhigh \u2014 never for research, docs or validation, which stay off the ladder. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "high", "model": "Opus 5.5", "tier": "heavy"}, "escalation-max": {"description": "Marvin's escalation persona, the ceiling model at max effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the max-gate rung \u2014 when the round signals at marvin:escalation-xhigh say climb AND the user chose max, gave no answer or picked neither option, or the session was unattended (the orchestrator records which). Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "max", "model": "Opus 5.5", "tier": "heavy"}, "escalation-small-xhigh": {"description": "Marvin's escalation persona, the small tier at xhigh effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the small tier's rung \u2014 when a BUILD task built at marvin:developer-small (including one that tiered up from marvin:developer-micro) has round signals that say climb (Stuck, or the N-round cap); the next rung above it is marvin:escalation-high. Never for research, docs or validation, which stay off the ladder. Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "xhigh", "model": "Sonnet 5.5", "tier": "small"}, "escalation-xhigh": {"description": "Marvin's escalation persona, the ceiling model at xhigh effort \u2014 dispatched ONLY by the orchestrator, ONLY per .marvin/agents/escalation.md (round signals) and .marvin/agents/escalation-ladder.md, as the second rung \u2014 when the round signals at marvin:escalation-high say climb (Stuck, or the N-round cap). Receives the current brief and tracker DoD plus every prior attempt's findings. Never self-escalates.", "effort": "xhigh", "model": "Opus 5.5", "tier": "heavy"}, "ponytail": {"description": "Marvin's micro persona \u2014 executes ONE size:xs mechanical, zero-discretion micro-task per .marvin/agents/ponytail.md (tracker bookkeeping, release mechanics, index/row updates, label backfills, DB/fixture copies, restatement grep sweeps (report only), pre-flight gate runs, exact-lookup reads for the orchestrator, renames, moves, single-file mechanical edits) \u2014 any step whose content is already decided; it may prepare a tag message, never tag, never publish a forge release.", "effort": "high", "model": "Haiku 5.5", "tier": "micro"}, "researcher": {"description": "Marvin's planning-research persona \u2014 runs the SYNTHESIS stage of the plan-validation and solution-research passes for size:l/size:xl tasks per .marvin/agents/planning-research.md, from a marvin:developer-small survey's facts and file:line citations, and the read-only RETHINK pass (a different approach for a build task whose failure pattern says the approach is wrong) per .marvin/agents/escalation.md. Produces a research memo (a RETHINK pass writes its run report instead); changes no code.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-completion": {"description": "Fresh completion validator (BA persona) \u2014 adversarially falsifies a \"done\" task against its DoD per .marvin/agents/validation-agent.md. Never the builder; runs after build, before the security validator.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-security": {"description": "Fresh security validator \u2014 reviews a completed task's changes for security regressions per .marvin/agents/validation-agent.md and .marvin/agents/security.md. Dispatched ONLY after the completion validator passes; never the builder.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}, "validator-visual": {"description": "Fresh visual/design validator \u2014 adversarially reviews a done UI task's surfaces against the generic design checklist per .marvin/agents/visual-validation.md. Dispatched ONLY after the completion and security validators pass; never the builder; cites visual-validation.md.", "effort": "medium", "model": "Opus 5.5", "tier": "heavy"}}, "profiles": {"fable": {"frontier": {"effort": "", "model": ""}, "heavy": {"effort": "medium", "model": "Opus 5.5"}, "micro": {"effort": "high", "model": "Haiku 5.5"}, "orch": {"effort": "medium", "model": "Fable 5.2"}, "small": {"effort": "high", "model": "Sonnet 5.5"}}, "opus": {"frontier": {"effort": "inherits the session's", "model": "Fable 5.2"}, "heavy": {"effort": "medium", "model": "Opus 5.5"}, "micro": {"effort": "high", "model": "Haiku 5.5"}, "orch": {"effort": "medium", "model": "Opus 5.5"}, "small": {"effort": "high", "model": "Sonnet 5.5"}}}}</script>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

@@ -426,3 +426,27 @@ mh_runs_root() {
   m=$(cd "$c/.." 2>/dev/null && pwd -P) && [ -n "$m" ] || return 1
   printf '%s' "$m/.marvin/runs"
 }
+
+# mh_enabled_plugins <project-root> — the effective enabledPlugins, one line per plugin id, sorted by id:
+# rank<TAB>id<TAB>value. Ranks: 1 user $cfg/settings.json, 2 project .claude/settings.json, 3 .claude/settings.local.json,
+# 9 managed. A later rank wins, managed wins over all; a missing or malformed file counts as absent. cfg is
+# ${CLAUDE_CONFIG_DIR:-$HOME/.claude}; the managed path is $MARVIN_MANAGED_SETTINGS (a test seam), else the platform default.
+mh_enabled_plugins() {
+  local root="${1:-}" cfg managed
+  cfg="${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}"
+  if [ -n "${MARVIN_MANAGED_SETTINGS:-}" ]; then managed="$MARVIN_MANAGED_SETTINGS"
+  elif [ "$(uname)" = Darwin ]; then managed="/Library/Application Support/ClaudeCode/managed-settings.json"
+  else managed=/etc/claude-code/managed-settings.json; fi
+  _mh_ep_members() {  # <rank> <file>
+    local out
+    [ -f "$2" ] || return 0
+    out=$(head -c "$MH_MAX_IN" -- "$2" 2>/dev/null | mh_json members enabledPlugins) || return 0
+    printf '%s\n' "$out" | awk -v r="$1" -F'\t' 'NF == 2 { print r "\t" $1 "\t" $2 }'
+  }
+  { _mh_ep_members 1 "$cfg/settings.json"; _mh_ep_members 2 "$root/.claude/settings.json"
+    _mh_ep_members 3 "$root/.claude/settings.local.json"; _mh_ep_members 9 "$managed"; } |
+    awk -F'\t' '{ if (!($2 in r) || $1 >= r[$2]) { r[$2] = $1; v[$2] = $3 } } END { for (k in r) print r[k] "\t" k "\t" v[k] }' |
+    sort -t "$(printf '\t')" -k2,2
+  unset -f _mh_ep_members
+  return 0
+}

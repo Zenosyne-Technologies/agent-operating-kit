@@ -6,6 +6,7 @@
   {"path": "concepts/escalation.html", "title": "Escalation", "section": "concepts", "order": 30, "source": "hand"},
   {"path": "concepts/around-the-loop.html", "title": "Around the loop", "section": "concepts", "order": 40, "source": "hand"},
   {"path": "concepts/fleet.html", "title": "Fleet mode", "section": "concepts", "order": 50, "source": "hand"},
+  {"path": "concepts/codeguard.html", "title": "CodeGuard rules", "section": "concepts", "order": 60, "source": "hand"},
   {"path": "settings", "title": "Settings", "section": "reference", "order": 10, "source": "generated:settings"},
   {"path": "skills", "title": "Skills & commands", "section": "reference", "order": 20, "source": "generated:skills"},
   {"path": "reference", "title": "Reference", "section": "reference", "order": 30, "source": "generated:reference"},

@@ -361,6 +361,24 @@ done
 F mh_since_compact "$C"; rc 0
 if printf '%s' "$OUT" | grep -Eq '^([1-9]|[1-9][0-9]) 61$'; then ok "n < 100 (capped at 8 MB), k = first message ($OUT)"; else bad "got '$OUT', want '<n<100> 61'"; fi
 
+hd "EP mh_enabled_plugins: effective enabledPlugins across user < project < local < managed"
+EPR="$WORK/ep"; mkdir -p "$EPR/p/.claude" "$EPR/cfg"; EPT=$(printf '\t')
+epw() { printf '{"enabledPlugins":{"x@m":%s}}' "$2" > "$1"; }
+export MARVIN_MANAGED_SETTINGS="$EPR/none.json"
+cfg0=$CLAUDE_CONFIG_DIR; export CLAUDE_CONFIG_DIR="$EPR/cfg"
+epw "$EPR/cfg/settings.json" true; epw "$EPR/p/.claude/settings.local.json" false
+F mh_enabled_plugins "$EPR/p"; rc 0; eq "3${EPT}x@m${EPT}false"
+rm "$EPR/p/.claude/settings.local.json"; epw "$EPR/cfg/settings.json" false; epw "$EPR/p/.claude/settings.json" true
+F mh_enabled_plugins "$EPR/p"; rc 0; eq "2${EPT}x@m${EPT}true"
+epw "$EPR/p/.claude/settings.local.json" true; epw "$EPR/managed.json" false; export MARVIN_MANAGED_SETTINGS="$EPR/managed.json"
+F mh_enabled_plugins "$EPR/p"; rc 0; eq "9${EPT}x@m${EPT}false"
+export MARVIN_MANAGED_SETTINGS="$EPR/none.json"; rm "$EPR/p/.claude/settings.local.json"
+printf '{"enabledPlugins":{"x@m":' > "$EPR/p/.claude/settings.json"
+F mh_enabled_plugins "$EPR/p"; rc 0; eq "1${EPT}x@m${EPT}false"
+rm "$EPR/cfg/settings.json" "$EPR/p/.claude/settings.json"
+F mh_enabled_plugins "$EPR/p"; rc 0; eq ""
+export CLAUDE_CONFIG_DIR="$cfg0"; unset MARVIN_MANAGED_SETTINGS
+
 # ── mutations: revert one lib line in a copy; the fixture's OUT|RC must then change ────────────────
 mutlib() {  # mutlib <name> <exact line> <replacement> <fixture-fn>
   local m="$WORK/lib-$1.sh" orig
