@@ -99,7 +99,19 @@ _INLINE = re.compile(
     """,
     re.X | re.S,
 )
-_BAD_SCHEME = re.compile(r"^\s*(?:javascript|data|vbscript):", re.I)
+_CTRL = re.compile(r"[\x00-\x20\x7f]")
+_OK_SCHEMES = ("http:", "https:", "mailto:")
+
+
+def _href_ok(href: str) -> bool:
+    """Allowlist for the value that lands in the attribute: a fragment, a scheme-less relative URL, http(s), mailto."""
+    if _CTRL.search(href):
+        return False
+    if href.startswith("#"):
+        return True
+    if ":" in re.split(r"[/?#]", href, maxsplit=1)[0]:  # a scheme (or something that parses like one)
+        return href.lower().startswith(_OK_SCHEMES)
+    return True
 
 
 def _esc(s: str) -> str:
@@ -121,9 +133,10 @@ def _inline(text: str, src: str, line: int, link_map: Callable[[str], str]) -> s
             out.append(_esc(m.group("ch")))
         elif m.group("link") is not None:
             href = m.group("href")
-            if _BAD_SCHEME.match(href):
-                _bad_scheme(src, line, href)
-            attrs = html.escape(link_map(href), quote=True)
+            mapped = link_map(href)
+            if not _href_ok(mapped):
+                _bad_scheme(src, line, mapped)
+            attrs = html.escape(mapped, quote=True)
             title = m.group("title")
             tattr = f' title="{html.escape(title, quote=True)}"' if title is not None else ""
             out.append(f'<a href="{attrs}"{tattr}>' + _inline(m.group("lt"), src, line, link_map) + "</a>")
@@ -241,7 +254,9 @@ def _table(lines: list[Line], i: int, ctx: _Ctx) -> tuple[str, int]:
     n = len(cells)
 
     def row(tag: str, cs: list[str], no: int) -> str:
-        cs = (cs + [""] * n)[:n]
+        if len(cs) > n:
+            _unknown(ctx.src, no, f"table row has {len(cs)} cells but the header has {n}")
+        cs = cs + [""] * (n - len(cs))
         tds = []
         for k, c in enumerate(cs):
             cls = f' class="align-{aligns[k]}"' if aligns[k] else ""

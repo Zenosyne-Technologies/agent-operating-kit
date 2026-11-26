@@ -29,7 +29,8 @@ rcode() { printf '%s' "$1" > "$WORK/in.md"; python3 "$MOD" --render "$WORK/in.md
 fx_md_unknown() {
   local t
   for t in $'* star bullet\n' $'    indented code\n' $'Title\n=====\n' $'![img](a.png)\n' $'[ref]: http://x\n' \
-           $'```\nnever closed\n' $'| a | b |\nno alignment row here\n'; do
+           $'```\nnever closed\n' $'| a | b |\nno alignment row here\n' \
+           $'| a |\n|---|\n| x | y | z |\n'; do
     [ "$(rcode "$t")" = 2 ] || return 1
   done
 }
@@ -41,7 +42,9 @@ fx_md_raw_html() {
 }
 fx_md_link_scheme() {
   local t
-  for t in $'[x](javascript:alert(1))\n' $'[x](JavaScript:alert(1))\n' $'[x](data:text/html,a)\n'; do
+  for t in $'[x](javascript:alert(1))\n' $'[x](JavaScript:alert(1))\n' $'[x](data:text/html,a)\n' \
+           $'[x](java\x01script:alert(1))\n' $'[x](javascript\x7f:a)\n' $'[x](file:///etc/passwd)\n' $'[x](ftp://h/f)\n' \
+           $'[x](vbscript:a)\n'; do
     [ "$(rcode "$t")" = 2 ] || return 1
   done
 }
