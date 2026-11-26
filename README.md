@@ -214,6 +214,8 @@ It never writes a file, never blocks the session, and always exits 0 — includi
 
 **Session clean-up (v0.42.0).** The automatic worktree sweep removes only worktrees Marvin marked as its own (agent worktrees when they stop, a hand-made one via `/marvin:clean-worktrees --mark`); desktop session worktrees are left to the app. Run state — ledger, build briefs, run reports — lives in the project's `.marvin/runs/<session>/<KEY>/`, carried there by hooks from any worktree, with ledgers chained across sessions. `worktree_sweep` (`on | check | off`) and `docker_lint` (`advise | off`) are per-project switches; an absent mode key never enforces. The upgrade's readiness step moves existing run state and defers sessions you say are still open. Rules: `.marvin/agents/worktrees.md`, `.marvin/agents/briefing.md` item 11, `.marvin/agents/session-recovery.md`.
 
+**CodeGuard security rules (v0.44.0).** Project CodeGuard (CoSAI / OASIS, CC BY 4.0) is an optional companion plugin of third-party security rules. Install offers it and installs it at project scope only on a yes — upgrade asks once when the key is missing — so teammates are offered it too, and it is active from the next session. `security_rules` in `.marvin/PROJECT-INFO.md` (`kit` | `codeguard`, absent = `kit`) switches it on per project: on `codeguard` projects the brief names the rules for its security surface and both security validators (Claude and the Codex lane) check them. It adds checks and never replaces the kit checklist; a missing plugin never fails or blocks anything (one notice per session). Rules: `.marvin/agents/codeguard.md`.
+
 ## PM tools
 
 The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
@@ -290,7 +292,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the seventeen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+Every PR must pass the static release gate and the nineteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
@@ -311,6 +313,7 @@ bash scripts/test-docker-lint.sh
 bash scripts/test-ticket-lint.sh
 bash scripts/test-style-plugins.sh
 bash scripts/test-codex.sh
+bash scripts/test-codeguard.sh
 bash scripts/test-placeholder-check.sh
 ```
 
@@ -327,7 +330,7 @@ scripts/marvin-session-start.sh      SessionStart hook body: version-drift check
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
 scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
-scripts/validate-kit.sh              twenty-three-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              twenty-five-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -348,7 +351,7 @@ scripts/test-docker-sweep.sh         fixture suite for the Docker sweep against 
 hooks/user-update-rules.txt          the user-update rules block, defined once — printed by the SessionStart hook, embedded by the output style
 hooks/style-plugins.txt              registry of plugins that inject a competing output style (install/upgrade offer to disable them per user)
 output-styles/marvin.md              the Marvin output style (marvin:marvin), selected per project by outputStyle
-scripts/lib/marvin-hook-lib.sh       shared hook library — bounded streaming JSON walker, transcript readers, window resolution and level ladder
+scripts/lib/marvin-hook-lib.sh       shared hook library — bounded streaming JSON walker, transcript readers, window resolution and level ladder, the effective `enabledPlugins` reader (`mh_enabled_plugins`)
 scripts/test-hook-lib.sh             unit suite for the hook library, incl. inline mutation checks (CI runs it too)
 scripts/marvin-update-gate.sh        UserPromptSubmit + Stop hook body: the user-update format gate (advise / block / off)
 scripts/test-update-gate.sh          behavioural suite for the update gate, incl. inline mutation checks (CI runs it too)
@@ -365,6 +368,8 @@ scripts/marvin-style-plugins.sh      read-only finder of enabled competing style
 scripts/test-style-plugins.sh        fixture suite for the finder, incl. an inline mutation check (CI runs it too)
 scripts/marvin-codex.sh              the only door to the Codex companion (codex-companion.mjs): locates it; `check` (is Codex usable?) answers with one status line; `run <lane>` submits one guarded lane job (handover, astra, effort ceiling, write-evidence only on review/security) and waits under a wall-clock budget; `result <id>` resumes a pending job
 scripts/test-codex.sh                fixture suite for marvin-codex.sh with a fake node on PATH (CI runs it too)
+scripts/marvin-codeguard.sh          read-only CodeGuard install/enable check — `ready` / `disabled` / `not-installed` / `error <reason>` (run by the install and upgrade skills)
+scripts/test-codeguard.sh            fixture suite for it, incl. an inline mutation check (CI runs it too)
 scripts/marvin-placeholder-check.sh  read-only check that no install-time {{PLACEHOLDER}} is left in the installed kit files (run by install/upgrade as their last check)
 scripts/test-placeholder-check.sh    fixture suite for it: the real templates rendered, each leftover form, scope and symlink cases, inline mutations (CI runs it too)
 upgrades/v*.md                     per-release consumer-visible upgrade steps — the upgrade skill walks them in order
