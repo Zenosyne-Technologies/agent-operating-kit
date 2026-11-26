@@ -691,9 +691,9 @@ if command -v ps >/dev/null 2>&1; then
 else ok "skipped: no ps here"; fi
 if grep -v "^submitted task-" "$WORK/stderr" | grep -q .; then bad "stderr noise: $(head -c 200 "$WORK/stderr")"; else ok "no job-control noise on stderr (only the submitted line)"; fi
 
-hd "run: the project's model-profile.md wins over the kit template (only the Codex profile section is read)"
+hd "run: the project's model-profile-codex.md wins over the kit template (only the Codex profile section is read)"
 mkdir -p "$P/.marvin/agents"
-cat > "$P/.marvin/agents/model-profile.md" <<'EOF'
+cat > "$P/.marvin/agents/model-profile-codex.md" <<'EOF'
 # Model profile
 
 | Lane | Tier | Model | Effort | Why |
@@ -721,7 +721,7 @@ sut "$P" -- run diagnose --prompt-file "$PF"
 assert_rc 0; assert_argv_pair --model gpt-5.6-sol; assert_argv_pair --effort xhigh
 
 hd "run: the project copy routes a lane to the astra model → still refused without --astra"
-sed 's/`gpt-5.6-terra`/gpt-6-astra/' "$P/.marvin/agents/model-profile.md" > "$WORK/mp" && cp "$WORK/mp" "$P/.marvin/agents/model-profile.md"
+sed 's/`gpt-5.6-terra`/gpt-6-astra/' "$P/.marvin/agents/model-profile-codex.md" > "$WORK/mp" && cp "$WORK/mp" "$P/.marvin/agents/model-profile-codex.md"
 sut "$P" -- run review --prompt-file "$PF"
 assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
 rm -rf "$P/.marvin/agents"
@@ -796,7 +796,7 @@ if grep -Fxq "submitted $J" "$WORK/stderr"; then ok "stderr has: submitted $J"; 
 
 hd "astra: a project copy that renames its astra row does not launder the template's astra model"
 mkdir -p "$P/.marvin/agents"
-cat > "$P/.marvin/agents/model-profile.md" <<'EOF'
+cat > "$P/.marvin/agents/model-profile-codex.md" <<'EOF'
 ## Codex profile
 
 | Lane | Tier | Model | Effort | Why |
@@ -818,8 +818,8 @@ assert_eq "refused: astra needs --astra"; assert_rc 3; assert_argv_empty
 
 hd "mc_is_astra: the TEMPLATE's astra row counts even when it does not say astra and the project copy renames it"
 mkdir -p "$WORK/kit/scripts" "$WORK/kit/templates/marvin/agents" "$P/.marvin/agents"
-printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-zenith | high | x |\n' > "$WORK/kit/templates/marvin/agents/model-profile.md"
-printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-nadir | high | x |\n' > "$P/.marvin/agents/model-profile.md"
+printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-zenith | high | x |\n' > "$WORK/kit/templates/marvin/agents/model-profile-codex.md"
+printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | gpt-9-nadir | high | x |\n' > "$P/.marvin/agents/model-profile-codex.md"
 ia() { ( cd "$P" && env -i HOME="$WORK/fakehome" PATH="$TOOLS" bash -c '. "$1"; MC_HERE="$2"; mc_is_astra "$3" "$4"' _ "$SUT" "$WORK/kit/scripts" "$1" "$P" ); }
 if ia gpt-9-zenith; then ok "template astra row (gpt-9-zenith) is astra"; else bad "template astra row not recognised"; fi
 if ia GPT-9-NADIR; then ok "project astra row (gpt-9-nadir) is astra"; else bad "project astra row not recognised"; fi
@@ -833,6 +833,20 @@ OUT=$(mp build-micro effort); RC=$?; assert_eq high; assert_rc 0
 OUT=$(mp astra model); RC=$?; assert_eq gpt-6-astra
 OUT=$(mp nosuchlane model); RC=$?; assert_eq ""; assert_rc 1
 OUT=$(mp review tier 2>/dev/null); RC=$?; assert_rc 2
+
+# the lookup order: project new file, project legacy section, kit template (AOS-267)
+lk() {  # lk <project-new-astra|-> <project-legacy-astra|-> — a fresh project holding only the named files
+  rm -rf "$P/.marvin/agents"; mkdir -p "$P/.marvin/agents"
+  [ "$1" = - ] || printf '## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | %s | high | x |\n' "$1" > "$P/.marvin/agents/model-profile-codex.md"
+  [ "$2" = - ] || printf '# Model profile\n\n## Codex profile\n\n| Lane | Tier | Model | Effort | Why |\n|---|---|---|---|---|\n| astra | codex frontier | %s | high | x |\n' "$2" > "$P/.marvin/agents/model-profile.md"
+}
+hd "codex-new-path: a project with only model-profile-codex.md is read"
+lk gpt-9-zenith -; OUT=$(mp astra model); RC=$?; assert_eq gpt-9-zenith; assert_rc 0
+hd "codex-legacy-path: a project with only the old model-profile.md Codex section is still read"
+lk - gpt-9-nadir; OUT=$(mp astra model); RC=$?; assert_eq gpt-9-nadir; assert_rc 0
+hd "codex-new-wins: both present, the new file wins"
+lk gpt-9-zenith gpt-9-nadir; OUT=$(mp astra model); RC=$?; assert_eq gpt-9-zenith; assert_rc 0
+rm -rf "$P/.marvin/agents"
 
 hd "the script is executable and parses under bash -n"
 if [ -x "$SUT" ]; then ok "executable"; else bad "not executable"; fi

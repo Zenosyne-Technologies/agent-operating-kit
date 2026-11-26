@@ -19,7 +19,8 @@
 #                       [--write-evidence] [--wait-max <seconds, default 540>]
 #     <lane>: plan|review|security|design|diagnose|build|build-micro, or `astra` (an alias lane, refused
 #     without --astra). Model and effort default to the lane's row of the `## Codex profile` table in
-#     <toplevel>/.marvin/agents/model-profile.md, else (per lookup) in this kit's templates/ copy; --astra
+#     <toplevel>/.marvin/agents/model-profile-codex.md, else the legacy section of that project's model-profile.md,
+#     else (per lookup) this kit's templates/ copy of model-profile-codex.md; --astra
 #     selects the astra row's model and, unless --effort is given, its effort. Guards, in order, each refusing
 #     with exit 3 and one stdout line:
 #       0. --write-evidence on a lane other than review|security -> refused: write-evidence only on review or security
@@ -313,17 +314,23 @@ mc_handover() {
   case "$v" in ask|auto) printf '%s\n' "$v" ;; *) printf 'off\n' ;; esac
 }
 
-# mc_profile <lane> model|effort [top] — the lane's cell from the `## Codex profile` table: the project copy
-# (<top>/.marvin/agents/model-profile.md) first, then this kit's template. Only that section is read (up to
+# mc_profile_files <top> — the files that may hold the Codex table, in lookup order: the project's
+# model-profile-codex.md, its legacy `## Codex profile` section in model-profile.md, the kit template's file
+mc_profile_files() {
+  printf '%s\n' "$1/.marvin/agents/model-profile-codex.md" "$1/.marvin/agents/model-profile.md" \
+    "$MC_HERE/../templates/marvin/agents/model-profile-codex.md"
+}
+# mc_profile <lane> model|effort [top] — the lane's cell from the `## Codex profile` table, first file of
+# mc_profile_files that has the lane row. Only that section is read (up to
 # the next `## ` heading); column 1 is matched trimmed of spaces and backticks; the cell comes back trimmed.
 # rc 1 when no non-empty cell is found, 2 for a bad field name.
 mc_profile() {
   local lane=$1 col f top
   case "${2:-}" in model) col=4 ;; effort) col=5 ;; *) mc_err "mc_profile: field is model or effort"; return 2 ;; esac
   top=${3:-$(mc_top)}
-  for f in "$top/.marvin/agents/model-profile.md" "$MC_HERE/../templates/marvin/agents/model-profile.md"; do
+  while IFS= read -r f; do
     mc_profile_in "$f" "$lane" "$col" && return 0
-  done
+  done < <(mc_profile_files "$top")
   return 1
 }
 # mc_profile_in <file> <lane> <column> — one profile file's cell (see mc_profile); rc 1 when absent
@@ -338,15 +345,15 @@ mc_profile_in() {
 }
 
 # mc_is_astra <model> <top> — the model is the frontier model: it names astra (any case, any dated alias), or
-# equals the astra row of the project copy OR of the kit template (a project edit cannot launder it)
+# equals the astra row of ANY profile file (project, legacy, kit template) (a project edit cannot launder it)
 mc_is_astra() {
   local m f a
   m=$(mc_lc "$1")
   case "$m" in *astra*) return 0 ;; esac
-  for f in "$2/.marvin/agents/model-profile.md" "$MC_HERE/../templates/marvin/agents/model-profile.md"; do
+  while IFS= read -r f; do
     a=$(mc_profile_in "$f" astra 4) || continue
     [ "$m" = "$(mc_lc "$a")" ] && return 0
-  done
+  done < <(mc_profile_files "$2")
   return 1
 }
 
