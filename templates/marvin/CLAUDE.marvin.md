@@ -44,7 +44,7 @@ Keep context lean: load a reference ONLY when performing that activity, and cite
 - Branching, versioning, tagging, or cutting a release — any git decision beyond a commit → `.marvin/agents/git-strategy.md`; pushing, merging a sub-agent's branch, or any worktree → `.marvin/agents/worktrees.md` (your session's worktree vanished mid-task → `.marvin/agents/session-recovery.md`); Docker containers, volumes or images, or a throwaway database → `.marvin/agents/tidying.md`; how long a session runs, the context ladder and the stop-and-compact nudge → `.marvin/agents/session-budget.md`
 - Producing any report (digest / close-out / stakeholder) → `.marvin/agents/reporting.md` (snapshot first, render second); token/cost reporting + the telemetry context sidecar on tracker-issue start/switch → `.marvin/agents/token-economics.md`
 - Bound by a DO NOT — about to do something destructive, out-of-scope or irreversible → `.marvin/agents/guardrails.md` (the four dispositions, the escalation chain, the generic baseline + your persona's rows)
-- Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.marvin/agents/security.md`
+- Any task touching auth, input boundaries, data exposure, secrets, or dependencies → `.marvin/agents/security.md`; with `security_rules: codeguard`, also `.marvin/agents/codeguard.md`
 
 ## Standing rules
 

@@ -26,6 +26,7 @@ codex_handover: off
 validation_strategy: claude
 codex_lanes: []
 codex_evidence: claude
+security_rules: {{SECURITY_RULES}}
 # Optional: overrides the window the context ladder measures (.marvin/agents/session-budget.md)
 # context_window_ktokens: 1000
 # Optional: fleet overrides (.marvin/agents/fleet.md, fleet-child.md)
@@ -48,5 +49,6 @@ Meta overview for foreign agents, agentic OS frameworks, and reporting tools. Th
 - `worktree_sweep` sets the automatic worktree sweep (`on` | `check` | `off`; absent or invalid = `check`, which reports what it would remove and removes nothing) — `.marvin/agents/worktrees.md`
 - `docker_lint` sets the Docker-label check (`advise` | `off`; absent or invalid = `advise`; `off` silences it) — `.marvin/agents/tidying.md`
 - `codex_handover` (`off` | `ask` | `auto`), `validation_strategy` (`claude` | `codex` | `four-eye` | `claude+lanes`), `codex_lanes` (any of `plan`, `review`, `security`, `design`) and `codex_evidence` (`claude` | `codex`) set the Codex handover — `.marvin/agents/codex.md`
+- `security_rules` (`kit` | `codeguard`; absent, empty or unknown = `kit`) sets whether the security advisor and validators add the CodeGuard rules on top of the kit checklist — `.marvin/agents/codeguard.md`
 - Label registry: `.marvin/agents/label-syntax.md` · Filing rules: `.marvin/agents/ticket-filing.md`
 - Operating rules: `.marvin/CLAUDE.marvin.md` (imported by `CLAUDE.md`) + the `.marvin/agents/` rules cascade

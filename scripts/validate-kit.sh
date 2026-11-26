@@ -10,7 +10,7 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
+KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE SECURITY_RULES TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
@@ -326,6 +326,17 @@ done
 mk=$(grep -rnoiE 'marketplace add +zenosyne-technologies/[A-Za-z0-9._-]+' skills templates commands README.md BOOTSTRAP.md docs/index.html 2>/dev/null \
   | grep -vE ':marketplace add +Zenosyne-Technologies/emprove-marketplace$' | tr '\n' ' ')
 [ -z "$mk" ] && pass marketplace || fail marketplace "marketplace add must name Zenosyne-Technologies/emprove-marketplace: ${mk% }"
+
+# ── 25. codeguard-grading: the one sentence that grades a CodeGuard rule violation is owned by codeguard.md
+# and repeated byte-identical by the Claude security stage and the Codex security lane, so both validators
+# grade a violation alike (AOS-257). A copy that drifted would let one validator FAIL what the other notes.
+CG_SENTENCE="A CodeGuard rule violation is FAIL only when it is itself an exploitable security defect at this stage's must-fix bar; a hygiene-only violation is a note."
+cg=""
+for f in templates/marvin/agents/codeguard.md templates/marvin/agents/validation-agent.md templates/marvin/agents/codex/security.md; do
+  if [ ! -f "$f" ]; then cg="$cg $f missing;"
+  elif ! grep -qF -- "$CG_SENTENCE" "$f"; then cg="$cg $f lacks the grading sentence verbatim;"; fi
+done
+[ -z "$cg" ] && pass codeguard-grading || fail codeguard-grading "${cg# }"
 
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"

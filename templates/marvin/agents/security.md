@@ -25,5 +25,6 @@ Applies to EVERY task that touches auth, input boundaries, data exposure, secret
 ## Surfaces
 
 - Build briefs name the task's security surface (`briefing.md` ingredient) — builders treat listed surfaces as constraints, not commentary.
+- When `security_rules: codeguard`, the CodeGuard rules are added on top of these surfaces — `codeguard.md`.
 - Security-critical design (crypto, deletion, money paths, authZ models) stays orchestrator-inline — never delegated.
 - Validation is two-stage (`validation-agent.md`): completion first, security second — security review never runs on incomplete work.

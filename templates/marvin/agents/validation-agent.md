@@ -26,6 +26,7 @@ Persona: an application security analyst reviewing the change surface.
 - Input validation at the boundary; injection on raw query paths; SSRF on any outbound fetch.
 - Secrets/PII in logs and error bodies; rate limiting on mutating/enumerable routes; audit coverage of state changes.
 - Data exposure: response projections (no hashes/tokens/internal URLs), privacy modes honored.
+- When `security_rules: codeguard`, also check the CodeGuard rules `codeguard.md` selects. A CodeGuard rule violation is FAIL only when it is itself an exploitable security defect at this stage's must-fix bar; a hygiene-only violation is a note.
 
 ## E2E script (when available)
 
