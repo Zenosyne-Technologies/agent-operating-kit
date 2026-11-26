@@ -2,6 +2,28 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.44.0] — 2026-11-26
+
+### Added
+- `security_rules: kit | codeguard` in `PROJECT-INFO.md`: install and upgrade ask once (no answer or unattended: `kit`), `project-info` validates it, `/marvin:info` reports it with the CodeGuard status.
+- `.marvin/agents/codeguard.md`: how the advisor, builders, the security validator and the Codex security lane use Project CodeGuard (CoSAI / OASIS, CC BY 4.0, validated v1.5.0) on top of the kit checklist; a missing plugin never fails or blocks a task.
+- Install step 6e offers CodeGuard and, on a yes, installs `codeguard-security@project-codeguard` at project scope pinned to v1.5.0; a re-install keeps a committed `security_rules`.
+- Codex security lane: a `### Rules` block (the orchestrator's `rules` DATA, transient) carries the brief's named rules and the always-apply rules.
+- Docs site: the CodeGuard concept page and the `security_rules` Settings entry.
+- Factory: `scripts/marvin-codeguard.sh`, a read-only install/enable check (`ready` / `disabled` / `not-installed` / `error <reason>`), with `scripts/test-codeguard.sh` (inline mutation check, run in CI; 20 suites).
+- Factory: `mh_enabled_plugins` in the hook library, one reader of the effective `enabledPlugins`, shared with the style-plugin finder.
+- Factory: `validate-kit` check `codeguard-grading` (27 checks): the grading sentence is identical in `codeguard.md`, `validation-agent.md` and `codex/security.md`.
+
+### Changed
+- `briefing.md` item 4 names the always-apply rules plus the topic rules whose tags match the task, within the stack's language row; `security.md`, `validation-agent.md`, `codex.md`, `codex/security.md` and the kit core cite `codeguard.md`.
+- The upgrade's clean-path refusal names `.claude/settings.json` with a commit-or-restore instruction (the plugin CLI rewrites that committed file).
+
+### Security
+- A CodeGuard violation is graded by the kit's severity scale and is a FAIL only when it is itself an exploitable defect at the stage's must-fix bar; CodeGuard adds checks and never softens a kit rule.
+
+### Action needed
+- Run `/marvin:upgrade-agent-os`: it asks once whether to install CodeGuard (no answer: `kit`); after a yes, commit the `.claude/settings.json` change.
+
 ## [0.43.1] — 2026-11-26
 
 ### Added

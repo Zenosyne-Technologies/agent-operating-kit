@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.44.0 — CodeGuard security rules - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.44.0.html" aria-current="page">v0.44.0</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-44-0-codeguard-security-rules">v0.44.0 — CodeGuard security rules</h1>
+<p><strong>Consumers act once:</strong> run <code>/marvin:upgrade-agent-os</code>. It asks once for <code>security_rules: kit | codeguard</code>; no answer writes <code>kit</code> and installs nothing. See <code>upgrades/v0.44.0.md</code>.</p>
+<p><strong>Why.</strong> The kit's security checklist is short and generic. Project CodeGuard (CoSAI / OASIS, CC BY 4.0) is a maintained, industry-backed set of security rules that ships as a Claude Code plugin. Teams that want it now get it in the review loop, added on top of the kit's checklist, without the kit copying third-party rules and without making them mandatory.</p>
+<p><strong>What changed.</strong></p>
+<ul>
+<li><code>security_rules</code> is a new <code>PROJECT-INFO.md</code> key. Install (step 6e) and upgrade ask once (no answer or unattended: <code>kit</code>); <code>project-info</code> validates it; <code>/marvin:info</code> reports it with the CodeGuard status. A yes installs <code>codeguard-security@project-codeguard</code> at project scope, pinned to v1.5.0, so teammates are offered it too; it is active from the next session. A failed install writes <code>kit</code> and the install continues; a re-install keeps a committed value.</li>
+<li><code>.marvin/agents/codeguard.md</code> is the one owner of how the kit uses CodeGuard:
+<ul>
+<li>availability — one notice per session when the plugin is missing, then the kit checklist alone, never a FAIL;</li>
+<li>rule selection — the brief names the three always-apply rules plus the topic rules whose tags match the task, within the stack's language row, never the whole row;</li>
+<li>builders load only the named rules; the security validator checks them and the always-apply rules, and may scan the rest of the row for notes;</li>
+<li>precedence — CodeGuard adds checks and never softens a kit rule; grading by the kit's severity scale; license — rules are named, never copied.</li>
+</ul></li>
+<li>The Codex security lane receives the named and always-apply rules as a transient <code>### Rules</code> block, so both validators grade the same rules the same way.</li>
+<li>Factory: <code>scripts/marvin-codeguard.sh</code> (read-only status check) with <code>scripts/test-codeguard.sh</code>; <code>mh_enabled_plugins</code> in the hook library, shared with the style-plugin finder; <code>validate-kit</code> check <code>codeguard-grading</code> (27 checks); the new suite runs in CI (20 suites).</li>
+<li>Docs site: a CodeGuard concept page, a Home card, a Getting started entry and the <code>security_rules</code> Settings entry.</li>
+</ul>
+<p><strong>Acceptance.</strong> Documentation, checked (repo rule 10):</p>
+<ul>
+<li>README: inventory (<code>codeguard.md</code>, the check script and its suite, the hook-lib reader), the gate count (27) and list, the suite count (20).</li>
+<li>Docs site (rule 11): <code>site/concepts/codeguard.html</code> (registered in <code>site/pages.json</code>, linked from Home, Getting started, Around the loop and Settings); <code>site/settings-install.md</code> describes <code>security_rules</code>; <code>build-docs.sh --check</code> clean. CodeGuard adds nothing visible in Claude Code, so no screenshots.</li>
+<li><code>CLAUDE.md</code> and <code>AGENTS.md</code>: rule 8's suite list.</li>
+<li>The <code>PROJECT-INFO.md</code> template, the install, upgrade and <code>project-info</code> skills, <code>/marvin:info</code>.</li>
+<li><code>upgrades/v0.44.0.md</code> and the <code>CHANGELOG.md</code> section.</li>
+</ul>
+<p>Behaviour:</p>
+<ul>
+<li><code>scripts/validate-kit.sh</code> (27 checks) and the 20 <code>scripts/test-*.sh</code> suites: green.</li>
+<li>Host facts verified before the build was finalised (Claude Code 2.1.318, scratch config): the <code>#v1.5.0</code> tag pin works; the project-scope settings entries, the <code>installed_plugins.json</code> project entry and the exit codes match what the skill and the check script assume.</li>
+<li>Offline scratch installs, each with a logging <code>claude</code> stand-in: B (decline: <code>kit</code>, no plugin command), C (unanswered: <code>kit</code>, recorded <code>no answer → kit</code>) and D (accept, offline failure: the pinned add attempted, no install after it, failure reported, <code>kit</code>, install completed): PASS.</li>
+<li>Network runs against the release candidate: A (accept: <code>security_rules: codeguard</code>, <code>check</code> → <code>ready 1.5.0 project</code>, the settings carry <code>ref: v1.5.0</code> and <code>enabledPlugins</code>), E (upgrade after a real uninstall: exactly one issue callout, the setting stays <code>codeguard</code>); a live session on A briefed a small auth task whose item 4 named <code>codeguard-0-authentication-mfa</code> plus the three always-apply rules, and its security validator failed a planted hard-coded <code>SESSION_SECRET</code> citing <code>codeguard-1-hardcoded-credentials</code>, with the finding-tag format unchanged; on <code>security_rules: kit</code> the same session named no rules: PASS.</li>
+<li>The Codex <code>### Rules</code> hand-off was verified by composition only (the Codex handover was off in the scratch repo); a test for it is filed as a follow-up.</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.43.1..HEAD</code> (<code>git log --no-merges</code>), each subject's leading key deduplicated. AOS-308 is v0.43.1's live-acceptance record, which landed after the v0.43.1 tag.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>a new <code>security_rules: kit | codeguard</code> setting offers Project CodeGuard's security rules on top of the kit checklist.</strong> Rules: <code>.marvin/agents/codeguard.md</code>.</p>
+<ul>
+<li>Update the plugin, then run <code>/marvin:upgrade-agent-os</code>. It asks the CodeGuard question ONCE when <code>security_rules</code> is missing and inserts the key in <code>.marvin/PROJECT-INFO.md</code> right after <code>codex_evidence</code>; no answer or an unattended run writes <code>kit</code> (today's behaviour, nothing installed).</li>
+<li>A yes runs <code>claude plugin marketplace add 'cosai-oasis/project-codeguard#v1.5.0' --scope project</code> (only when <code>.claude/settings.json</code> does not already declare <code>project-codeguard</code>) and <code>claude plugin install codeguard-security@project-codeguard -s project</code>, writes <code>security_rules: codeguard</code>, and the plugin is active from the next session. A failed install writes <code>kit</code> and the upgrade continues.</li>
+<li>The install changes <code>.claude/settings.json</code> (<code>extraKnownMarketplaces</code>, <code>enabledPlugins</code>): commit it, so teammates are offered the plugin when they trust the folder.</li>
+<li>A teammate without the plugin on a <code>codeguard</code> project gets one notice per session and runs the kit checklist alone; the absence never fails or blocks a task.</li>
+<li>Later upgrades only check: on a <code>codeguard</code> project a disabled, removed or drifted plugin is an issue callout, and the key is never changed. To switch later, edit <code>security_rules</code>; for <code>codeguard</code>, install the plugin with the fix command in <code>codeguard.md</code>.</li>
+<li>New cascade file <code>.marvin/agents/codeguard.md</code>; refreshed (with backups) <code>security.md</code>, <code>briefing.md</code>, <code>validation-agent.md</code>, <code>codex.md</code>, <code>codex/security.md</code> and the kit core <code>CLAUDE.marvin.md</code>.</li>
+<li>No migration script.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li><code>security_rules: kit | codeguard</code> in <code>PROJECT-INFO.md</code>: install and upgrade ask once (no answer or unattended: <code>kit</code>), <code>project-info</code> validates it, <code>/marvin:info</code> reports it with the CodeGuard status.</li>
+<li><code>.marvin/agents/codeguard.md</code>: how the advisor, builders, the security validator and the Codex security lane use Project CodeGuard (CoSAI / OASIS, CC BY 4.0, validated v1.5.0) on top of the kit checklist; a missing plugin never fails or blocks a task.</li>
+<li>Install step 6e offers CodeGuard and, on a yes, installs <code>codeguard-security@project-codeguard</code> at project scope pinned to v1.5.0; a re-install keeps a committed <code>security_rules</code>.</li>
+<li>Codex security lane: a <code>### Rules</code> block (the orchestrator's <code>rules</code> DATA, transient) carries the brief's named rules and the always-apply rules.</li>
+<li>Docs site: the CodeGuard concept page and the <code>security_rules</code> Settings entry.</li>
+<li>Factory: <code>scripts/marvin-codeguard.sh</code>, a read-only install/enable check (<code>ready</code> / <code>disabled</code> / <code>not-installed</code> / <code>error &lt;reason&gt;</code>), with <code>scripts/test-codeguard.sh</code> (inline mutation check, run in CI; 20 suites).</li>
+<li>Factory: <code>mh_enabled_plugins</code> in the hook library, one reader of the effective <code>enabledPlugins</code>, shared with the style-plugin finder.</li>
+<li>Factory: <code>validate-kit</code> check <code>codeguard-grading</code> (27 checks): the grading sentence is identical in <code>codeguard.md</code>, <code>validation-agent.md</code> and <code>codex/security.md</code>.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li><code>briefing.md</code> item 4 names the always-apply rules plus the topic rules whose tags match the task, within the stack's language row; <code>security.md</code>, <code>validation-agent.md</code>, <code>codex.md</code>, <code>codex/security.md</code> and the kit core cite <code>codeguard.md</code>.</li>
+<li>The upgrade's clean-path refusal names <code>.claude/settings.json</code> with a commit-or-restore instruction (the plugin CLI rewrites that committed file).</li>
+</ul>
+<h3 id="changes-security">Security</h3>
+<ul>
+<li>A CodeGuard violation is graded by the kit's severity scale and is a FAIL only when it is itself an exploitable defect at the stage's must-fix bar; CodeGuard adds checks and never softens a kit rule.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Run <code>/marvin:upgrade-agent-os</code>: it asks once whether to install CodeGuard (no answer: <code>kit</code>); after a yes, commit the <code>.claude/settings.json</code> change.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>
