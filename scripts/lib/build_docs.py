@@ -451,6 +451,7 @@ PROTECTED = ("images", "release-notes", "decisions", "superpowers")  # docs/ dir
 PROTECTED_FILES = (".nojekyll",)
 TEXT_EXT = (".html", ".css", ".js", ".json", ".svg", ".txt", ".md", ".xml")
 _TOKENS = re.compile(r"\{\{(TITLE|ROOT|NAV|SIDEBAR|BODY)\}\}")
+_FEATURE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 @dataclass(frozen=True)
@@ -516,6 +517,8 @@ def load_registry(root: Path) -> list[Page]:
         feat = e.get("feature")
         if feat is not None and not isinstance(feat, str):
             raise BuildError(f"{where}: feature must be a string")
+        if feat is not None and not _FEATURE.match(feat):
+            raise BuildError(f"{where}: feature must be a folder name under docs/images/ (lowercase letters, digits, '-'): {feat!r}")  # GUARD:feature-name
         _claim(seen, e["path"])
         pages.append(Page(e["path"], e["title"], e["section"], e["order"], e["source"], feat))
     return pages
@@ -526,10 +529,17 @@ def _expand(root: Path) -> list[tuple[Page, str]]:
     out: list[tuple[Page, str]] = []
     seen: set[str] = set()
     mcache: dict = {}
-    for pg in load_registry(root):
+    registry = load_registry(root)
+    errs = image_errors(root, registry)
+    if errs:
+        raise BuildError("docs/images: " + "; ".join(errs))
+    for pg in registry:
         if pg.source == "hand":
             _claim(seen, pg.path)
-            out.append((pg, _markers(root, _read_text(root / "site" / pg.path), pg.path, mcache)))
+            body = _markers(root, _read_text(root / "site" / pg.path), pg.path, mcache, pg.feature)
+            if pg.feature:
+                body = body.rstrip("\n") + "\n" + gallery(root, pg.feature, "../" * pg.path.count("/"))
+            out.append((pg, body))
         elif pg.source.startswith("generated:"):
             name = pg.source[len("generated:"):]
             if name not in GENERATORS:
@@ -1166,6 +1176,7 @@ def profile_data(root: Path) -> dict:
 # ---- hand-page markers
 
 _MARKER = re.compile(r"<!--\s*(data|table):\s*([A-Za-z0-9_-]*)\s*-->")
+_SHOT = re.compile(r"<!--\s*shot:\s*([^\s>]*?)\s*-->")
 
 
 def _table_profiles(d: dict, prefix: str) -> str:
@@ -1199,7 +1210,7 @@ def _data_json(d: dict) -> str:
     return f'<script type="application/json" id="marvin-data">{blob}</script>'
 
 
-def _markers(root: Path, body: str, path: str, cache: dict) -> str:
+def _markers(root: Path, body: str, path: str, cache: dict, feature: str | None = None) -> str:
     """Replace the generator markers in a hand page body; an unknown marker fails the build."""
     prefix = "../" * path.count("/")
 
@@ -1211,7 +1222,133 @@ def _markers(root: Path, body: str, path: str, cache: dict) -> str:
             cache["d"] = profile_data(root)
         d = cache["d"]
         return _data_json(d) if kind == "data" else (_table_profiles(d, prefix) if name == "profiles" else _table_codex(d))
-    return _MARKER.sub(sub, body)
+    body = _MARKER.sub(sub, body)
+
+    def shot(m: re.Match) -> str:
+        if not feature:
+            raise BuildError(f"{path}: <!-- shot: {m.group(1)} --> on a page with no `feature` in site/pages.json")  # GUARD:shot-no-feature
+        for sh in _shots(root, feature):
+            if sh[0] == m.group(1):
+                return _figure(feature, sh, prefix, inline=True)
+        raise BuildError(f"{path}: <!-- shot: {m.group(1)} --> is not a screenshot in docs/images/{feature}/captions.md")  # GUARD:shot-unknown
+    return _SHOT.sub(shot, body)
+
+
+# ---------------------------------------------------------------- rule-11 screenshot galleries (AOS-305)
+# docs/images/<feature>/ holds the PNGs and captions.md (`- <file>.png: <caption>`, one per line, in display order).
+# A registry page with `"feature": "<feature>"` ends with a "See it in Claude Code" section of those screenshots; the
+# build only READS docs/images/ (it is protected: never written or removed) and points <img src> at it.
+
+_CAPTION = re.compile(r"^- ([A-Za-z0-9][A-Za-z0-9._-]*\.png):[ \t]+(\S.*?)[ \t]*$")
+_PNG_SIG = b"\x89PNG\r\n\x1a\n"
+IMAGES_ALLOWED = ("README.md", "captions.md")
+
+
+def _png_size(p: Path) -> tuple[int, int] | None:
+    """(width, height) from the IHDR chunk, or None when the file is not a PNG."""
+    try:
+        with open(p, "rb") as fh:
+            head = fh.read(24)
+    except OSError:
+        return None
+    if len(head) < 24 or head[:8] != _PNG_SIG or head[12:16] != b"IHDR":
+        return None
+    w, h = int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+    return (w, h) if w and h else None
+
+
+def _captions(root: Path, feature: str) -> tuple[list[tuple[str, str]], list[str]]:
+    """([(file, caption)] in display order, shape problems) from docs/images/<feature>/captions.md."""
+    f = root / "docs" / "images" / feature / "captions.md"
+    if not f.is_file():
+        return [], []
+    rows: list[tuple[str, str]] = []
+    errs: list[str] = []
+    for no, line in enumerate(_read_text(f).split("\n"), 1):
+        if not line.strip():
+            continue
+        m = _CAPTION.match(line)
+        if not m:
+            errs.append(f"{feature}/captions.md:{no}: expected `- <file>.png: <caption>`")  # GUARD:caption-shape
+        elif m.group(1) in (r[0] for r in rows):
+            errs.append(f"{feature}/captions.md:{no}: {m.group(1)} is captioned twice")  # GUARD:caption-dup
+        else:
+            rows.append((m.group(1), m.group(2)))
+    return rows, errs
+
+
+def _shots(root: Path, feature: str) -> list[tuple[str, str, int, int]]:
+    """[(file, caption, width, height)] in captions order, skipping entries image_errors reports."""
+    out = []
+    for name, cap in _captions(root, feature)[0]:
+        size = _png_size(root / "docs" / "images" / feature / name)
+        if size:
+            out.append((name, cap, size[0], size[1]))
+    return out
+
+
+def _figure(feature: str, sh: tuple[str, str, int, int], prefix: str, inline: bool) -> str:
+    name, cap, w, h = sh
+    fid = f"{feature}-{name[:-4]}"
+    img = (f'<img loading="lazy" src="{prefix}images/{html.escape(feature)}/{html.escape(name)}" '
+           f'width="{w}" height="{h}" alt="{html.escape(cap)}">')
+    if inline:  # its own id (ids are unique per page); the link opens the gallery's copy in the :target lightbox
+        return (f'<figure class="shot" id="{html.escape(fid)}-inline"><a class="shot__open" href="#{html.escape(fid)}">{img}</a>'
+                f"<figcaption>{html.escape(cap)}</figcaption></figure>")
+    return (f'<figure class="shot" id="{html.escape(fid)}"><a class="shot__open" href="#{html.escape(fid)}">{img}</a>'
+            f'<figcaption>{html.escape(cap)}</figcaption><a class="shot__close" href="#g-{html.escape(feature)}">Close</a></figure>')
+
+
+def gallery(root: Path, feature: str, prefix: str = "") -> str:
+    """The "See it in Claude Code" section for one feature; "" when it has no screenshots."""
+    shots = _shots(root, feature)
+    if not shots:
+        return ""
+    figs = "\n".join(_figure(feature, sh, prefix, inline=False) for sh in shots)
+    return (f'<section class="shots">\n<h2 id="see-it-in-claude-code">See it in Claude Code</h2>\n'
+            f'<div class="gallery" id="g-{html.escape(feature)}">\n{figs}\n</div>\n</section>\n')
+
+
+def image_errors(root: Path, pages: list[Page]) -> list[str]:
+    """Every rule-11 violation under docs/images/ against the registry, as messages (empty = clean)."""
+    errs: list[str] = []
+    images = root / "docs" / "images"
+    claimed: dict[str, str] = {}
+    for pg in pages:
+        if not pg.feature:
+            continue
+        if pg.feature in claimed:
+            errs.append(f"feature '{pg.feature}' is claimed by both {claimed[pg.feature]} and {pg.path}")  # GUARD:folder-two-pages
+        else:
+            claimed[pg.feature] = pg.path
+        if not (images / pg.feature).is_dir():
+            errs.append(f"{pg.path}: feature '{pg.feature}' has no folder docs/images/{pg.feature}/")  # GUARD:feature-no-folder
+    entries = sorted(images.iterdir(), key=lambda e: e.name) if images.is_dir() else []
+    for e in entries:
+        if not e.is_dir():
+            if e.name != "README.md":
+                errs.append(f"docs/images/{e.name}: only README.md may sit beside the feature folders")  # GUARD:non-png
+            continue
+        if e.name not in claimed:
+            errs.append(f"docs/images/{e.name}/ has no page: set \"feature\": \"{e.name}\" on a page in site/pages.json")  # GUARD:folder-no-page
+        files = sorted(e.iterdir(), key=lambda x: x.name)
+        for f in files:
+            if f.is_dir() or (not f.name.endswith(".png") and f.name not in IMAGES_ALLOWED):
+                errs.append(f"docs/images/{e.name}/{f.name}: not a PNG (only .png files, README.md and captions.md are allowed)")  # GUARD:non-png
+            elif f.name.endswith(".png") and _png_size(f) is None:
+                errs.append(f"docs/images/{e.name}/{f.name}: not a valid PNG (bad signature or IHDR)")  # GUARD:non-png
+        if e.name not in claimed:
+            continue
+        rows, shape = _captions(root, e.name)
+        errs.extend(shape)
+        captioned = {r[0] for r in rows}
+        for f in files:
+            if f.is_file() and f.name.endswith(".png") and f.name not in captioned:
+                errs.append(f"docs/images/{e.name}/{f.name}: no caption in captions.md")  # GUARD:png-no-caption
+        for name in sorted(captioned):
+            if not (e / name).is_file():
+                errs.append(f"docs/images/{e.name}/captions.md: {name} is captioned but the file is missing")  # GUARD:caption-no-png
+    return errs
 
 
 # ---------------------------------------------------------------- CLI

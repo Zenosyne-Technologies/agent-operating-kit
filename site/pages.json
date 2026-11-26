@@ -3,5 +3,6 @@
   {"path": "settings", "title": "Settings", "section": "reference", "order": 10, "source": "generated:settings"},
   {"path": "skills", "title": "Skills & commands", "section": "reference", "order": 20, "source": "generated:skills"},
   {"path": "reference", "title": "Reference", "section": "reference", "order": 30, "source": "generated:reference"},
+  {"path": "mods/index.html", "title": "Mods", "section": "mods", "order": 0, "source": "hand"},
   {"path": "releases", "title": "Releases", "section": "releases", "order": 0, "source": "generated:releases"}
 ]

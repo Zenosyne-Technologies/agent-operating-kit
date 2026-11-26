@@ -4,6 +4,7 @@
 # blockquotes and rules; HTML in a source is escaped, never passed through; any construct outside the subset fails with
 # file:line; a YAML header never leaks into a page; every real release note, upgrade note and the CHANGELOG renders;
 # CRLF input renders byte-identically.
+# AOS-305 adds the rule-11 galleries (docs/images/<feature>/captions.md -> a See it in Claude Code section, inline shot markers) and the Mods page.
 # AOS-301 adds the site build and the --check gate: pages wrapped in the shell, links relative from nested pages, the
 # nav, determinism, stale/missing/orphan reporting that never touches docs/images|release-notes|decisions|superpowers|
 # .nojekyll, CRLF sources, registry validation. Mutations at the end: each `# GUARD:<name>` line in the module is neutralised in a
@@ -220,7 +221,7 @@ fx_registry_section() {
 }
 fx_registry_protected() {
   local d="$WORK/fx-prot" p
-  for p in images/keep.png release-notes/v1.html decisions/d.html superpowers/s.html .nojekyll; do
+  for p in images/README.md release-notes/v1.html decisions/d.html superpowers/s.html .nojekyll; do
     mkrepo "$d"; mkdir -p "$d/docs/$(dirname "$p")" "$d/site/$(dirname "$p")"
     printf 'keep' > "$d/docs/$p"; printf '<p>x</p>\n' > "$d/site/$p"
     cat > "$d/site/pages.json" <<JSON
@@ -237,9 +238,9 @@ JSON
 # the protected file alone. Registry entries go through the CLI; generator paths through the module, as build() calls it.
 fx_path_bypass() {
   local d="$WORK/fx-bypass" p
-  for p in ./images/keep.png Images/keep.png IMAGES/keep.png ./.nojekyll .NOJEKYLL a/../images/keep.png images//keep.png 'x\\y.html' /abs.html C:/x.html; do
-    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/keep.png"; printf 'keep' > "$d/docs/.nojekyll"
-    mkdir -p "$d/site/images"; printf '<p>x</p>\n' > "$d/site/images/keep.png"; printf '<p>x</p>\n' > "$d/site/Images.html"
+  for p in ./images/README.md Images/README.md IMAGES/README.md ./.nojekyll .NOJEKYLL a/../images/README.md images//README.md 'x\\y.html' /abs.html C:/x.html; do
+    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/README.md"; printf 'keep' > "$d/docs/.nojekyll"
+    mkdir -p "$d/site/images"; printf '<p>x</p>\n' > "$d/site/images/README.md"; printf '<p>x</p>\n' > "$d/site/Images.html"
     cat > "$d/site/pages.json" <<JSON
 [
   {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
@@ -247,10 +248,10 @@ fx_path_bypass() {
 ]
 JSON
     python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
-    [ "$(cat "$d/docs/images/keep.png")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
+    [ "$(cat "$d/docs/images/README.md")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
   done
-  for p in a/../images/keep.png ./images/keep.png Images/keep.png ./.nojekyll; do
-    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/keep.png"; printf 'keep' > "$d/docs/.nojekyll"
+  for p in a/../images/README.md ./images/README.md Images/README.md ./.nojekyll; do
+    mkrepo "$d"; mkdir -p "$d/docs/images"; printf 'keep' > "$d/docs/images/README.md"; printf 'keep' > "$d/docs/.nojekyll"
     cat > "$d/site/pages.json" <<'JSON'
 [
   {"path": "gen", "title": "G", "section": "concepts", "order": 1, "source": "generated:t"}
@@ -262,7 +263,7 @@ b.GENERATORS['t'] = lambda root: {sys.argv[3]: ('T', '<p>x</p>')}
 try: b.build(Path(sys.argv[2]), Path(sys.argv[2]) / 'docs')
 except b.BuildError: sys.exit(2)
 " "$(dirname "$MOD")" "$d" "$p" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
-    [ "$(cat "$d/docs/images/keep.png")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
+    [ "$(cat "$d/docs/images/README.md")" = keep ] && [ "$(cat "$d/docs/.nojekyll")" = keep ] || return 1
   done
 }
 
@@ -300,12 +301,12 @@ fx_missing && ok "a deleted output reports MISSING (exit 1)" || bad "fx_missing"
 hd "check: orphan output"
 fx_orphan && ok "an output the build does not write reports ORPHAN (exit 1)" || bad "fx_orphan"
 R2="$WORK/r2"; mkrepo "$R2"; sbuild "$R2"
-mkdir -p "$R2/docs/images/f" "$R2/docs/release-notes" "$R2/docs/decisions" "$R2/docs/superpowers/specs"
-for f in images/f/a.png release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do printf 'keep' > "$R2/docs/$f"; done
+mkdir -p "$R2/docs/images" "$R2/docs/release-notes" "$R2/docs/decisions" "$R2/docs/superpowers/specs"
+for f in images/README.md release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do printf 'keep' > "$R2/docs/$f"; done
 scheck "$R2"; rc 0; lacks ORPHAN
 sbuild "$R2"; printf 'x' > "$R2/docs/old.html"; sbuild "$R2"
 [ ! -e "$R2/docs/old.html" ] && ok "a plain build removes its own stale output" || bad "old.html survived a build"
-n=0; for f in images/f/a.png release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do [ "$(cat "$R2/docs/$f" 2>/dev/null)" = keep ] && n=$((n+1)); done
+n=0; for f in images/README.md release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do [ "$(cat "$R2/docs/$f" 2>/dev/null)" = keep ] && n=$((n+1)); done
 [ "$n" = 5 ] && ok "protected paths are never written or removed" || bad "protected paths touched ($n/5 intact)"
 
 hd "check: crlf input"
@@ -975,6 +976,161 @@ PY
 OUT=$(grep -rhoE '/(Users|home)/[A-Za-z0-9._-]+' "$ROOT/docs/settings.html" "$ROOT/docs/skills.html" "$ROOT/docs/reference.html" || true); [ -z "$OUT" ] && ok "no local path in the generated pages" || bad "local path: $OUT"
 
 
+# ---------------------------------------------------------------- rule-11 galleries and the Mods page (AOS-305)
+# mkpng <file> <w> <h>: a minimal valid PNG header (signature + IHDR) with the given size.
+mkpng() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import struct, sys, zlib
+f, w, h = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+open(f, "wb").write(b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + ihdr + struct.pack(">I", zlib.crc32(b"IHDR" + ihdr)))
+PY
+}
+# mkgal <dir>: mkrepo plus a Mods page carrying feature "demo" (docs/images/demo: a.png 30x20, b.png 64x48 and captions.md)
+mkgal() {
+  local d="$1"; mkrepo "$d"; mkdir -p "$d/site/mods" "$d/docs/images/demo"
+  printf '<h1>Demo</h1>\n<p>Inline:</p>\n<!-- shot: a.png -->\n' > "$d/site/mods/demo.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"},
+  {"path": "mods/demo.html", "title": "Demo", "section": "mods", "order": 0, "source": "hand", "feature": "demo"}
+]
+JSON
+  mkpng "$d/docs/images/demo/a.png" 30 20; mkpng "$d/docs/images/demo/b.png" 64 48
+  printf -- '- a.png: First shot\n\n- b.png: Second & <third>\n' > "$d/docs/images/demo/captions.md"
+}
+# grc <repo>: build, print the exit code only
+grc() { python3 "$MOD" --root "$1" >"$WORK/grc.out" 2>&1; echo $?; }
+fx_png_no_caption() { local d="$WORK/fx-pnc"; mkgal "$d"; mkpng "$d/docs/images/demo/c.png" 5 5; [ "$(grc "$d")" = 2 ] && grep -Fq 'c.png' "$WORK/grc.out"; }
+fx_caption_no_png() { local d="$WORK/fx-cnp"; mkgal "$d"; printf -- '- ghost.png: Not there\n' >> "$d/docs/images/demo/captions.md"; [ "$(grc "$d")" = 2 ] && grep -Fq 'ghost.png' "$WORK/grc.out"; }
+fx_folder_no_page() { local d="$WORK/fx-fnp"; mkgal "$d"; mkdir "$d/docs/images/orphan"; mkpng "$d/docs/images/orphan/o.png" 5 5; [ "$(grc "$d")" = 2 ] && grep -Fq 'orphan' "$WORK/grc.out"; }
+fx_feature_no_folder() {
+  local d="$WORK/fx-fnf"; mkgal "$d"; rm -r "$d/docs/images/demo"
+  [ "$(grc "$d")" = 2 ] && grep -Fq "no folder docs/images/demo/" "$WORK/grc.out"
+}
+fx_non_png() {
+  local d="$WORK/fx-np"
+  mkgal "$d"; printf 'x' > "$d/docs/images/demo/notes.txt"; [ "$(grc "$d")" = 2 ] || return 1
+  mkgal "$d"; printf 'not a png' > "$d/docs/images/demo/c.png"; printf -- '- c.png: C\n' >> "$d/docs/images/demo/captions.md"; [ "$(grc "$d")" = 2 ] || return 1
+  mkgal "$d"; printf 'x' > "$d/docs/images/stray.gif"; [ "$(grc "$d")" = 2 ] || return 1
+  mkgal "$d"; mkdir "$d/docs/images/demo/sub"; [ "$(grc "$d")" = 2 ] || return 1
+  mkgal "$d"; printf '# readme\n' > "$d/docs/images/README.md"; printf '# readme\n' > "$d/docs/images/demo/README.md"; [ "$(grc "$d")" = 0 ]
+}
+fx_folder_two_pages() {
+  local d="$WORK/fx-ftp"; mkgal "$d"; printf '<h1>Two</h1>\n' > "$d/site/mods/two.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "mods/demo.html", "title": "Demo", "section": "mods", "order": 0, "source": "hand", "feature": "demo"},
+  {"path": "mods/two.html", "title": "Two", "section": "mods", "order": 1, "source": "hand", "feature": "demo"}
+]
+JSON
+  [ "$(grc "$d")" = 2 ] && grep -Fq 'mods/two.html' "$WORK/grc.out"
+}
+fx_caption_shape() { local d="$WORK/fx-csh"; mkgal "$d"; printf 'b.png - missing the dash form\n' >> "$d/docs/images/demo/captions.md"; [ "$(grc "$d")" = 2 ] && grep -Fq 'captions.md:' "$WORK/grc.out"; }
+fx_caption_dup() { local d="$WORK/fx-cdup"; mkgal "$d"; printf -- '- a.png: Again\n' >> "$d/docs/images/demo/captions.md"; [ "$(grc "$d")" = 2 ] && grep -Fq 'twice' "$WORK/grc.out"; }
+fx_shot_unknown() { local d="$WORK/fx-su"; mkgal "$d"; printf '<!-- shot: nope.png -->\n' >> "$d/site/mods/demo.html"; [ "$(grc "$d")" = 2 ] && grep -Fq 'nope.png' "$WORK/grc.out"; }
+fx_shot_no_feature() { local d="$WORK/fx-snf"; mkgal "$d"; printf '<!-- shot: a.png -->\n' >> "$d/site/concepts/x.html"; [ "$(grc "$d")" = 2 ] && grep -Fq 'no `feature`' "$WORK/grc.out"; }
+fx_feature_name() {
+  local d="$WORK/fx-fn" f
+  for f in 'Demo' 'a_b' 'a b' '.hid'; do   # each folder exists, so only the name rule can stop the build
+    mkgal "$d"; mv "$d/docs/images/demo" "$d/docs/images/$f"; sed -i.bak "s#\"feature\": \"demo\"#\"feature\": \"$f\"#" "$d/site/pages.json"
+    [ "$(grc "$d")" = 2 ] || return 1
+  done
+  mkgal "$d"; sed -i.bak 's#"feature": "demo"#"feature": "../x"#' "$d/site/pages.json"; [ "$(grc "$d")" = 2 ]
+}
+
+hd "gallery: renders"
+G="$WORK/gal"; mkgal "$G"; printf '<h1>Demo</h1>\n' > "$G/site/mods/demo.html"
+RC=$(grc "$G"); OUT=$(cat "$WORK/grc.out"); rc 0
+python3 - "$G/docs/mods/demo.html" <<'PY' && ok "ends with a See it in Claude Code section: two figures, captions order, IHDR sizes, escaped captions, ids and :target links" || bad "gallery markup"
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+body = h.split("<main", 1)[1]
+i = body.index("See it in Claude Code")
+assert body.index("</main>") > i and "<h2" in body[max(0, i - 60):i]
+sec = body[i:]
+figs = re.findall(r'<figure class="shot" id="([^"]+)">(.*?)</figure>', sec, re.S)
+assert [f[0] for f in figs] == ["demo-a", "demo-b"], figs
+assert '<div class="gallery" id="g-demo">' in sec
+a, b = figs[0][1], figs[1][1]
+assert '<a class="shot__open" href="#demo-a"><img loading="lazy" src="../images/demo/a.png" width="30" height="20" alt="First shot"></a>' in a, a
+assert '<figcaption>First shot</figcaption>' in a and '<a class="shot__close" href="#g-demo">Close</a>' in a
+assert 'src="../images/demo/b.png" width="64" height="48" alt="Second &amp; &lt;third&gt;"' in b and '<figcaption>Second &amp; &lt;third&gt;</figcaption>' in b
+ids = re.findall(r'\sid="([^"]+)"', h)
+assert len(ids) == len(set(ids)), ids
+PY
+sbuild "$G"; scheck "$G"; rc 0
+# the wrapper page is not claimed: the gallery sits at the page end even when the body has no trailing newline
+printf '<h1>Demo</h1>' > "$G/site/mods/demo.html"; sbuild "$G"; has_g=$(grep -c 'class="gallery"' "$G/docs/mods/demo.html"); [ "$has_g" = 1 ] && ok "one gallery" || bad "gallery count $has_g"
+# docs/images is read, never written: files, captions and the README survive a build byte-for-byte
+before=$(find "$G/docs/images" -type f | sort | xargs cat | cksum); sbuild "$G"; after=$(find "$G/docs/images" -type f | sort | xargs cat | cksum)
+[ "$before" = "$after" ] && ok "docs/images untouched by the build" || bad "docs/images changed"
+# a CRLF captions.md renders the same
+cp "$G/docs/mods/demo.html" "$WORK/gal-lf.html"; sed -i.bak 's/$/\r/' "$G/docs/images/demo/captions.md"; sbuild "$G"
+cmp -s "$G/docs/mods/demo.html" "$WORK/gal-lf.html" && ok "CRLF captions render identically" || bad "CRLF captions differ"
+
+hd "gallery: inline shot"
+G2="$WORK/gal2"; mkgal "$G2"; grc "$G2" >/dev/null
+python3 - "$G2/docs/mods/demo.html" <<'PY' && ok "inline figure at the marker (own id, links to the gallery copy) and the gallery keeps it" || bad "inline markup"
+import re, sys
+h = open(sys.argv[1], encoding="utf-8").read()
+assert "<!--" not in h.split("<main", 1)[1], "marker left behind"
+inline = '<figure class="shot" id="demo-a-inline"><a class="shot__open" href="#demo-a"><img loading="lazy" src="../images/demo/a.png" width="30" height="20" alt="First shot"></a><figcaption>First shot</figcaption></figure>'
+assert inline in h
+assert h.index("Inline:") < h.index(inline) < h.index("See it in Claude Code")
+assert h.count('id="demo-a"') == 1 and h.count('id="demo-a-inline"') == 1
+ids = re.findall(r'\sid="([^"]+)"', h)
+assert len(ids) == len(set(ids)), ids
+PY
+hd "gallery: functions"
+OUT=$(python3 - "$G2" "$MOD" <<'PY' 2>&1
+import os, sys
+from pathlib import Path
+sys.path.insert(0, os.path.dirname(sys.argv[2])); import build_docs as m
+root = Path(sys.argv[1])
+g = m.gallery(root, "demo", "../")
+assert 'src="../images/demo/a.png"' in g and g.count("<figure") == 2
+assert m.gallery(root, "nothing") == ""
+pgs = m.load_registry(root)
+assert m.image_errors(root, pgs) == []
+print("fns ok")
+PY
+); RC=$?; rc 0; has "fns ok"
+
+hd "gallery: errors"
+fx_png_no_caption && ok "a PNG with no caption exits 2" || bad "fx_png_no_caption"
+fx_caption_no_png && ok "a caption with no PNG exits 2" || bad "fx_caption_no_png"
+fx_folder_no_page && ok "a folder with no page exits 2" || bad "fx_folder_no_page"
+fx_feature_no_folder && ok "a feature with no folder exits 2" || bad "fx_feature_no_folder"
+fx_non_png && ok "a non-PNG (and a fake .png, a stray file, a subfolder) exits 2; README.md is allowed" || bad "fx_non_png"
+fx_folder_two_pages && ok "two pages claiming one folder exits 2" || bad "fx_folder_two_pages"
+fx_caption_shape && ok "a malformed caption line exits 2" || bad "fx_caption_shape"
+fx_caption_dup && ok "a file captioned twice exits 2" || bad "fx_caption_dup"
+fx_shot_unknown && ok "a shot marker naming an uncaptioned PNG exits 2" || bad "fx_shot_unknown"
+fx_shot_no_feature && ok "a shot marker on a page with no feature exits 2" || bad "fx_shot_no_feature"
+fx_feature_name && ok "an unsafe feature name exits 2" || bad "fx_feature_name"
+# an unknown data/table marker is still an error, and the shot marker did not widen that rule
+mkgal "$WORK/gal3"; printf '<!-- table: nope -->\n' >> "$WORK/gal3/site/concepts/x.html"; [ "$(grc "$WORK/gal3")" = 2 ] && ok "unknown <!-- table: x --> still exits 2" || bad "marker rule widened"
+
+hd "mods: real page and no jira"
+python3 - "$ROOT/site/pages.json" <<'PY' && ok "Mods registered as mods/index.html with no feature" || bad "Mods registry entry"
+import json, sys
+e = [p for p in json.load(open(sys.argv[1])) if p["path"] == "mods/index.html"]
+assert len(e) == 1 and e[0]["section"] == "mods" and e[0]["order"] == 0 and e[0]["source"] == "hand" and "feature" not in e[0], e
+PY
+M="$ROOT/site/mods/index.html"
+[ -f "$M" ] && grep -q 'questions sidebar' <(tr 'A-Z' 'a-z' < "$M") && grep -Fq 'v0.45.0' "$M" && grep -q 'progress panel' <(tr 'A-Z' 'a-z' < "$M") && grep -Fq 'v0.46.0' "$M" && ok "empty state names both planned mods" || bad "Mods empty state text"
+if grep -REq 'https?://|/Users/|/home/' "$M"; then bad "Mods page carries a link or local path"; else ok "Mods page has no links or local paths"; fi
+MR="$WORK/modsreal"; mkdir -p "$MR"; cp -R "$ROOT/site" "$MR/site"; cp -R "$ROOT/templates" "$MR/templates"; mkdir -p "$MR/docs"; for x in upgrades agents skills commands; do [ -d "$ROOT/$x" ] && cp -R "$ROOT/$x" "$MR/$x"; done
+cp "$ROOT/CHANGELOG.md" "$MR/" 2>/dev/null; mkdir -p "$MR/docs/release-notes"; cp "$ROOT"/docs/release-notes/*.md "$MR/docs/release-notes/"
+cp -R "$ROOT/docs/images" "$MR/docs/images"
+python3 "$MOD" --root "$MR" >/dev/null 2>&1; [ "$?" = 0 ] && ok "the real tree builds" || bad "the real tree does not build"
+if grep -rl 'atlassian.net' "$MR/docs" "$ROOT/site" 2>/dev/null | grep -q .; then bad "atlassian.net found in the output or site/"; else ok "no output file or site source contains atlassian.net"; fi
+grep -Fq 'class="gallery"' "$MR/docs/mods/index.html" && bad "the real Mods page renders a gallery" || ok "the real Mods page renders no gallery (no feature folder yet)"
+grep -Fq 'href="../mods/index.html"' "$MR/docs/index.html" 2>/dev/null; grep -Fq 'mods/index.html' "$MR/docs/index.html" && ok "the nav links Mods" || bad "nav lacks Mods"
+
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite
 # survives is a hole, not a pass. Later tasks append "guard-name:fixture_function" pairs.
@@ -1010,6 +1166,17 @@ MUTATIONS=(
   "install-file-missing:fx_install_file_missing"
   "install-line-shape:fx_install_line_shape"
   "table-row-width:fx_table_row_width"
+  "png-no-caption:fx_png_no_caption"
+  "caption-no-png:fx_caption_no_png"
+  "folder-no-page:fx_folder_no_page"
+  "feature-no-folder:fx_feature_no_folder"
+  "non-png:fx_non_png"
+  "folder-two-pages:fx_folder_two_pages"
+  "caption-shape:fx_caption_shape"
+  "caption-dup:fx_caption_dup"
+  "shot-unknown:fx_shot_unknown"
+  "shot-no-feature:fx_shot_no_feature"
+  "feature-name:fx_feature_name"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"
