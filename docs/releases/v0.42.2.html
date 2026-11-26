@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.42.2 — Install and upgrade end with a placeholder check - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html" aria-current="page">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-42-2-install-and-upgrade-end-with-a-placeholder-check">v0.42.2 — Install and upgrade end with a placeholder check</h1>
+<p><strong>Consumers act once:</strong> update the plugin. No installed file changes; the next <code>/marvin:upgrade-agent-os</code> ends with the new check.</p>
+<p><strong>Why.</strong> A haiku-driven install once reported success while three placeholders stayed unresolved (<code>{{TRACKER_GUIDE_URL}}</code> and <code>{{TRACKER_COORDINATES}}</code> in <code>ticket-filing.md</code>, <code>{{PROJECT_KEY}}</code> in <code>tracker-config.md</code>). The install skill relied on the model's diligence. Now a script closes it out.</p>
+<p><strong>What changed.</strong></p>
+<ul>
+<li><code>scripts/marvin-placeholder-check.sh &lt;root&gt;</code> is read-only. It prints one <code>unresolved: &lt;path&gt;:&lt;line&gt;:{{NAME…</code> line per hit and exits 0 (clean), 1 (hits) or 2 (the check failed, with a one-line reason; never a silent clean).</li>
+<li>It matches every <code>{{NAME…}}</code> form: <code>{{NAME}}</code>, <code>{{NAME: …}}</code> and <code>{{NAME + …}}</code>.</li>
+<li>It scans only the kit-written set:
+<ul>
+<li><code>.marvin/</code>, excluding <code>runs/</code>, <code>reports/</code> and <code>backups/</code>;</li>
+<li>the <code>.docs/</code> files that mirror the plugin's <code>templates/docs/</code>, derived at run time, including the three audience handbook indexes;</li>
+<li>the root <code>CLAUDE.md</code>.</li>
+</ul></li>
+<li>The dispatch-time placeholders of <code>stats-collection-brief.md</code> (<code>{{SCOPE…}}</code>, <code>{{PERIOD_DAYS}}</code>) are exempt. A test ties that list to the briefs, so a new dispatch-time placeholder fails the suite.</li>
+<li>Install step 10 and upgrade step 7 run it with an explicit <code>.</code> root before their report and commit. Every hit in a file the run wrote is resolved, and the check re-runs until only reportable lines remain. A hit it cannot resolve, or one in consumer-owned content, goes into the report as a count and is never edited.</li>
+<li><code>scripts/test-placeholder-check.sh</code> (98 checks, every guard mutation-tested) runs in CI.</li>
+</ul>
+<p><strong>Acceptance.</strong></p>
+<ul>
+<li>The check was run read-only against the 10 Marvin installs on the maintainer's machine (kit 0.26.1–0.34.0). It flagged exactly one real leftover, <code>{{TRACKER_COORDINATES}}</code> in one project's <code>.marvin/agents/ticket-filing.md</code>, the same failure that motivated it. The other nine were clean, with no false positives.</li>
+<li><code>validate-kit</code> and every suite are green.</li>
+<li>The haiku-driven scratch re-install from the DoD was not run for this release: the maintainer's Claude CLI sign-in had expired. It is recorded on AOS-221 as the remaining acceptance step.</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.42.1..HEAD</code>, non-merge commits only.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>install and upgrade now end with a mechanical check that no <code>{{PLACEHOLDER}}</code> was left unresolved — no installed file changes.</strong></p>
+<ul>
+<li>Update the plugin. Nothing to run in the project and no file to refresh: the change is in the plugin's install and upgrade skills and a new <code>scripts/marvin-placeholder-check.sh</code>.</li>
+<li>To check an existing install once, run <code>/marvin:upgrade-agent-os</code> (it now ends with the check) or ask Marvin to run the placeholder check. A reported <code>.marvin/</code> or <code>.docs/</code> hit is a placeholder an earlier install left: resolve it from the repo's facts. A hit in consumer-owned content is reported only.</li>
+<li>No migration script, no new settings.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li><code>scripts/marvin-placeholder-check.sh</code>: a read-only check that no install-time <code>{{PLACEHOLDER}}</code> is left in the files the kit writes (<code>.marvin/</code> minus runs/reports/backups, the seeded <code>.docs/</code> files, root <code>CLAUDE.md</code>); exit 0 clean, 1 hits, 2 check failed.</li>
+<li><code>scripts/test-placeholder-check.sh</code>, mutation-tested and run in CI.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Install (step 10) and upgrade (step 7) end with the placeholder check: hits in files the run wrote are resolved, and what cannot be resolved or sits in consumer-owned content is reported as a count, never edited.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>None: update the plugin; the next <code>/marvin:upgrade-agent-os</code> runs the check.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

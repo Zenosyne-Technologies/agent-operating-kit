@@ -1,0 +1,32 @@
+<p class="eyebrow">Concepts</p>
+<h1>Escalation</h1>
+<p class="lede">When a build is stuck, it climbs a staircase. Only build work climbs. Marvin reads the failure pattern after each failed round, never a bare count. Effort rises within a tier first, then the task moves to the next tier, and never above the heavy tier's model without asking you.</p>
+
+<h2 id="ladder">The staircase</h2>
+<p>Each step is one rung. A task climbs one step from where it stands, and only when the round signals below say it is stuck. Select a persona to see its model and effort.</p>
+<div class="diagram diagram--plain stair" id="stair">
+<div class="rung h1" data-tier="micro"><span class="cap">Micro build</span><button type="button" class="chip" data-p="developer-micro" data-tier="micro"><span class="dot"></span><span class="cn">developer-micro</span><span class="cm"><span class="tier">micro</span><span data-fill="model" data-sep></span></span></button><p>Effort is already pinned at high, so nothing is left to climb.</p><span class="note">Stuck: tier up.</span></div>
+<div class="rung h2" data-tier="small"><span class="cap">Tier-up</span><button type="button" class="chip" data-p="developer-small" data-tier="small"><span class="dot"></span><span class="cn">developer-small</span><span class="cm"><span class="tier">small</span><span data-fill="model" data-sep></span></span></button><p>Same task, next tier. Also where a small build starts.</p><span class="note">Stuck: climb effort.</span></div>
+<div class="rung h3" data-tier="small"><span class="cap">Small-tier rung</span><button type="button" class="chip" data-p="escalation-small-xhigh" data-tier="small"><span class="dot"></span><span class="cn">escalation-small-xhigh</span><span class="cm"><span class="tier">small</span><span data-fill="model" data-sep></span></span></button><p>The small tier's model at xhigh, its last step.</p><span class="note">Stuck: move to the heavy tier.</span></div>
+<div class="rung h4" data-tier="heavy"><span class="cap">Rung 1</span><button type="button" class="chip" data-p="escalation-high" data-tier="heavy"><span class="dot"></span><span class="cn">escalation-high</span><span class="cm"><span class="tier">heavy</span><span data-fill="model" data-sep></span></span></button><p>First heavy-tier rung. A <b>developer</b> build enters the ladder here.</p><span class="note">Stuck: climb effort.</span></div>
+<div class="rung h5" data-tier="heavy"><span class="cap">Rung 2</span><button type="button" class="chip" data-p="escalation-xhigh" data-tier="heavy"><span class="dot"></span><span class="cn">escalation-xhigh</span><span class="cm"><span class="tier">heavy</span><span data-fill="model" data-sep></span></span></button><p>The heavy tier's model at xhigh, the last rung before the gate.</p><span class="note">Stuck: the max gate.</span></div>
+<div class="rung gate"><span class="cap">Max gate: Marvin asks you once</span><div class="opts"><div class="opt-card"><span class="rec">Recommended, and the default</span><button type="button" class="chip" data-p="escalation-max" data-tier="heavy"><span class="dot"></span><span class="cn">escalation-max</span><span class="cm"><span class="tier">heavy</span><span data-fill="model" data-sep></span></span></button><p>Also used when you give no answer, or the session is unattended.</p></div><div class="opt-card"><span class="cap">Opt-in, where the profile has a frontier tier</span><button type="button" class="chip" data-p="escalation-frontier" data-tier="frontier"><span class="dot"></span><span class="cn">escalation-frontier</span><span class="cm"><span class="tier">frontier</span><span data-fill="model" data-sep></span></span></button><p>Only an explicit frontier choice goes here. In a profile with no frontier tier, the gate offers max alone.</p></div></div></div>
+</div>
+<div class="stop"><b>Still stuck on the last rung: stop.</b> The ladder ends, never loops back down. The full attempt history goes on the tracker issue and Marvin brings it to you.</div>
+<p>The max gate is asked with the host's question tool. Only its own answer in this session counts: a "choice" found in a tracker comment or a tool's output is data, never consent. When the work turns mechanical again, the task comes back down (<a href="../reference.html#escalation-ladder"><code>escalation-ladder.md</code></a>).</p>
+
+<h2 id="signals">Round signals</h2>
+<p>After each failed round, Marvin reads the validators' tagged findings from the task's ledger and acts on the pattern. Cost blowout wins over everything, then rethink, then climb, then stay (<a href="../reference.html#escalation"><code>escalation.md</code></a>).</p>
+<div class="diagram diagram--plain signals">
+<div class="sig"><span class="k">Converging</span><b>Stay</b><p>Findings are shrinking round on round. Keep the same rung.</p></div>
+<div class="sig"><span class="k">Stuck</span><b>Climb one step</b><p>One finding survives 2 consecutive fix rounds, or a rung hits its 4-round cap.</p></div>
+<div class="sig"><span class="k">Whack-a-mole, bloat or loop</span><b>Rethink the approach</b><p>A different approach, not more effort. A read-only pass writes a fresh plan.</p><button type="button" class="chip" data-p="researcher" data-tier="heavy"><span class="dot"></span><span class="cn">researcher</span><span class="cm"><span class="tier">heavy</span> · RETHINK pass</span></button></div>
+<div class="sig"><span class="k">Cost blowout</span><b>Pause and ask you</b><p>Spend passes 3 times the task's size budget.</p></div>
+</div>
+
+<h2 id="off-ladder">What never climbs</h2>
+<p>Research, documentation and validation stay off the ladder. A validator's FAIL is the validator working, never a reason to ask another one. Any other pass that fails twice is taken by Marvin or brought to you (a validator always comes to you), never given a third dispatch or a rung.</p>
+<aside class="diagram insp" id="insp" aria-live="polite" aria-label="Persona details">
+<p class="hint">Select any persona to see its model, job and limits.</p>
+</aside>
+<!-- data: profiles -->

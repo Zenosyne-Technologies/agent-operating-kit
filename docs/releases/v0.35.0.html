@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.35.0 — reports move to .marvin/reports/ - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html" aria-current="page">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-35-0-reports-move-to-marvin-reports">v0.35.0 — reports move to .marvin/reports/</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, then <code>/marvin:upgrade-agent-os</code>. If it stops because something blocks the move, clear what it names and run it again (<code>upgrades/v0.35.0.md</code>).</p>
+<p>Reports are what Marvin produces about its own work — stats snapshots, digests, milestone close-outs, install and upgrade reports. They lived in the project's documentation estate, <code>.docs/reports/</code>, beside the handbooks written for humans. They now live with Marvin's machinery in <code>.marvin/reports/</code>, still committed as project record.</p>
+<p><strong>A tested move, not a checklist.</strong> The upgrade runs <code>scripts/migrate-v0.35.0.sh</code> right after the one-time split question: every file under <code>.docs/reports/</code> moves to the same path under <code>.marvin/reports/</code>, staged by exact path and committed as its own step. It refuses untracked files, collisions, symlinks and unsafe repository states before anything moves — a collision refuses the whole move, never part of it — and rolls back to the last commit if anything fails midway. Each of its guards is pinned by a test that fails when the guard is removed.</p>
+<p><strong>A blocked move stops the upgrade.</strong> Whatever the script refuses, the upgrade stops there — it commits only its report naming the blocker, keeps the old version stamp, and changes nothing else — so a project is never left with reports split between the two folders. Clear the blocker and re-run.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.34.0..HEAD</code>, non-merge commits only; the container epic AOS-164 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>reports are Marvin's records, not project docs.</strong> Stats snapshots, digests, milestone close-outs and install/upgrade reports now live in <code>.marvin/reports/</code> (still committed).</p>
+<ul>
+<li><code>claude plugin update marvin</code>, then run <code>/marvin:upgrade-agent-os</code>. After the split question (v0.33.0), it runs <code>scripts/migrate-v0.35.0.sh</code> first: every file under <code>.docs/reports/</code> moves to the same path under <code>.marvin/reports/</code>, including hand-written ones, committed as its own step.</li>
+<li><strong>If the move is blocked</strong> — untracked or ignored files (even <code>.DS_Store</code>) in <code>.docs/reports/</code>, a destination collision (then nothing moves at all), a symlink, or an unsafe repo state — the upgrade STOPS: it commits only its report naming the blocker and does not restamp. Clear it (commit or remove), then re-run the upgrade.</li>
+<li>Rows and prose in your <code>.docs/index.md</code> and <code>.docs/release-notes/index.md</code> that still name <code>reports/</code> are removed or retargeted by the upgrade and listed in its report.</li>
+<li>Refreshed guides: <code>briefing.md</code>, <code>document-standard.md</code>, <code>reporting.md</code> and your tracker's <code>stats-collection-brief.md</code> (customised copies backed up first). No hand edit of <code>CLAUDE.md</code>.</li>
+</ul>
+<p>This note's scope was derived over <code>v0.34.0..HEAD</code>, non-merge commits only; the container epic AOS-164 is excluded.</p>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>If the upgrade stops on a blocked move, clear what its report names (commit or remove the file, even a .DS_Store) and re-run <code>/marvin:upgrade-agent-os</code>.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Reports (stats snapshots, digests, milestone close-outs, install and upgrade reports) move from <code>.docs/reports/</code> to <code>.marvin/reports/</code>, still committed.</li>
+<li>A blocked move stops the upgrade cleanly: it commits only its report naming the blocker and keeps the old version stamp.</li>
+</ul>
+<h3 id="changes-security">Security</h3>
+<ul>
+<li>The move is a guarded, tested script: it refuses untracked files, collisions, symlinks and unsafe repo states before moving anything, and rolls back on failure.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

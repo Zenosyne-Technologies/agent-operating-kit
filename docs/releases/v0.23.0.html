@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.23.0 — guardrails, docblocks, and a license that ships with the install - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html" aria-current="page">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-23-0-guardrails-docblocks-and-a-license-that-ships-with-the-install">v0.23.0 — guardrails, docblocks, and a license that ships with the install</h1>
+<p><strong>Agents get guardrails.</strong> Until now a sub-agent's restraint lived only in the prose of whatever brief happened to mention it — so a persona about to do something destructive, out-of-scope or irreversible had no single place that told it to stop. This release adds <code>guardrails.md</code>: a "DO NOT" framework built on four dispositions (what is forbidden, what needs escalation, what is bounded, what is allowed), an escalation chain that says who a blocked agent turns to rather than pressing on, a generic baseline every persona inherits, and per-persona rows for the eight <code>marvin:*</code> roles. It is wired into the rules cascade, made an ingredient of every brief (with a reserved <code>GUARDRAILS:</code> line the agent's final message must carry), and cited from all eight personas. The point is not new capability but a bounded one: an agent that hits a guardrail escalates instead of improvising, and says so in a place the orchestrator reads.</p>
+<p><strong>Builders now document the API surface.</strong> <code>documentation-agent.md</code> item 2 gains a code-documentation convention: every new or modified public class or method carries a docblock stating its contract — summary, parameters, return, errors — in the language ecosystem's own idiom (PHPDoc, TSDoc, Javadoc, PEP 257 docstrings, rustdoc, GoDoc), never a kit-invented format. It is reconciled with the existing non-obvious-inline-comment rule so the two do not collide: a docblock states WHAT the contract is on the surface, an inline comment explains WHY a non-obvious line is the way it is. The two build personas cite it, so it applies at build time, not only at the documentation gate.</p>
+<p><strong>Every install now carries its own license.</strong> <code>templates/marvin/LICENSE</code> installs to <code>.marvin/LICENSE</code> — create-if-missing on install, seeded then kit-owned-refreshed on upgrade — so a project that adopts the kit has the licensing terms self-contained in its own tree rather than only in the factory repo. The license itself was made public earlier in this cycle: the kit is PolyForm Noncommercial 1.0.0 (a commercial license is reserved separately), and the copyright holder is the registered legal entity ZENOSYNE Kft. The installed copy is a verbatim copy of that notice, carried into installs so the terms travel with the payload.</p>
+<p><strong>For consumers</strong>: <code>upgrades/v0.23.0.md</code> is the whole upgrade. Nothing moves or is renamed, so this release ships no migration script — the refresh brings the new <code>guardrails.md</code> guide and the updated <code>documentation-agent.md</code>/<code>briefing.md</code>, one cascade row is merged into <code>CLAUDE.md</code> by hand, and <code>.marvin/LICENSE</code> is seeded.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.22.0..HEAD</code> — the previous release's tag — taking each commit's leading <code>&lt;KEY&gt;:</code> prefix and deduping, then dropping the container epic AOS-55 so only work-carrying keys remain.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Nothing moves or is renamed, so there is no <code>migrate-v0.23.0.sh</code> — the steps below are the whole upgrade. As on every release, the kit-owned guides in <code>.marvin/agents/</code> are re-rendered from the current templates and anything replaced is backed up to <code>.marvin/backups/v0.23.0/</code>; reconcile customisations from there.</p>
+<ol>
+<li><strong>Guardrails arrive as a new guide.</strong> The refresh above adds <code>.marvin/agents/guardrails.md</code> (the "DO NOT" framework — four dispositions, the escalation chain, a generic baseline plus per-persona rows) and updates <code>briefing.md</code> (a guardrails ingredient with a reserved <code>GUARDRAILS:</code> final-message line) and <code>information-*.md</code> (de-numbered cross-references). Add ONE cascade row to <code>CLAUDE.md</code>, verbatim from the current <code>CLAUDE.core.md</code>: <code>- Bound by a DO NOT — about to do something destructive, out-of-scope or irreversible → \</code>.marvin/agents/guardrails.md` (the four dispositions, the escalation chain, the generic baseline + your persona's rows)<code>. Place it where </code>CLAUDE.core.md` has it — after the reporting row, before the handbooks row.</li>
+<li><strong>Builders now write docblocks.</strong> <code>.marvin/agents/documentation-agent.md</code> item 2 gains a code-documentation convention: every new/modified public class or method carries a language-standard docblock (PHPDoc, TSDoc, Javadoc, PEP 257, …), reconciled with the non-obvious-inline-comment rule. It arrives with the refresh; nothing else to do.</li>
+<li><strong><code>.marvin/LICENSE</code> is installed.</strong> A self-scoped copy of the kit's license notice (PolyForm Noncommercial 1.0.0, holder ZENOSYNE Kft.) is seeded create-if-missing, then kept current by the kit-owned refresh. If you already have one, a superseded notice is backed up before replacement.</li>
+<li><strong>Build personas update out-of-band.</strong> The <code>marvin:*</code> personas ship WITH the plugin, not as files in your repo — update them with <code>claude plugin update marvin</code>, not by editing anything under <code>.marvin/</code>.</li>
+</ol>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Add the new guardrails row to your CLAUDE.md rules cascade, verbatim from the template (not needed when upgrading to v0.33.0 or later).</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>A guardrails guide: a DO NOT framework with four dispositions, an escalation chain and per-persona rows; briefs carry a GUARDRAILS line in the final message.</li>
+<li>Every install carries its own copy of the kit's licence notice, PolyForm Noncommercial 1.0.0.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Builders document the API surface: every new or modified public class or method gets a docblock in the language's own standard (PHPDoc, TSDoc, Javadoc…).</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

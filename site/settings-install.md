@@ -1,0 +1,22 @@
+- `project`: The project's name, as it appears in the headings and reports Marvin writes.
+- `description`: One sentence on what the project is for.
+- `brief`: The project's own short answer to "what are you building?", kept in the user's words.
+- `owner`: The organisation or person who owns the project.
+- `pm_tool`: The tracker Marvin files and reads work in: Linear, Jira, GitHub Issues or the self-contained Local tracker. You choose it at install; it is never guessed.
+- `tracker_coordinates`: Where the project lives in that tracker, such as the site URL and project, the team, or the owner and repository.
+- `project_key`: The key that prefixes the project's ticket ids and commit messages, or n/a when the tracker has none.
+- `hierarchy_levels`: How many levels the tracker offers above a task (milestone, epic, story), which tells Marvin when it must fake a milestone with a virtual one.
+- `intake_guide_url`: A link to the Issue Intake & Triage Guide that install writes into the tracker.
+- `stack`: The languages, frameworks and data stores the project uses.
+- `dev_command`: The command, and the ports, that start the project's development stack.
+- `audience`: Who the project is for: personal, intra-team, restricted-public or public. It shapes how much security and polish the work needs.
+- `project_size`: The project's estimated size, from tiny to huge. It sets how heavy the surrounding process gets.
+- `app_type`: The kind of application: web, desktop, mobile or a combination.
+- `screens_guide`: Where the UI screen catalog lives, the list of surfaces that design and visual review check against.
+- `visual_validation`: When a UI task gets a visual review: after every task, once per milestone, or never.
+- `model_profile`: The model profile the project runs, which decides the model behind each tier. Install asks which one.
+- `docs_location`: The folder that holds the project's documentation estate. It is `.docs` unless you move it.
+- `issue_log_path`: The file where the running build's real bugs are logged, next to the tracker ticket.
+- `telemetry`: Whether the optional token-telemetry plugin records usage for this project (enabled or disabled).
+- `kit_version`: The Marvin version this project was installed or last upgraded to. The upgrade skill keeps it current.
+- `label_syntax_version`: The version of the label registry the project's tracker labels follow. The upgrade skill keeps it current.

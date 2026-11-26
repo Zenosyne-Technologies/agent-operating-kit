@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.42.1 — Fleet-mode follow-ups and two small fixes - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html" aria-current="page">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-42-1-fleet-mode-follow-ups-and-two-small-fixes">v0.42.1 — Fleet-mode follow-ups and two small fixes</h1>
+<p><strong>Consumers act once.</strong></p>
+<ol>
+<li>Run <code>claude plugin update marvin</code>, then <code>/marvin:upgrade-agent-os</code> in one session.</li>
+<li>If a free-text <code>PROJECT-INFO.md</code> value holds <code>: </code> unquoted, run <code>/marvin:project-info</code> (<code>upgrades/v0.42.1.md</code>).</li>
+</ol>
+<p><strong>Why.</strong> The v0.41.0 fleet-mode release deferred its minor findings as sev4 follow-ups, and two defects outside fleet mode turned up in the same work: an unquoted <code>brief:</code> made <code>PROJECT-INFO.md</code> invalid YAML whenever the user's words contained <code>: </code>, and <code>test-docker-lint.sh</code> failed now and then with no code change.</p>
+<p><strong>What changed.</strong></p>
+<ul>
+<li><strong>PROJECT-INFO quoting (AOS-246, sev3).</strong> The free-text keys are double-quoted in the template; the install and <code>project-info</code> skills escape <code>\</code> and <code>"</code> and repair an unquoted value; the new <code>frontmatter-quoting</code> gate (23rd check) holds the template to it.</li>
+<li><strong>Flake (AOS-247).</strong> Both lint suites' "never writes" snapshot used <code>ls -laR</code>, which also lists <code>..</code>, the shared temp directory. Any concurrent <code>mktemp</code> changed it. The snapshot now covers only the suite's own directory; 45 parallel runs passed where 7 of 90 had failed.</li>
+<li><strong>Fleet tests (AOS-248).</strong> The role-marker suite checks stderr after every call, every malformed epic key, strict <code>role=</code> parsing and the 4 KiB cap (two new mutations); the compaction counters pin their sidechain and symlink behaviour; the sweep is shown to keep a <code>--reason</code>-locked worktree.</li>
+<li><strong>Hook limits (AOS-249).</strong> The context hook's header records what was decided not to fix: restart threshold unscaled, <code>autoCompactEnabled:false</code> undetected, bounded repeats, one <code>git rev-parse</code> per call.</li>
+<li><strong>Gate (AOS-250).</strong> <code>fleet-pairs</code> also requires the two fleet guides' <code>E-*</code> tag sets to be equal.</li>
+<li><strong>Guides (AOS-251, AOS-252).</strong> <code>git-strategy.md</code> scopes the <code>develop</code> row and branch death for fleet mode; restatements of the branch cut and the lock command are gone; a board item without a <code>FLEET-Q&lt;n&gt;</code> is never relayed; the master's handoff goes to the program plan's <strong>Handoff</strong> section; the MEMORY.md-before-compaction rule carries the fleet-child exception.</li>
+<li><strong>Child and stop (AOS-253, AOS-254, AOS-255, AOS-256).</strong> Resolved-path compare for <code>CLAUDE_PROJECT_DIR</code>; a missing master marker means the fleet stopped; a child told the fleet is stopping hands off; stop lists the running children, accepts a squash/rebase-merged epic with the architect's confirmation, and the Local refusal keys on <code>pm_tool</code>; resume rewrites a missing child marker; <code>/marvin:info</code> reports a fleet marker and flags a stale master one.</li>
+</ul>
+<p><strong>Not done, by decision.</strong> AOS-255 reports the stale marker through <code>/marvin:info</code> only (no SessionStart line); AOS-249's four items are documented, not changed.</p>
+<p><strong>Acceptance.</strong></p>
+<ul>
+<li>Gates: all 17 test suites green (hook-lib 275, worktree-sweep 225, the rest unchanged); <code>validate-kit</code> 23/23, each new check mutation-tested.</li>
+<li>The ticket text of AOS-253 to AOS-256 was written against v0.41.0; the guide wording was re-read against the v0.42.0 files before editing.</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.42.0..HEAD</code>, non-merge commits only; the container epic AOS-242 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>fleet-mode follow-ups and two small fixes — no surface removed or renamed.</strong></p>
+<ul>
+<li>Update the plugin, then run <code>/marvin:upgrade-agent-os</code> once. It refreshes <code>fleet.md</code>, <code>fleet-child.md</code>, <code>session-budget.md</code>, <code>git-strategy.md</code>, <code>worktrees.md</code> and the kit core <code>CLAUDE.marvin.md</code>.</li>
+<li>If <code>.marvin/PROJECT-INFO.md</code> has a free-text value (<code>brief</code>, <code>description</code>, <code>owner</code>, <code>stack</code>, <code>dev_command</code>, <code>tracker_coordinates</code>, <code>project</code>) holding <code>: </code> or <code> #</code> unquoted, run <code>/marvin:project-info</code>: it validates the frontmatter and wraps such values in double quotes. New installs write them quoted.</li>
+<li>Fleet users: a master's own handoff now goes into the program plan's <strong>Handoff</strong> section (add it to an existing plan; the master does so at its next rest point), and a child that finds the master marker gone on resume asks the architect before continuing. Tell running children to stop (<code>fleet-child.md</code>) before <code>/marvin:fleet stop</code>.</li>
+<li><code>/marvin:info</code> now reports a fleet marker (role, age); a <code>role=master</code> marker with no fleet running is stale and <code>/marvin:fleet stop</code> clears it.</li>
+<li>No migration script, no new settings.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li><code>validate-kit</code> check <code>frontmatter-quoting</code> (23rd): the free-text <code>PROJECT-INFO.md</code> keys are quoted scalars; <code>fleet-pairs</code> also requires the fleet guides' <code>E-*</code> tag sets to be equal.</li>
+<li><code>/marvin:info</code> reports a fleet marker (role, age) and flags a stale master marker.</li>
+<li>The master's own handoff has a home: a <strong>Handoff</strong> section in the program plan.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li><code>PROJECT-INFO.md</code> writes its free-text values (<code>project</code>, <code>description</code>, <code>brief</code>, <code>owner</code>, <code>tracker_coordinates</code>, <code>stack</code>, <code>dev_command</code>) as double-quoted YAML; the install and <code>project-info</code> skills escape <code>\</code> and <code>"</code> and repair an unquoted <code>: </code> value.</li>
+<li>Fleet: a child compares resolved paths for <code>CLAUDE_PROJECT_DIR</code>, treats a missing master marker as a stopped fleet and, told the fleet is stopping, hands off and ends its turn; <code>/marvin:fleet stop</code> lists the running children first, accepts a squash/rebase-merged epic with the architect's confirmation, and the Local-tracker refusal keys on <code>pm_tool</code>; resume rewrites a missing child marker.</li>
+<li><code>git-strategy.md</code> scopes its <code>develop</code> row and branch death for fleet mode; the fleet guides no longer restate the branch cut or the lock command; a board item without a <code>FLEET-Q&lt;n&gt;</code> is never relayed; the MEMORY.md-before-compaction rule carries the fleet-child exception.</li>
+</ul>
+<h3 id="changes-fixed">Fixed</h3>
+<ul>
+<li><code>test-docker-lint.sh</code> and <code>test-ticket-lint.sh</code> no longer fail intermittently: the "never writes" snapshot listed the shared temp directory, which any concurrent <code>mktemp</code> changed.</li>
+<li>A fleet child on a symlinked project path is no longer reported blocked.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Run <code>/marvin:upgrade-agent-os</code>, then <code>/marvin:project-info</code> if a free-text <code>PROJECT-INFO.md</code> value holds <code>: </code> unquoted (<code>upgrades/v0.42.1.md</code>).</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

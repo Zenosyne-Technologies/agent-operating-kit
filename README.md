@@ -18,271 +18,44 @@
 
 <p align="center"><sub>✦ Self-hosting: Marvin is built and operated under the same rules it installs. ✦</sub></p>
 
-**Marvin** is a reusable agentic operating system for AI-assisted software projects. Install it into a repo and that repo gets an orchestrator with a name, a personality and a memory — one who plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements. Around the persona comes the machinery that makes agent work auditable: size-routed model-tier dispatch, a cascading ruleset that keeps context proportional to the task, DoD-gated task lifecycles with two sequenced adversarial validators, a versioned label registry feeding collect-once reporting, three living product handbooks, and — with the companion **token-telemetry** plugin — token and dollar cost visibility down to the individual tracker issue. It is for anyone running real software delivery through Claude Code and tired of "done" without evidence.
-
+**Marvin** is a reusable agentic operating system for AI-assisted software projects. Install it into a repo and that repo gets an orchestrator with a name, a personality and a memory — one who plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements. It is for anyone running real software delivery through Claude Code and tired of "done" without evidence. [What Marvin is](https://zenosyne-technologies.github.io/agent-operating-kit/) has the full picture.
 
 # Contents
 
-- [What you get](#what-you-get)
-- [Quickstart](#quickstart)
-- [Manual install](#manual-install)
-- [Updating and migrating](#updating-and-migrating)
-- [Who is Marvin?](#marvin-himself)
-- [How it works](#how-it-works)
-- [PM tools](#pm-tools)
-- [Skills and commands](#skills-and-commands)
-- [The discipline stack](#the-discipline-stack)
+- [At a glance](#-at-a-glance)
+- [Install](#install)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
 - [Inventory](#inventory)
-- [Windows](#windows)
-- [Portability notes](#portability-notes)
+- [License](#license)
 
-## What you get
-
-| | |
-|---|---|
-| **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label and the brief's completeness decide which model tier executes it — right down to a micro profile for mechanical work. The heavy tier's model is the sub-agent ceiling — the orchestrator runs on it in the default `opus` profile, above it in `fable`: after each failed round the orchestrator reads the failure pattern — a converging task stays put, a stuck one climbs effort within its tier, then tiers up toward that ceiling, one churning, bloating or looping gets its approach rethought instead — and only at `max` does it ask: `max` effort (recommended) or, in `opus` only, a swap to the frontier model; in `fable` the question offers `max` alone. |
-| **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
-| **A cascading ruleset** | One always-loaded core — your `CLAUDE.md` plus the kit core it imports — holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
-| **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
-| **Collect-once reporting** | One stats snapshot per collection run, three audience renders on top of it: architect digest, milestone close-out, internals-free stakeholder page. Renders never re-query the tracker. |
-| **Three living handbooks** | Developer, user and admin wikis under the project's docs, Obsidian-compatible, each page naming the code paths it documents so the docs agent amends instead of duplicating. |
-| **Security discipline** | Secrets never committed and never pasted into tracker surfaces, dependency changes vetted and pinned, every brief naming its security surface, security-critical design kept orchestrator-inline. |
-| **Tracker structure in your PM tool** | A labelled, deduped intake structure created for you in Linear, Jira, GitHub Issues — or a fully self-contained markdown tracker inside the repo. |
-| **Cost visibility, optional** | With the token-telemetry companion installed: dollars per issue, per milestone, per tier, wired into the same snapshots and reports. Everything degrades silently without it. |
-
-# Quickstart
+## Install
 
 Marvin is served by the standalone **emprove** marketplace ([Zenosyne-Technologies/emprove-marketplace](https://github.com/Zenosyne-Technologies/emprove-marketplace)):
 
 ```bash
-# 1. add the marketplace (one time)
 claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace
-
-# 2. install Marvin, plus the optional cost-telemetry companion
 claude plugin install marvin@emprove
-claude plugin install token-telemetry@emprove
-
-# 3. Invoke the `install-agent-os` skill directly in a project folder
-/marvin:install-agent-os
+claude plugin install token-telemetry@emprove   # optional cost-telemetry companion
 ```
 
-**In any project, just ask: "install the agent operating kit into this project"** — or invoke the `install-agent-os` skill directly. It reads the repo's own facts to resolve every placeholder, merges with what already exists instead of overwriting it, asks which PM tool the project uses and which model profile it runs (`opus`, the default, or `fable`), proves that tool is reachable from the session before installing anything for it, and dispatches a sub-agent to build the tracker's intake structure.
+Then, in a project folder, run `/marvin:install-agent-os` (or just ask: "install the agent operating kit into this project"). [Getting started](https://zenosyne-technologies.github.io/agent-operating-kit/start.html) walks through the first session, the PM tool choice, installing without the plugin, upgrading and Windows.
 
-That is it. Ask `/marvin:info` at any time for a read-only report of the plugin version, the current  project's install state and its active settings.
+## Documentation
 
-**A greenfield repo triggers a short interview.** When the target carries no source yet — only config, docs and maybe empty build manifests — install has no code to read those facts from, so it asks four quick questions instead: who the users are, the rough project size, the application type, and the tech stack. Answer "no stack in mind" and it offers a handful of coherent, popular stack combinations to choose from, each with its reason. The answers land in `.marvin/PROJECT-INFO.md` as `audience`, `project_size`, `app_type` and `stack`. A brownfield repo — one that already has source — discovers all of that from the code and skips the interview entirely.
+The docs site explains how Marvin works: **[https://zenosyne-technologies.github.io/agent-operating-kit/](https://zenosyne-technologies.github.io/agent-operating-kit/)**
 
-**A greenfield install can also scaffold.** As its final step it asks whether to scaffold the chosen stack now or lay down the project and Marvin files only. Choosing to scaffold opens a tracked **"Milestone 0 — scaffolding and installing project dependencies"**: the plan is written down first, then the scaffold and its dependency install run as ordinary Marvin tasks through the full plan → build → validate → document → close lifecycle, dependencies included because env-wiring is part of the feature. A files-only answer, or any brownfield install, skips scaffolding and goes straight to the commit.
+- [Getting started](https://zenosyne-technologies.github.io/agent-operating-kit/start.html): install, the first session, PM tools, installing without the plugin, upgrading, the plugin's hooks, Windows
+- Concepts: [the task lifecycle](https://zenosyne-technologies.github.io/agent-operating-kit/concepts/lifecycle.html), [sizing](https://zenosyne-technologies.github.io/agent-operating-kit/concepts/sizing.html), [escalation](https://zenosyne-technologies.github.io/agent-operating-kit/concepts/escalation.html), [around the loop](https://zenosyne-technologies.github.io/agent-operating-kit/concepts/around-the-loop.html), [fleet mode](https://zenosyne-technologies.github.io/agent-operating-kit/concepts/fleet.html)
+- [Settings](https://zenosyne-technologies.github.io/agent-operating-kit/settings.html): every `.marvin/PROJECT-INFO.md` key
+- [Skills & commands](https://zenosyne-technologies.github.io/agent-operating-kit/skills.html): every skill and command the plugin ships
+- [Reference](https://zenosyne-technologies.github.io/agent-operating-kit/reference.html): every guide in the installed cascade
+- [Mods](https://zenosyne-technologies.github.io/agent-operating-kit/mods/index.html): what Marvin shows you in Claude Code
+- [Releases](https://zenosyne-technologies.github.io/agent-operating-kit/releases/index.html): every version, its upgrade steps and its changes
 
-## Manual install
-
-No plugin, four steps — and the first one runs FIRST:
-
-1. **Already have an older install? Migrate before you copy anything.** If the cascade sits in `docs/agents/` or `.docs/agents/`, do NOT move anything by hand — run `bash scripts/migrate-v0.21.0.sh` from the repo you are upgrading (`--check` first for the plan). It moves and stages the kit's files and prints a rename map; you then update the references it lists — judging each hit in context — and commit your edits together with the staged renames. **The order is load-bearing**: the script refuses a dirty tree (exit 2) and reports a collision for every destination a copy already occupies, so copying first makes it impossible to run — 13 collisions and 0 renames on a v0.20.0 layout. If `.docs/reports/` holds anything, run `bash scripts/migrate-v0.35.0.sh` the same way — it moves EVERY file there to the same path under `.marvin/reports/`, consumer-written reports included — but only after the first migration is committed: each refuses the other's staged moves as a dirty tree, and it refuses untracked or gitignored files under `.docs/reports/` too (exit 2, named on `untracked:` lines). On exit 2 or 9, stop, clear what it names, and start again here. Nothing below is a fresh-install-only step; a clean repo simply has nothing to migrate.
-2. **Copy the payload.** `templates/marvin/agents/` → `<repo>/.marvin/agents/`; your PM tool's `templates/pm/<tracker>/tracker-config.md` and `stats-collection-brief.md` → `<repo>/.marvin/agents/`; Jira only, `templates/pm/jira/convert-milestones-brief.md` → `<repo>/.marvin/agents/`; `templates/marvin/PROJECT-INFO.md` and `templates/marvin/MEMORY.md` → `<repo>/.marvin/`; the estate seeds file by file, NOT as a directory copy — `templates/docs/index.md` (the crawl's entry point), `templates/docs/{plans,researches,refactor,future,information,release-notes}/index.md` and `templates/docs/handbooks/index.md` each → the same path under `<repo>/.docs/`, then `templates/docs/handbooks/audience-index.md` → `<repo>/.docs/handbooks/developer/index.md`, `…/user/index.md` and `…/admin/index.md` (three copies under that one name; `audience-index.md` itself is never placed in `.docs/` — an unindexed file there is unreachable by the crawl, which means it does not exist). An index the repo already has is merged — keep its rows and prose, add only the rows it lacks: the missing sub-folder rows, and the `## Root-level documents` section with its issue-log row where that section does not exist yet; `templates/marvin/CLAUDE.marvin.md` → `<repo>/.marvin/CLAUDE.marvin.md` (the kit core — refreshed on every upgrade, never edit it); `templates/CLAUDE.project.md` → `<repo>/CLAUDE.md` — an existing `CLAUDE.md` keeps every line and gains only the stub's missing project-rules items plus the bare import line `@.marvin/CLAUDE.marvin.md` as its LAST line, never in backticks or a code block (Claude Code skips imports there); a repo with only an `AGENTS.md` gets the stub with `@AGENTS.md` directly above that import; `templates/settings.json` → `<repo>/.claude/settings.json`, merging if one exists. Finally, list every `.md` under `.docs/` (outside `project-management/`) that no index row reaches — give each an index row where its folder is obvious, and name the rest: under these rules an unindexed document cannot be found. Add `.marvin/runs/` to `<repo>/.gitignore` — sub-agent run reports live there and are never committed; `.marvin/reports/` beside it holds the committed reports and is never ignored.
-3. **Fill every `{{PLACEHOLDER}}`** in the copied files — project facts, env preamble, tracker coordinates, `{{INSTALL_DATE}}` (today, in every header), and `{{DOCS_ISSUE_LOG_PATH}}` (ONE form, a bare repo-relative path, `.docs/issue-log.md` by default — the root index's record row already carries its default link target and holds no placeholder, so retarget that cell only for a non-default log, and delete the row unless the path resolves inside `.docs/` and outside `project-management/`). `{{SCOPE}}` and `{{PERIOD_DAYS}}` in `stats-collection-brief.md` stay unresolved on purpose — they are filled at dispatch. Delete rules that do not apply; add project-specific "conventions that bite" as you learn them.
-4. **Create the tracker structure.** Hand an agent your PM tool's `templates/pm/<tracker>/intake-structure-brief.md` with the placeholders filled. It works as a small-model task.
-
-Or paste `BOOTSTRAP.md` into a Claude session — it is a pointer that walks the session through the install skill directly.
-
-## Updating and migrating
-
-Installed plugins are **pinned snapshots** — pushing commits to this repo does *not* update installed copies. Two things have to happen:
-
-1. **The plugin version gets bumped** in the plugin manifest with every release, which this repo's own rules mandate. Claude Code resolves updates by that version string; new commits under an unchanged version are invisible to installed copies.
-2. **Consumers pull the update** (CLI and Desktop behave identically):
-
-```
-claude plugin marketplace update emprove     # refresh the marketplace clone
-claude plugin update marvin@emprove
-```
-
-Or enable auto-update once: `/plugin` → Marketplaces → emprove → Enable auto-update, which is off by default for third-party marketplaces. New sessions then load the updated plugin; an already-open CLI session needs `/reload-plugins`.
-
-Updating the *plugin* does not touch projects you already installed into — run the `upgrade-agent-os` skill in each repo to bring its installed files to the current version. That skill walks the per-release notes under `upgrades/` in order, so a project several versions behind still gets every migration step applied.
-
-**From v0.21.0, do that promptly in every repo.** The fifteen `marvin:*` personas read `.marvin/agents/*` with a fallback to the pre-v0.21.0 `.docs/agents/` location, so a repo not yet upgraded degrades to its older installed guides rather than breaking. That fallback is a safety net, not a substitute for upgrading: only the `upgrade-agent-os` run refreshes those guides to the current version and adds new ones. The plugin update alone fixes nothing inside a project.
-
-**From v0.33.0, the kit's rules live in `.marvin/CLAUDE.marvin.md`, not in `CLAUDE.md`.** `CLAUDE.md` is yours: project facts, your project rules, and one bare line, `@.marvin/CLAUDE.marvin.md` — Claude Code's native import, resolved relative to `CLAUDE.md` and loaded at session start with no prompt. The kit file is kit-owned, so every upgrade refreshes it like any `.marvin/agents/` guide and no release ever again asks you to re-sync `CLAUDE.md` by hand. The first upgrade to v0.33.0 splits your existing `CLAUDE.md` once: a read-only planner (`scripts/plan-claude-md-split.sh`) classifies every line, the upgrade asks ONE confirmation question before it writes anything at all, keeps a verbatim backup under `.marvin/backups/`, removes only the kit's own lines, lets you keep or drop each customised kit rule it flags for review, and appends the import; declining writes nothing but the report. Project rules in `CLAUDE.md` refine the kit's; the kit's safety gates cannot be switched off from there. Imports nest at most four hops — `CLAUDE.md` → the kit core is one, and the kit core imports nothing. Keep `.marvin/` tracked: a gitignored kit file makes the import load nothing in every other clone.
-
-**`AGENTS.md` is supported only through `CLAUDE.md`.** Claude Code reads `AGENTS.md` only when no `CLAUDE.md` exists, so a `CLAUDE.md` that should honour it carries an `@AGENTS.md` line (install adds it when it creates `CLAUDE.md` beside an existing `AGENTS.md`). The kit never writes `AGENTS.md` and does not support it as the sole or only-edited instruction file.
-
-**A symlink on any path the upgrade touches refuses the whole of its step 4** — `CLAUDE.md`, `.marvin/CLAUDE.marvin.md`, `.marvin`, `.marvin/agents`, `.marvin/backups`, `.docs`, `.claude/agents` and their ancestors are all tested. The `CLAUDE.md → AGENTS.md` monorepo layout hits this, as does a `.claude/agents` symlinked into a dotfiles repo. It is a refusal to **clear**, not a bug — replace the link with a real file (for `CLAUDE.md → AGENTS.md`: a `CLAUDE.md` containing `@AGENTS.md`), or move it aside for the run: writing (or, for the persona cleanup, deleting) through a link destroys files outside the repository while `git status` stays clean, with nothing backed up to reconcile from.
-
-**Renamed from agent-operating-kit.** Existing users switch once with `claude plugin uninstall agent-operating-kit@emprove` followed by `claude plugin install marvin@emprove`. Installed projects are untouched by the rename.
-
-**Marketplace moved** to its own repo. If you added it from this repo before — registered as `zenosyne` or `emprove` — remove it once with `claude plugin marketplace remove zenosyne` (or `emprove`) and add it from the address in [Quickstart](#quickstart). `claude plugin marketplace list` shows what you currently have.
-
-# Marvin himself
-
-Named for the Hitchhiker's android — the brain the size of a planet is canon, the depression is not. Smart, thorough, a keen eye for detail and management; young and snappy; questions everything that does not add up: a brief that contradicts the code, a "done" without evidence, a number that appears from nowhere.
-
-His memory is his own to manage. Noteworthy findings — decisions, surprises, hard-won gotchas — go into `MEMORY.md` as they happen and *before* context compaction can lose them; he consults it when a session starts and tidies it at milestone close so it never rots. Nothing goes in that the repo, the tracker or the handbooks already record. It is also what lets him keep sessions short: a plugin hook measures the session's context from its transcript (no telemetry needed) and he plans, winds down and stops cleanly on the ladder `.marvin/agents/session-budget.md` owns — the 400k / 700k budgets and the 70 / 80 / 90 % context steps — writing the handoff and suggesting `/compact` or a fresh session with a one-line resume prompt. Nothing is ever blocked. A project can move the budgets and the window with `session_soft_ktokens` / `session_hard_ktokens` / `context_window_ktokens` in `.marvin/PROJECT-INFO.md`'s frontmatter.
-
-## How it works
-
-Three loops carry most of the weight: the lifecycle every task walks, the router that decides who does the work, and the cost loop that prices all of it.
-
-<p align="center"><a href="https://zenosyne-technologies.github.io/agent-operating-kit/"><img src="assets/marvin-lifecycle.svg" alt="Marvin's task lifecycle: plan and brief, build by size tier, completion gate, security gate, optional visual validation, documentation gate, close-out. Each stage is marked with the agent persona and model tier that runs it, and a failed validation loops back to the build tier." width="100%"></a></p>
-
-*Which persona runs which stage, coloured by model tier. The [interactive map](https://zenosyne-technologies.github.io/agent-operating-kit/) lets you click any persona for its model, job and limits, and adds size routing and the escalation staircase.*
+The site is built from `site/` into `docs/` by `scripts/build-docs.sh`; see [Contributing](#contributing).
 
 <!-- Maintainers: the inventory check in scripts/validate-kit.sh scans lines that are exactly three backticks, so the fence style used in this README is load-bearing. Re-run the gate after adding or removing any code block here. -->
-
-```mermaid
-flowchart LR
-    P["Plan the task<br/>Scope + DoD on the tracker issue"] --> B["Build<br/>worker at the routed tier, TO the DoD"]
-    B --> VC{"validate-completion<br/>fresh BA validator"}
-    VC -->|falsified| B
-    VC -->|passes| VS{"validate-security<br/>fresh security validator"}
-    VS -->|falsified| B
-    VS -->|passes| D["Document<br/>handbook pages amended, issue log updated"]
-    D --> C["Close the issue<br/>with commit refs and a cost line"]
-```
-
-**The task lifecycle.** Nothing enters build without a DoD — verifiable done-statements covering behavior, tests, docs and env wiring, written at planning time onto the tracker issue. Builders work *to* the DoD; validators work *against* it, per item, and they are always fresh agents rather than the builder marking its own homework. Completion validation runs first — Playwright or direct browser driving for anything web-facing, because an API-level curl check is not browser E2E — and only once it passes does the security validator get its turn. See `validation-agent.md` for both personas.
-
-```mermaid
-flowchart TD
-    O["Orchestrator at medium effort — the heavy tier's model in opus, above it in fable<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
-    R -->|xs| MI["Micro tier<br/>fully-specified builds and corrections,<br/>mechanical zero-discretion tasks"]
-    R -->|s| SM["Small worker<br/>judgement work: QA sweeps, docs,<br/>under-specified size-s and peripheral pieces, the brief falsifier"]
-    R -->|m / l / xl| HV["Heavy worker<br/>design-bearing builds, planning research, the validators"]
-    MI --> X{"Round failed?<br/>read the failure pattern"}
-    SM --> X
-    HV --> X
-    X -->|converging| SR["Stay at the current tier<br/>up to four rounds a rung"]
-    X -->|stuck, build work| EH["Escalation climb<br/>micro to small tier-up, small xhigh rung,<br/>then the heavy tier's model at high, then xhigh"]
-    X -->|whack-a-mole, bloat or loop| RT["Rethink<br/>a fresh researcher proposes a different approach;<br/>descope only on the user's yes"]
-    X -->|cost blowout| PA["Pause and ask the user"]
-    X -->|research, docs or validation fails twice| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
-    X -->|passed| DN["Task complete"]
-    EH --> MG{"Max gate: ask the user<br/>max effort (recommended), or frontier in opus only;<br/>in fable the question offers max alone"}
-    MG -->|max, no answer, or unattended — recorded| EM["Heavy tier's model at max effort"]
-    MG -->|frontier, explicitly chosen — opus profile only| EF["Frontier tier, this task only"]
-    EF --> ST["Still failing: stop and escalate to the user"]
-    EM --> ST
-    DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
-```
-
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, each a small-tier survey (`marvin:developer-small`) followed by heavy-worker synthesis (`marvin:researcher`), while `size:m` and below get only an ad hoc survey when the orchestrator asks — findings land as issue comments, docs, or (survey-only) the run report, and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A `size:s` build, a peripheral piece or a correction whose brief the orchestrator fully specified goes to the micro tier's developer (`marvin:developer-micro`); work that needs judgement stays on the small tier (`briefing.md`, `escalation.md`). After every failed round of a build task the orchestrator reads its failure pattern from the validators' tagged findings and a per-task ledger: a stuck task climbs effort within its tier, then tiers up toward the heavy tier's model — the sub-agent ceiling, never exceeded by default; the orchestrator runs on that model in the `opus` profile and above it in `fable`. In `opus` the frontier tier is opt-in, offered to the user at the `max` gate as the costlier alternative to the recommended `max` effort; `fable` has no frontier tier, so the gate asks for `max` alone. Churn, bloat or a loop sends a task to a read-only rethink that changes the approach instead (`escalation.md`, `escalation-ladder.md`). De-escalate again as soon as work turns mechanical.
-
-```mermaid
-flowchart LR
-    K["Orchestrator writes the context sidecar<br/>issue key, project, size, one-sentence summary"] --> H["Telemetry capture hooks<br/>per-turn usage, zero model-token overhead"]
-    G["Git conventions<br/>issue-key branch names and commit prefixes"] --> H
-    H --> DB[("Central telemetry database<br/>events plus effective-dated pricing")]
-    DB --> S["Stats snapshot<br/>label dimensions plus a tokens section"]
-    S --> R1["Architect digest · milestone close-out · stakeholder page"]
-    S --> R2["One-line cost comment on every closed issue"]
-```
-
-**The cost loop.** With the companion plugin installed, the orchestrator writes a repo-root sidecar at tracker-task start and rewrites it on every switch; telemetry's Stop and SubagentStop hooks stamp that context onto each captured event, so cost joins to issues, milestones and tiers for free. Pricing is never stored per event — an effective-dated table turns tokens into dollars at query time, and every reported figure carries the date of the rate it used. `token-economics.md` is the whole contract, and every consumer of it omits its cost output silently when telemetry is absent.
-
-## SessionStart hook
-
-The plugin ships its hooks in `hooks/hooks.json` — SessionStart (`scripts/marvin-session-start.sh`, matchers `startup`/`resume`/`clear`/`compact` — it fires again after every compaction) plus the enforcement hooks below. It only does anything in a project the kit is installed in (`.marvin/` present as a real directory, not a symlink); everywhere else it exits silently. When it does run, it injects two things into context:
-
-- **A version-drift check.** It compares the plugin's own version against the project's installed `kit_version` (`.marvin/PROJECT-INFO.md` frontmatter, numerically, component by component) and, on a mismatch, prints one line: if the project is older, it prints the safe two-session update procedure (ending at `/marvin:upgrade-agent-os`); if the project is newer than the plugin, it says so and points at updating the plugin instead, since running the upgrade skill there would downgrade the install. An unreadable or symlinked `PROJECT-INFO.md`, or a `kit_version` that is not a plain `X.Y.Z` in the frontmatter, counts as unknown and gets its own one-line nudge to run the upgrade skill — never a raw file dump.
-- **The user-update format rules**, in full path (`.marvin/agents/user-updates.md`), stating that they take precedence over any active output style — printed only when the project's effective `outputStyle` is not Marvin's own (`marvin:marvin`, which carries the same block from `hooks/user-update-rules.txt`).
-
-It never writes a file, never blocks the session, and always exits 0 — including when `.marvin`, `plugin.json` or `PROJECT-INFO.md` is missing or unreadable. Editing `hooks/hooks.json` in the installed plugin cache does not survive the next plugin update, so to disable it durably, either disable the whole plugin (`/plugin disable marvin`) or turn off all hooks via the `"disableAllHooks": true` setting ([hooks reference](https://code.claude.com/docs/en/hooks.md)); there is no flag that disables only this hook.
-
-**Rule enforcement (v0.38.0).** In a Marvin project the plugin also checks its rules mechanically, never echoing message content and never blocking on a parse failure:
-
-- **User-update gate** (UserPromptSubmit + Stop, `scripts/marvin-update-gate.sh`): checks the orchestrator's messages for a `<details>` fold, status emoji outside the legend, an incomplete issue callout, and a status update without its Next / Open questions tail. `update_gate` in `.marvin/PROJECT-INFO.md`: `advise` (default — a note rides on the next prompt), `block` (a failing message is sent back once at Stop, and the next prompt carries the note as in advise), `off`.
-- **Sub-agent contract gate** (SubagentStop, `marvin:*` only, `scripts/marvin-subagent-gate.sh`): a final message missing a reserved line (`TRACKER:`, `GUARDRAILS:`, or one its brief reserves) or over 25 lines goes back to the agent once.
-- **Sub-agent rules** (SubagentStart, `scripts/marvin-subagent-rules.sh`) and **brief lint** (PreToolUse on `Agent`, `scripts/marvin-brief-lint.sh`): a constant rules block for every persona; advice when a brief lacks its run-report path, FINAL MESSAGE spec or DoD.
-- **Context ladder** (`scripts/marvin-context-budget.sh`): 70 / 80 / 90 % of the compaction window alongside the 400k / 700k budgets, the stricter one speaking (`.marvin/agents/session-budget.md`).
-- **Output style**: `output-styles/marvin.md`, selected per project by `"outputStyle": "marvin:marvin"`; install and upgrade offer it, and offer — never silently apply — a per-user disable of competing style plugins (`scripts/marvin-style-plugins.sh`, registry `hooks/style-plugins.txt`).
-
-**Worktree marker and sweep.** On `SubagentStop` of a `marvin:*` persona, `scripts/marvin-worktree-mark.sh --subagent-stop` writes a `marvin-owned` marker file into that agent's isolation worktree's git admin dir — the only thing that makes a worktree Marvin's. The SessionStart sweep (`scripts/marvin-worktree-sweep.sh --hook`) and `/marvin:clean-worktrees` consider only marked linked worktrees physically under `.claude/worktrees/`, and keep one when any guard G1–G9 holds (locked, a session standing in it, nested repo or worktree, recent activity, an operation in progress, uncommitted changes, commits in no branch other than its own, a git-ignored `.env*` (outside wholly ignored folders such as `node_modules/`) or run-state file the project lacks); an unmarked worktree is never touched, only counted in a `skipped: <n> worktree(s) not marked by Marvin — left to the app` line. A hand mark refuses a worktree created over an hour ago. `marvin-worktree-sweep.sh --at-risk` (the upgrade's readiness report) lists every worktree under `.claude/worktrees/`, marked or not, whose G8 or G9 condition holds, as `at-risk:` lines, and removes nothing. `worktree_sweep` in `.marvin/PROJECT-INFO.md` picks the mode: `on` (remove), `check` (report only; also the sweep's value when the key is absent or invalid) or `off`.
-
-**Run-state sync.** `scripts/marvin-runs-sync.sh` (SessionStart, PostToolUse on `Write|Edit|MultiEdit`, SubagentStop, Stop) keeps the orchestrator's ledger, build briefs and agents' timestamped run reports in the project checkout's per-session folder `.marvin/runs/<UTC start>-<session id>/<KEY|adhoc>/`, the one copy readers use, even when the session works in a worktree that is later swept. SubagentStop copies a `marvin:*` agent's named reports and never deletes the source; it overwrites a project copy only when that same agent carried it before (the gate's send-back), recorded in an ignored per-agent ledger `.carried-<agent id>`. Stop catches up the orchestrator's ledger and build-brief writes made through Bash (`>>`), under the same rules, but only into a project key folder that already exists (a prune stays done) and never for timestamped reports (those are SubagentStop's). `<KEY>` is a tracker key (`AOS-12`, `T-1`) or a GitHub issue's bare number (`42`); a run path whose key fails that rule gets a `refused: key not allowed` notice, never a silent skip. It refuses any write through a symlink under `.marvin/`, git-ignores the folder, gives carried copies the umask's normal mode, and `.marvin/agents/session-recovery.md` covers a worktree that vanishes mid-task. The upgrade skill's step 6b runs `scripts/marvin-runs-migrate.sh` to move a flat-layout `.marvin/runs/` into this one.
-
-**Docker sweep (v0.39.0).** At `startup`/`resume`/`clear`, alongside the worktree sweep (a hook group runs in parallel), `scripts/marvin-docker-sweep.sh --hook` removes Docker containers, networks, volumes and images labelled `marvin.project=<this project>`, `marvin.checkout=<this checkout's path>` and `marvin.lifetime=throwaway` whose owner worktree under `.claude/worktrees/` is gone — never a `keep` or main-owned one, never a running container, never `-f`, never a prune, never a resource without the project label (`.marvin/agents/tidying.md`). It prints at most two lines (what it removed; main-owned throwaways still waiting) and stays silent when Docker is missing or its daemon is down; `/marvin:clean-worktrees` runs it too.
-
-**Docker lint (v0.39.0).** PreToolUse on `Bash` (`scripts/marvin-docker-lint.sh`), for the orchestrator and sub-agents alike: advice — never a block; `docker_lint` in `.marvin/PROJECT-INFO.md` is `advise` (default) or `off` — when a command creates a Docker container, volume, network or image without both `marvin.project` and `marvin.checkout` (or `--label-file`) in it, starts a compose stack (`up`/`create`/`run`) without `-p`/`--project-name`, or starts a throwaway MySQL/Percona container without `--skip-log-bin` (or `--disable-log-bin`, `log-bin=OFF`, `log-bin=0`) or a MariaDB one with `--log-bin` (`.marvin/agents/tidying.md`). It reads docker only in command position, never echoes the command and stays silent outside a Marvin project.
-
-**Ticket lint (v0.39.0).** PreToolUse on tracker writes (`scripts/marvin-ticket-lint.sh`; matcher `^mcp__.*__(createJiraIssue|editJiraIssue|save_issue|create_issue|update_issue|issue_write)$|^Bash$|^Write$` — Atlassian, Linear and GitHub MCP issue tools, `gh issue create|edit`, and Writes of Local `project-management/issues/*.md` files), for the orchestrator and sub-agents alike, and only on writes to the project's own tracker (`pm_tool`, `project_key` and `tracker_coordinates` in `.marvin/PROJECT-INFO.md`; `gh -R` to another repo, another Jira project or a non-tracker MCP stays silent). Heredoc bodies and code in descriptions are skipped. It enforces the pre-write half of `ticket-filing.md`'s label check against the consumer's registry `.marvin/agents/label-syntax.md`: a create with no labels, a missing `type:`/`area:`/`origin:`, a `type:bug` without a severity, a non-epic create without `size:`, a size or severity stated only in the title/description, a label value not in the registry. `ticket_lint` in `.marvin/PROJECT-INFO.md` picks the mode — `advise` (the hook's default when the key is absent or empty: everything rides along as context), `block` (violations are denied with the reason, advisories ride along; an unknown explicit value also fails closed to `block`) or `off`. The installed `PROJECT-INFO.md` states `block` explicitly, so a project the install or upgrade skill touched enforces unless it chose otherwise. Its output names checks, dimensions and well-formed label values only — never the ticket's prose. The read-back half stays the writer's.
-
-**Codex validation (v0.40.0).** OpenAI's Codex can take validation lanes beside or instead of Claude, diagnose a stuck task, or build on the architect's request. Four `.marvin/PROJECT-INFO.md` keys set it — `codex_handover` (`off` by default), `validation_strategy`, `codex_lanes`, `codex_evidence` — and `.marvin/agents/codex.md` owns what they mean. Install asks them (upgrade too, once, when they are missing); `/marvin:codex`, `/marvin:codex-astra` and `/marvin:codex-setup` are the architect's own entry points. When Codex is not ready, the work runs on Claude.
-
-**Fleet mode (v0.41.0).** For parallel epics, `/marvin:fleet` turns the session into a master orchestrator that starts one child orchestrator per epic (up to `fleet_max_children`, default 3) in locked worktrees, keeps the program plan with area leases and a decision log, and posts one board with every epic and every question waiting on you. You answer epic questions in each child; the master merges epics into `develop` and cuts releases. Children compact up to three times before a successor takes over. Needs a shared tracker (Linear, Jira or GitHub); without child sessions it runs as a manual fleet. Rules: `.marvin/agents/fleet.md`, `.marvin/agents/fleet-child.md`.
-
-**Session clean-up (v0.42.0).** The automatic worktree sweep removes only worktrees Marvin marked as its own (agent worktrees when they stop, a hand-made one via `/marvin:clean-worktrees --mark`); desktop session worktrees are left to the app. Run state — ledger, build briefs, run reports — lives in the project's `.marvin/runs/<session>/<KEY>/`, carried there by hooks from any worktree, with ledgers chained across sessions. `worktree_sweep` (`on | check | off`) and `docker_lint` (`advise | off`) are per-project switches; an absent mode key never enforces. The upgrade's readiness step moves existing run state and defers sessions you say are still open. Rules: `.marvin/agents/worktrees.md`, `.marvin/agents/briefing.md` item 11, `.marvin/agents/session-recovery.md`.
-
-**CodeGuard security rules (v0.44.0).** Project CodeGuard (CoSAI / OASIS, CC BY 4.0) is an optional companion plugin of third-party security rules. Install offers it and installs it at project scope only on a yes — upgrade asks once when the key is missing — so teammates are offered it too, and it is active from the next session. `security_rules` in `.marvin/PROJECT-INFO.md` (`kit` | `codeguard`, absent = `kit`) switches it on per project: on `codeguard` projects the brief names the rules for its security surface and both security validators (Claude and the Codex lane) check them. It adds checks and never replaces the kit checklist; a missing plugin never fails or blocks anything (one notice per session). On a `codeguard` project, each upgrade's check raises an issue callout when the plugin is disabled, removed or has drifted from the validated version, and never changes the setting. Rules: `.marvin/agents/codeguard.md`.
-
-## PM tools
-
-The kit targets a four-level hierarchy: milestone → epic or feature grouping → work item → sub-item.
-
-| Tool | Hierarchy | Native mirroring | Notes |
-|---|---|---|---|
-| **Linear** | 4/4 native: Project → Milestone → Issue → Sub-issue | severity → Linear Priority | Labels and the in-tracker intake guide are created by the intake brief. |
-| **Jira** | 3/4 + virtual milestones: a `milestone:<slug>` label on every epic | severity → Jira Priority, or JSM Impact | The milestone encoding is losslessly convertible — `convert-milestones-brief.md` is prepared and dispatchable the moment the connector can create releases. |
-| **GitHub Issues** | 4/4 native: Milestone → parent issue → issue → task list | no priority or estimate field to mirror | Labels seeded through the `gh` CLI; the intake guide lives as a pinned issue. |
-| **Local** | 4/4 via files: milestone file → epic issue with `children:` → issue file → task-list checkbox | no native fields to mirror; labels live in frontmatter | A fully self-contained markdown tracker inside the repo. No external service, no auth. |
-
-Which tool a project uses is always a **user selection, never inferred** — even when exactly one tracker happens to be connected. The install skill sensechecks the choice immediately, before installing anything for it: MCP tools resolving plus one cheap authenticated read for Linear and Jira, `gh auth status` plus a repo lookup for GitHub, nothing needed for Local. If the check fails you are told plainly and offered three ways forward — pick another tool, connect it and install later, or fall back to Local now and adopt the external tool later via an upgrade plus an intake re-run. The fallback is never silent.
-
-## Skills and commands
-
-| Skill | Use it when |
-|---|---|
-| `install-agent-os` | Installing Marvin into a repo for the first time. Resolves placeholders, merges rather than overwrites, selects and sensechecks the PM tool, asks the model profile (`model_profile`: `opus` or `fable`) and renders every model name from it, offers Project CodeGuard (`security_rules`: `kit` or `codeguard`) and installs it at project scope only on a yes, creates the intake structure. |
-| `upgrade-agent-os` | Bringing an existing install up to the plugin's current version — file migrations, new cascade docs, the kit core's refresh (model names re-rendered from `model_profile`, asked once where it is missing), the CodeGuard offer (`security_rules`, asked once where it is missing; on a `codeguard` project a disabled, removed or drifted plugin is flagged), tracker label re-sync; the one-time `CLAUDE.md` split and relabel sweeps each gated behind one confirmation. |
-| `project-info` | Creating the project meta page standalone — or, when it already exists, validating it against the repo and auto-fixing discrepancies without ever recreating it; `model_profile` is validated, never auto-fixed (absent reads as `opus`; any value other than `opus` or `fable` is a must-act finding); `security_rules` absent reads as `kit` and is left for upgrade to ask, an unknown value is auto-fixed to `kit`. |
-| `report` | Asking for an architect digest, a milestone close-out or a stakeholder page. Fills and dispatches the installed stats brief, then renders. |
-| `plan-docs` | Handbooks are missing or stale. The orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic carrying those findings, and dispatches documentation agents against it. |
-| `stress-test` | Verifying the project holds past demo scale — every growth dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. |
-| `validate-kit` | Releasing a new kit version. Runs the static gate plus five agentic scratch-repo scenarios: fresh install, legacy upgrade, current-layout upgrade, no-op re-run, symlink refusal + crawl closure. |
-| `codex <lane> [issue\|--base <ref>]` | You want OpenAI's Codex on one lane — `plan`, `review`, `security`, `design`, `diagnose` or `build` — for an issue or a diff. A reader gathers the DATA, the `marvin:codex` forwarder runs the lane and its verdict is relayed as given; `build` climbs the Codex build ladder, every round validated by Claude validators. |
-| `codex-astra <lane> [target] [--effort E]` | The same on the frontier Codex tier (Astra) — the only path to it, never routed automatically; effort capped at `xhigh`, checked before dispatch. |
-| `codex-setup` | Codex is not ready. Runs the readiness check and walks the setup runbook one confirmed step at a time (plugin, CLI); the login is yours to run (`!codex login`). |
-| `fleet [milestone\|stop]` | A milestone has two or more independent epics to run at once. Turns the session into the fleet master: drafts the program plan with each epic's `area:` lease, gets your approval, commits it on `develop`, then creates, locks and marks one worktree for each epic the plan lets start and starts a local child orchestrator in each — or prints one resume prompt per such epic where the host cannot start child sessions. Needs a shared tracker (Linear, Jira or GitHub), not Local, and compaction on (not `DISABLE_COMPACT=1`). `stop` ends the fleet at its edge. The rules are `fleet.md` / `fleet-child.md`. |
-
-| Command | What it does |
-|---|---|
-| `/marvin:info` | Read-only state report: plugin version, installed kit version, PM tool and coordinates, telemetry mode, structure health, whether the companion plugin is present, Codex readiness plus its four handover settings, and CodeGuard status plus `security_rules`. Never modifies anything. |
-| `/marvin:play <scenario>` | Runs one bounded, self-terminating play scenario — a declared GOAL, numeric LIMITS, a POSITIVE and a NEGATIVE exit set before any dispatch, and a periodic report between rounds so the orchestrator can close a looping or overrunning run gracefully at its current state. Bare `/marvin:play` lists the available scenarios instead of guessing one. Runs in sub-agent mode today, re-dispatching fresh `marvin:*` personas each round; agent-teams behaviour is a dormant seam that only activates once Milestone E's execution-mode setting exists. |
-| `/marvin:whats-new [from] [to]` | Explains what changed between this project's Marvin version and the plugin's (or any two versions), from the per-release briefs in `CHANGELOG.md`, Action needed first. |
-| `/marvin:clean-worktrees [--check\|--mark <path>]` | Removes finished agent worktrees under `.claude/worktrees/` that Marvin marked as its own (`--mark <path>` marks one the orchestrator made by hand; an unmarked worktree is left to the app and counted in a `skipped:` line; locked, in-use, recently active, dirty or unmerged ones are kept, each with its reason) and their local branches when origin has a copy, then the throwaway Docker resources those finished worktrees left; the SessionStart hook runs the same sweeps. |
-
-| Scenario | What it runs |
-|---|---|
-| `research-solo` | Answer a single research question as a memo via one `marvin:researcher`. |
-| `research-deep` | Split a topic into aspects, fan out `marvin:researcher` agents, cross-validate, assemble one report. |
-| `quick-fix` | Build, validate, and commit one `size:s` fix via a single agent — stop if it grows. |
-| `taskforce` | Run one bounded research→build→validate lifecycle with an always-on devil's-advocate challenge. |
-| `bug-hunt` | Fan out adversarial sub-agents to FIND bugs from distinct angles, then validate and file the real ones — find and report, never attack, exploit, or touch a live system. |
-
-## The discipline stack
-
-**Context proportionality.** `CLAUDE.md` and the kit core it imports (`.marvin/CLAUDE.marvin.md`) are the only always-loaded files, and they hold only rules that apply to *every* turn. Everything else lives in the `.marvin/agents/` cascade and is loaded solely when that activity is happening — briefing, guardrails, validation, documentation, ticket filing, labeling, tracker configuration, planning research, reporting, token economics, handbooks, security, micro-tasks, host tidying. Briefs cite the file; they never inline its content.
-
-**Brief discipline.** Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch to work on plus autocommit instructions, idempotency, and a machine-consumed final message capped at a digest (verdict, one line per finding with `file:line`, gate lines — 25 lines at most), the full report going to a gitignored run report under `.marvin/runs/` (never committed, pruned at milestone close) that the orchestrator opens only to act on a finding. No mid-run policy changes — a brief that shifts under an agent is a brief that produces garbage.
-
-**Guardrails — the DO NOT framework.** `guardrails.md` is the single owner of what an agent must not do. Every prohibition resolves to exactly one of four dispositions — do the safe thing instead, stop and clarify, request approval from above, or skip and report — and a generic baseline (destructive DB ops, unguarded migrations, force-pushes and mass-moves, editing an unread file, straying outside the brief's scope) binds every persona, with per-persona rows layered on top of it. A blocked sub-agent has no channel to the user, so it follows a fixed escalation chain — sub-agent → orchestrator → user — committing whatever safe work it finished and naming the exact block in its final message; no agent ever treats silence as approval. Prohibitions that already have an owner — git and tagging, secrets and dependency vetting, treating a document's body as data and not orders, a brief that reverses under you — are cited there, never restated.
-
-**Labels as infrastructure.** `label-syntax.md` is a self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus a backfill-on-touch rule for unlabeled legacy issues. Any change bumps the registry's own version and adds a changelog row. An unlabeled item is invisible to reporting, which is the whole reason the discipline exists. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide *inside* the tracker, so agents and humans share one source of truth.
-
-**Collect once, render many.** A per-tracker stats brief snapshots every label dimension into versioned JSON under the project's reports folder. The three renders read that snapshot verbatim — an agent that recomputes a figure is doing it wrong — and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: no size or origin labels, no tiers, no agent names, product progress only.
-
-**Traceability by convention.** `git-strategy.md` is the single owner of everything git: a gitflow branch model (`main` holds released state only, `develop` integrates, one `feature/<KEY>-<slug>` per work item, `release/*` and `hotfix/*` merged both ways), annotated tags the orchestrator alone may cut, and semver classified by what a *consumer* must do. Inside the installed payload every other file names only the concrete branch or tag it needs — the literal branch a brief sends an agent to — and defers on the model; a second copy of the model is the defect. (This paragraph is the factory describing its own payload, not part of it — the factory runs the identical model for its own contributions; see [Contributing](#contributing).) Agents — orchestrator and sub-agents alike — autocommit finished work: atomic, selectively staged, never waiting for approval, and every commit message starts with its tracker issue key as `<KEY>: <message>`. A milestone is a scope, not a branch: milestone- and release-scoped rollups resolve by issue-key set, which is what lets commits, branches and costs all resolve back to the PM tool without any extra bookkeeping.
-
-**Definition of Done as the contract.** The DoD is written by the planner, onto the issue, before build starts. It is the thing the builder targets, the thing two independent validators attack, the thing the documentation agent documents against, and the thing quoted in the close comment. Everything else in the lifecycle hangs off it.
-
-**Security and secrets.** Secrets are never committed and never pasted into PM-tool surfaces — issue comments, snapshots, PR bodies. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized `m` or larger and get advisory checks with pinned versions. Every brief names the task's security surface, and security-critical design stays with the orchestrator rather than being delegated.
-
-**Handbooks that stay alive.** Three audiences, three wikis: the developer handbook explains the software's logic, the WHY behind nuanced behavior and how modules connect; the user and admin handbooks give plain-language per-module guides with what-to-be-aware-of notes. Pages carry `sources:` frontmatter naming the code paths they document, so the task-level documentation agent finds every affected page with one grep and amends it rather than writing a duplicate. Every page registers in its folder's `index.md`, and milestone validation checks coverage.
-
-**Code that documents its own surface.** Separate from the handbooks, a code-documentation convention binds at build time: every new or modified public class or method carries a contract docblock — summary, parameters, return, errors — in the language ecosystem's own idiom (PHPDoc, TSDoc, Javadoc, PEP 257 docstrings, rustdoc, GoDoc), never a kit-invented format. It is deliberately distinct from the non-obvious inline comment and neither overrides the other: the docblock states WHAT the contract is on the API surface, the inline comment explains WHY a non-obvious line is the way it is.
-
-**Token economics.** With telemetry present, cost stops being a mystery: usage ties to issue key, task size and a one-sentence summary of what was being attempted; snapshots, digests, close-outs and the stakeholder page all carry money; closed issues get a one-line cost figure. Without it, every one of those paths silently omits its cost content. Nothing fails, nothing warns.
 
 ## Contributing
 
@@ -292,7 +65,9 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the nineteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+**The docs site is built, not hand-edited.** Its sources live in `site/`, with the page registry in `site/pages.json`; the Releases, Settings, Skills & commands and Reference pages are generated from the repo itself. Edit the source, run `bash scripts/build-docs.sh` and commit `docs/` with the change. `bash scripts/build-docs.sh --check` (validate-kit `docs-site`) fails on any stale, missing or orphan output. Screenshots follow `docs/images/README.md`.
+
+Every PR must pass the static release gate and the twenty test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
@@ -315,9 +90,10 @@ bash scripts/test-style-plugins.sh
 bash scripts/test-codex.sh
 bash scripts/test-codeguard.sh
 bash scripts/test-placeholder-check.sh
+bash scripts/test-build-docs.sh
 ```
 
-The static gate's twenty-six checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` and `model-profile-codex.md` — whole-word, case-insensitive, plus `gpt-<digit>` anywhere (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:`, the brief lint to the Agent tool, the Docker lint to Bash and the ticket lint to the tracker-write tools (`hooks-registered`) · the hook library's default context window equals the orchestrator window of every profile table in the model profile (`profile-window`) · every profile table in the model profile has the same column header and the same five tier rows (`profile-parity`) · the briefing template carries the per-session run layout literal the run-state hook gates on (`runs-layout`) · the briefing's prune allowlist quotes the hook library's session and key regexes verbatim (`run-patterns`) · every routed fleet event carries its `**E-<event>**` tag exactly once in both `fleet.md` and `fleet-child.md`, and the two guides' tag sets are equal (`fleet-pairs`) · the free-text `PROJECT-INFO.md` keys are quoted scalars (`frontmatter-quoting`) · every `claude plugin marketplace add` of a Zenosyne-Technologies repo names the emprove marketplace (`marketplace`) · the CodeGuard grading sentence is byte-identical in `codeguard.md`, the security stage of `validation-agent.md` and the Codex security lane (`codeguard-grading`).
+The static gate's twenty-seven checks: known placeholders only · template line budgets · manifests parse and the version is semver · the label registry's header matches its newest changelog row · this README's inventory matches the tracked payload in both directions · every tracker folder ships its full file set · no plugin-root references leak into the payload · the current version's upgrade notes exist · every consumer-bound template document carries its standard's header keys (`doc-headers`, fail-by-default) · the repo's own release note for the current version exists with a valid header and a scope that resolves to at least one issue key · the `.docs/` estate is self-contained — nothing under `templates/docs/` references `.marvin/` or names Marvin (`docs-self-contained`, fail-by-default) · no tracked file embeds a contributor's local home path — `/Users/<name>` or `/home/<name>` (`no-local-paths`, fail-by-default) · concrete model names appear in no template outside `model-profile.md` and `model-profile-codex.md` — whole-word, case-insensitive, plus `gpt-<digit>` anywhere (`model-names`, fail-by-default) · the kit core carries only upgrade-renderable placeholders and imports nothing, and the `CLAUDE.md` stub carries no kit rule and ends with the bare import (`kit-core-split`) · every shipped persona in `agents/` is in the install skill's persona list and is a legal `relevance:` value (`personas`) · `CHANGELOG.md` carries the current version's section, in the six fixed categories, one-line bullets only (`changelog`) · the user-update rules block is defined once and the Marvin output style embeds it verbatim (`style-sync`) · every hook script is registered under its event, the sub-agent hooks scoped to `^marvin:`, the brief lint to the Agent tool, the Docker lint to Bash and the ticket lint to the tracker-write tools (`hooks-registered`) · the hook library's default context window equals the orchestrator window of every profile table in the model profile (`profile-window`) · every profile table in the model profile has the same column header and the same five tier rows (`profile-parity`) · the briefing template carries the per-session run layout literal the run-state hook gates on (`runs-layout`) · the briefing's prune allowlist quotes the hook library's session and key regexes verbatim (`run-patterns`) · every routed fleet event carries its `**E-<event>**` tag exactly once in both `fleet.md` and `fleet-child.md`, and the two guides' tag sets are equal (`fleet-pairs`) · the free-text `PROJECT-INFO.md` keys are quoted scalars (`frontmatter-quoting`) · every `claude plugin marketplace add` of a Zenosyne-Technologies repo names the emprove marketplace (`marketplace`) · the CodeGuard grading sentence is byte-identical in `codeguard.md`, the security stage of `validation-agent.md` and the Codex security lane (`codeguard-grading`) · the GitHub Pages site in `docs/` is exactly what `site/` builds to, with no stale, missing or orphan output (`docs-site`, via `scripts/build-docs.sh --check`).
 
 ## Inventory
 
@@ -330,7 +106,7 @@ scripts/marvin-session-start.sh      SessionStart hook body: version-drift check
 scripts/test-session-hook.sh         fixture-per-guard test suite for the SessionStart hook, incl. inline mutation checks (CI runs it too)
 scripts/marvin-context-budget.sh      PostToolUse + UserPromptSubmit hook body: the context ladder (70/80/90 % of the compaction window) and the 400k/700k budgets, the stricter speaking; never blocks, silent outside a Marvin project
 scripts/test-context-budget.sh       behavioural tests for the context-budget hook, incl. an inline mutation section (CI runs it too)
-scripts/validate-kit.sh              twenty-six-check static release gate (CI runs it on every PR)
+scripts/validate-kit.sh              twenty-seven-check static release gate (CI runs it on every PR)
 scripts/migrate-v<version>.sh        executable layout migration — moves and stages files, prints a rename map, never edits content
 scripts/test-migrations.sh           fixture-per-guard test suite for the migration scripts (CI runs it too)
 scripts/mutate-migrations.sh         mutation harness — reverts one guard at a time and requires its fixture to fail
@@ -366,6 +142,10 @@ scripts/marvin-ticket-lint.sh        PreToolUse (tracker writes) hook body: tick
 scripts/test-ticket-lint.sh          behavioural suite for the ticket lint, incl. inline mutation checks (CI runs it too)
 scripts/marvin-style-plugins.sh      read-only finder of enabled competing style plugins (run by install/upgrade)
 scripts/test-style-plugins.sh        fixture suite for the finder, incl. an inline mutation check (CI runs it too)
+scripts/build-docs.sh               builds the GitHub Pages site in `docs/` from `site/` (`--check` verifies it is fresh; the `docs-site` gate runs it)
+scripts/lib/build_docs.py          the docs-site generator: markdown subset renderer, page registry, shell, build and `--check`
+scripts/test-build-docs.sh         behavioural suite for the generator, incl. mutation checks (CI runs it too)
+site/                              docs-site sources: the page registry, the HTML shell, page bodies, `assets/` (output is committed in `docs/`)
 scripts/marvin-codex.sh              the only door to the Codex companion (codex-companion.mjs): locates it; `check` (is Codex usable?) answers with one status line; `run <lane>` submits one guarded lane job (handover, astra, effort ceiling, write-evidence only on review/security) and waits under a wall-clock budget; `result <id>` resumes a pending job
 scripts/test-codex.sh                fixture suite for marvin-codex.sh with a fake node on PATH (CI runs it too)
 scripts/marvin-codeguard.sh          read-only CodeGuard install/enable check — `ready` / `disabled` / `not-installed` / `error <reason>` (run by the install and upgrade skills)
@@ -447,17 +227,6 @@ templates/
       tracker-config.md            4/4 levels via files; labels in frontmatter, no native fields to mirror
       stats-collection-brief.md    label-dimension stats snapshot (schema v4, tokens section with its state) to .marvin/reports/
 ```
-
-## Windows
-
-The hooks and helper scripts are bash scripts, so on Windows they need Git for Windows (Git Bash) on the machine; they are written to run through it, from the Claude Code desktop app or the CLI. Install Git for Windows with its default "Git from the command line and also from 3rd-party software" option, keep line endings as LF for this plugin's files (`core.autocrlf=false`; a CRLF-mangled bash script fails), and install the plugin as in Manual install. The path-handling code (`mh_path` in `scripts/lib/marvin-hook-lib.sh`) is intended to equate `C:\x\y`, `C:/x/y` and `/c/x/y` so the marker, sweep and run-state comparisons hold across the spellings Git Bash and the desktop app produce; that is untested on Windows until the CI job below is green. A `windows-latest` CI job (Git Bash, `core.autocrlf=false` set before checkout) runs the worktree-sweep, session-hook, hook-library, ticket-lint, worktree-marker and run-state-sync suites; that job is added and its first run is pending, so Windows support is untested until it has gone green once (the job is non-blocking until then). A `.gitattributes` pins `*.sh` and `hooks/*.json` to LF, so a clone with `core.autocrlf=true` still gets working scripts.
-
-## Portability notes
-
-- **Each version targets a declared model set.** Templates name tiers (`orchestrator` / `heavy worker` / `small worker` / `micro` / `frontier`); the two profile files alone map them to concrete models — `templates/marvin/agents/model-profile.md` for the Claude tiers, `model-profile-codex.md` for the Codex lanes — and install writes those names in, no install-time substitution. `model-profile.md` declares two profiles, `opus` (the default) and `fable`, and a project runs the one its `.marvin/PROJECT-INFO.md` `model_profile` names. `opus`: Opus 5.5 as orchestrator and heavy worker, Sonnet 5.5 as small worker, Haiku 5.5 as micro (both pinned at `high`), Fable 5.2 as the opt-in frontier; `fable`: Fable 5.2 as orchestrator over the same three workers, with no frontier tier — the main session then costs about 2× per token, and Fable 5.2 needs 30-day data retention (not ZDR). Install asks which one (absent reads as `opus`; any other value stops the upgrade's render and is a must-act finding for `project-info`); to switch, edit `model_profile` and run `/marvin:upgrade-agent-os`, which re-renders every model name from the new profile. Default efforts and the model-specific rules (among them: the max gate recommends `max` over frontier in `opus` and offers only `max` in `fable`, the micro tier always runs at `high`, fully-specified code is micro-tier work) are the profile's. Other models are unsupported: the orchestrator says so once when its session model differs from its profile's orchestrator.
-- Tracker-specific parts are confined to the coordinates line in `ticket-filing.md` plus `templates/pm/<tracker>/` (currently `linear/`, `jira/`, `github/` and `local/`; `templates/pm/INSTALL.md` holds the tool-neutral selection, sensecheck and project-key flow the skills follow). Adding a PM tool is one new folder — intake brief, `tracker-config.md`, `stats-collection-brief.md` — plus an entry in that reference's selection and sensecheck tables. Taxonomy and filing template carry over 1:1; sev1..sev4 labels stay canonical everywhere.
-- Tools exposing only three hierarchy levels use **virtual milestones**: a `milestone:<slug>` label on every epic in the milestone, encoded only in that label so each converts losslessly into a native release or milestone once the tool or its connector allows. The conversion ships as a prepared brief, not just a rule.
-- The attribution policy is an owner preference chosen at install: keep Claude Code's default attribution (skip `settings.json`, delete the core rule), disable it entirely (`settings.json` with empty `attribution.commit`/`attribution.pr`, keep the "Attribution: none" rule), or brand it "Emprove Marvin (Claude)" (`settings.json` as shipped, with the branded core rule).
 
 ## License
 

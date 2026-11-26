@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="generator" content="marvin build-docs">
+<title>v0.38.0 — hook-based rule enforcement - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../start.html">Getting started</a><a href="../concepts/lifecycle.html">Concepts</a><a href="../settings.html">Settings</a><a href="../skills.html">Skills &amp; commands</a><a href="../reference.html">Reference</a><a href="../mods/index.html">Mods</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.1.html">v0.43.1</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html" aria-current="page">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-38-0-hook-based-rule-enforcement">v0.38.0 — hook-based rule enforcement</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, follow the update procedure the SessionStart notice prints (<code>upgrades/v0.38.0.md</code>).</p>
+<p><strong>The output style.</strong> A Marvin output style, <code>marvin:marvin</code>, carries the user-update rules in the model's system prompt. Install and upgrade offer it per project, and the SessionStart rules block now prints only when the project's output style is not Marvin's own. Install and upgrade also scan for plugins that inject a competing style and offer, never silently apply, a per-user disable in <code>.claude/settings.local.json</code>; the scan runs on every upgrade.</p>
+<p><strong>The user-update check.</strong> Every message to the user is checked against the update formats (U1-U4). By default (<code>update_gate: advise</code>) a note rides on your next prompt, with no extra turn. With <code>update_gate: block</code> a failing message is sent back once, with no loop, and the next prompt is advised as well. <code>off</code> disables the check. The rules are in <code>.marvin/agents/user-updates.md</code> (<em>Enforcement</em>).</p>
+<p><strong>The sub-agent checks.</strong> A sub-agent's final message that lacks a reserved line (<code>TRACKER:</code>, <code>GUARDRAILS:</code>, or one its brief reserves) or runs over 25 lines goes back to the agent once, and the corrected message reaches the parent. Every persona gets a constant rules block when it starts, and briefs are linted at dispatch.</p>
+<p><strong>The context ladder.</strong> At 70 / 80 / 90 % of the compaction window Marvin plans, winds down, then stops at a clean point and nudges you to <code>/compact</code>, or to a fresh session at an epic edge. The 400k and 700k session budgets share the ladder's wording and the stricter of the two speaks. The new <code>.marvin/agents/session-budget.md</code> owns the ladder.</p>
+<p><strong>Acceptance.</strong> On a scratch install of the local checkout (<code>claude -p --model haiku</code>, 2026-10-15): SubagentStop sent a <code>marvin:ponytail</code> final message missing <code>TRACKER:</code> and <code>GUARDRAILS:</code> back once and the corrected one reached the parent; the SubagentStart rules land as an attachment while the brief stays the agent's first user line; advise mode put the update note on the next prompt with no extra turn (2 Stops for 2 prompts); block mode blocked once, with no loop; the <code>marvin:marvin</code> style was selected with both competing style plugins disabled (0 Insight blocks); a haiku-driven install ran the competing-style finder and recorded its literal output.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.37.0..HEAD</code>, non-merge commits only; the container epic AOS-204 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>Marvin's rules are now checked by plugin hooks, not only stated</strong> — user-update formats, sub-agent final messages, briefs, and a context ladder that stops the session cleanly before it fills. Rules: <code>.marvin/agents/user-updates.md</code> (<em>Enforcement</em>) and the new <code>.marvin/agents/session-budget.md</code>.</p>
+<ul>
+<li>Update with the procedure the SessionStart notice prints. No file moves, so no migration script.</li>
+<li>The upgrade adds <code>.marvin/agents/session-budget.md</code>; refreshes <code>user-updates.md</code>, <code>briefing.md</code>, <code>model-profile.md</code> and the kit core <code>.marvin/CLAUDE.marvin.md</code> (customised copies are backed up first); and adds <code>update_gate: advise</code> to <code>.marvin/PROJECT-INFO.md</code>.</li>
+<li>It OFFERS — never silently applies — the Marvin output style (<code>"outputStyle": "marvin:marvin"</code> in <code>.claude/settings.json</code>) and, per competing style plugin found (e.g. <code>explanatory-output-style</code>), a disable for this project in <code>.claude/settings.local.json</code> (your machine only).</li>
+<li>The competing-style scan runs on every upgrade, not only the first; the style is offered again whenever the project has none.</li>
+<li>New plugin hooks: the user-update check (<code>update_gate: advise | block | off</code>), the sub-agent FINAL MESSAGE check, sub-agent rules injection, the brief lint, and the 70 / 80 / 90 % context ladder alongside the 400k / 700k budgets.</li>
+<li><strong>Start a new session after the upgrade</strong> so the hooks, the style and the rules load.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>A Marvin output style (<code>marvin:marvin</code>); install and upgrade offer it per project, and offer — never silently apply — a per-user disable of plugins that inject a competing style.</li>
+<li>A user-update check on every message to the user: by default a note rides on your next prompt; <code>update_gate: block</code> sends a failing message back once and also advises on the next prompt; <code>off</code> disables it.</li>
+<li>Sub-agent checks: a final message missing a reserved line (<code>TRACKER:</code>, <code>GUARDRAILS:</code>, or one its brief reserves) or over 25 lines goes back to the agent once; every persona gets a constant rules block; briefs are linted at dispatch.</li>
+<li>A context ladder: at 70 / 80 / 90 % of the compaction window Marvin plans, winds down, then stops at a clean point and nudges you to <code>/compact</code> (or a fresh session at an epic edge).</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The SessionStart rules block prints only when the project's output style is not Marvin's own.</li>
+<li>The 400k / 700k session budgets now share the ladder's wording; the stricter of the two speaks.</li>
+<li>Every upgrade re-runs the competing-style scan and offers the Marvin style when the project has none.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>After <code>/marvin:upgrade-agent-os</code>, start a new session so the new hooks, the style and the rules load.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>
