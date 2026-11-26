@@ -166,12 +166,13 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
     <h1>Marvin Orchestration Map</h1>
     <p class="repo"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit">Zenosyne-Technologies/agent-operating-kit</a></p>
     <p class="lede">Marvin plans, briefs and sequences. Specialised personas build, check and document, each pinned to a model tier. Select any persona to see its model, job and limits.</p>
+    <p class="lede" style="font-size:14px; margin-top:8px">The tiers' models come from the project's model profile, <code>model_profile</code> in <code>.marvin/PROJECT-INFO.md</code>: <code>opus</code> (the default) runs the orchestrator and heavy worker on Opus 5.5 with Fable 5.2 as the opt-in frontier tier; <code>fable</code> runs only the orchestrator on Fable 5.2, above the heavy worker, and has no frontier tier.</p>
     <div class="legend" aria-label="Legend">
-      <span class="lg" data-t="orch"><i class="dot"></i>Orchestrator <small>Opus 5.5</small></span>
+      <span class="lg" data-t="orch"><i class="dot"></i>Orchestrator <small>Opus 5.5 · fable profile: Fable 5.2</small></span>
       <span class="lg" data-t="heavy"><i class="dot"></i>Heavy worker <small>Opus 5.5</small></span>
       <span class="lg" data-t="small"><i class="dot"></i>Small worker <small>Sonnet 5.5</small></span>
       <span class="lg" data-t="micro"><i class="dot"></i>Micro <small>Haiku 5.5</small></span>
-      <span class="lg" data-t="frontier"><i class="dot"></i>Frontier, opt-in <small>Fable 5.1</small></span>
+      <span class="lg" data-t="frontier"><i class="dot"></i>Frontier, opt-in <small>Fable 5.2 · opus profile only</small></span>
       <span class="sep"></span>
       <span class="lg"><svg width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M28 1L36 5L28 9z" fill="currentColor"/></svg>Gate: next stage starts only after this one passed</span>
       <span class="lg"><svg width="38" height="10" aria-hidden="true"><path d="M1 5H30" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" fill="none" opacity=".7"/><path d="M28 1L36 5L28 9z" fill="currentColor" opacity=".7"/></svg>Conditional and advisory</span>
@@ -212,7 +213,8 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
           <text class="lbl" x="32" y="150">PLAN &amp; BRIEF</text><circle class="dotf" cx="158" cy="146" r="4.5"/>
           <text class="pn" x="32" y="170">Marvin</text>
           <text class="mdl" x="32" y="185">Opus 5.5 · medium</text>
-          <text class="ds" x="32" y="208">Writes the DoD on the</text><text class="ds" x="32" y="222">issue, sizes the task,</text><text class="ds" x="32" y="236">writes the brief.</text>
+          <text class="mdl" x="32" y="197" style="font-size:9px">fable: Fable 5.2</text>
+          <text class="ds" x="32" y="214">Writes the DoD on the</text><text class="ds" x="32" y="228">issue, sizes the task,</text><text class="ds" x="32" y="242">writes the brief.</text>
         </g>
 
         <!-- build -->
@@ -301,7 +303,7 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
 
   <section class="sec" id="ladder">
     <h2>When a build is stuck: the escalation staircase</h2>
-    <p class="sub">Only build work climbs. Marvin reads the failure pattern after each failed round, never a bare count. Effort rises within a tier first, then the task moves to the next tier, and never above the orchestrator's model without asking you.</p>
+    <p class="sub">Only build work climbs. Marvin reads the failure pattern after each failed round, never a bare count. Effort rises within a tier first, then the task moves to the next tier, and never above the heavy tier's model without asking you. The orchestrator runs on that model in the default <code>opus</code> profile; in <code>fable</code> it runs on Fable 5.2, above it, and the max gate offers <code>max</code> only.</p>
     <div class="stair" id="stair"></div>
     <div class="stop"><b>Still stuck on the last rung: stop.</b> The ladder ends, never loops back down. The full attempt history goes on the tracker issue and Marvin brings it to you.</div>
     <div class="signals" id="signals"></div>
@@ -322,10 +324,10 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
 (function () {
   var TIER = { orch: "Orchestrator", heavy: "Heavy worker", small: "Small worker", micro: "Micro", frontier: "Frontier" };
   var P = {
-    "marvin": { t: "orch", m: "Opus 5.5 · medium", f: "CLAUDE.marvin.md",
+    "marvin": { t: "orch", m: "Opus 5.5 · medium (fable profile: Fable 5.2)", f: "CLAUDE.marvin.md",
       does: "Plans, decomposes, briefs, sequences and verifies. Reads to act, never to learn, and never bulk-implements.",
       when: "The main session, from install until it leaves the project. Raises effort to high when a task needs it.",
-      limit: "Its model is the ceiling: no sub-agent runs above it by default." },
+      limit: "No sub-agent runs above its model by default. In the fable profile it runs a tier above the heavy worker." },
     "developer": { t: "heavy", m: "Opus 5.5 · medium", f: "briefing.md",
       does: "Builds one briefed size:m+ task to its DoD. On a decomposed size:m it builds the design-bearing core. Also cross-cutting debugging.",
       when: "The task is size:m or larger and the brief is complete.",
@@ -371,19 +373,19 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
       when: "A developer-small build is stuck, including one that tiered up from micro.",
       limit: "Keeps the task's size label. Never self-escalates." },
     "escalation-high": { t: "heavy", m: "Opus 5.5 · high", f: "escalation-ladder.md",
-      does: "First ceiling-model rung.",
+      does: "First heavy-tier rung: the heavy worker's model at more effort.",
       when: "A stuck small-tier build climbs here. A stuck developer build enters the ladder here.",
       limit: "Receives the brief, the DoD and every prior attempt's findings." },
     "escalation-xhigh": { t: "heavy", m: "Opus 5.5 · xhigh", f: "escalation-ladder.md",
-      does: "Second ceiling-model rung.",
+      does: "Second heavy-tier rung.",
       when: "Round signals say climb at escalation-high.",
       limit: "Never self-escalates." },
     "escalation-max": { t: "heavy", m: "Opus 5.5 · max", f: "escalation-ladder.md",
-      does: "The max-gate rung on the ceiling model.",
+      does: "The max-gate rung on the heavy tier's model.",
       when: "You choose max, give no answer, pick neither option, or the session is unattended. The outcome is recorded.",
       limit: "Last rung. A further climb signal stops the ladder." },
-    "escalation-frontier": { t: "frontier", m: "Fable 5.1 · session effort", f: "escalation-ladder.md",
-      does: "The opt-in frontier rung, one model tier above the ceiling.",
+    "escalation-frontier": { t: "frontier", m: "Fable 5.2 · session effort", f: "escalation-ladder.md",
+      does: "The opt-in frontier rung, one model tier above the heavy worker. Exists in the opus profile only.",
       when: "Only when you explicitly choose the frontier swap for this task at the max gate.",
       limit: "Never reached by default or by silence." }
   };
@@ -432,12 +434,12 @@ svg .failp { fill: none; stroke: var(--fail); stroke-width: 1.6; }
     '<div class="rung h3" data-t="small"><span class="cap">Small-tier rung</span>' + chip("escalation-small-xhigh") +
       '<p>Sonnet at xhigh, the small tier\'s last step.</p><span class="note">Stuck: move to Opus.</span></div>' +
     '<div class="rung h4" data-t="heavy"><span class="cap">Rung 1</span>' + chip("escalation-high") +
-      '<p>First ceiling-model rung. A <b>developer</b> build enters the ladder here.</p><span class="note">Stuck: climb effort.</span></div>' +
+      '<p>First heavy-tier rung. A <b>developer</b> build enters the ladder here.</p><span class="note">Stuck: climb effort.</span></div>' +
     '<div class="rung h5" data-t="heavy"><span class="cap">Rung 2</span>' + chip("escalation-xhigh") +
       '<p>Opus at xhigh, the last rung before the gate.</p><span class="note">Stuck: the max gate.</span></div>' +
     '<div class="rung gate h5"><span class="cap">Max gate: Marvin asks you once</span><div class="opts">' +
       '<div class="opt-card"><span class="rec">Recommended, and the default</span>' + chip("escalation-max") + '<p>Also used when you give no answer, or the session is unattended.</p></div>' +
-      '<div class="opt-card"><span class="cap">Opt-in</span>' + chip("escalation-frontier") + '<p>Only an explicit frontier choice goes here.</p></div>' +
+      '<div class="opt-card"><span class="cap">Opt-in, opus profile only</span>' + chip("escalation-frontier") + '<p>Only an explicit frontier choice goes here. The fable profile has no frontier tier: the gate offers max alone.</p></div>' +
     '</div></div>';
 
   var sig = [
