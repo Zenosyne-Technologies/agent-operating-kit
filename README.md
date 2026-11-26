@@ -42,7 +42,7 @@
 | | |
 |---|---|
 | **An orchestrator with a name** | Marvin: smart, thorough, snappy, questions everything that does not add up. In character for the project's lifetime, with a self-managed memory file that survives context compaction. |
-| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label and the brief's completeness decide which model tier executes it — right down to a micro profile for mechanical work. The orchestrator's model is the ceiling: after each failed round it reads the failure pattern — a converging task stays put, a stuck one climbs effort within its tier, then tiers up toward that model, one churning, bloating or looping gets its approach rethought instead — and only at `max` does the orchestrator ask: `max` effort (recommended) or a swap to the frontier model. |
+| **Size-routed dispatch** | Every task carries a `size:` t-shirt label, and the label and the brief's completeness decide which model tier executes it — right down to a micro profile for mechanical work. The heavy tier's model is the sub-agent ceiling — the orchestrator runs on it in the default `opus` profile, above it in `fable`: after each failed round the orchestrator reads the failure pattern — a converging task stays put, a stuck one climbs effort within its tier, then tiers up toward that ceiling, one churning, bloating or looping gets its approach rethought instead — and only at `max` does it ask: `max` effort (recommended) or, in `opus` only, a swap to the frontier model; in `fable` the question offers `max` alone. |
 | **A DoD-gated lifecycle** | No task enters build without planner-authored, verifiable done-statements on the tracker issue. Fresh validators — never the builder — try to falsify them afterwards, completion first, then security. |
 | **A cascading ruleset** | One always-loaded core — your `CLAUDE.md` plus the kit core it imports — holds only what applies to every turn; per-activity rules live beside it and are *referenced* in briefs, never inlined. Context stays proportional to the task. |
 | **A versioned label registry** | type · area · severity · origin · size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all. |
@@ -146,7 +146,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    O["Orchestrator, the ceiling model at medium effort<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
+    O["Orchestrator at medium effort — the heavy tier's model in opus, above it in fable<br/>plans, decomposes, briefs, verifies — never bulk-implements"] --> R{"Route by the size label"}
     R -->|xs| MI["Micro tier<br/>fully-specified builds and corrections,<br/>mechanical zero-discretion tasks"]
     R -->|s| SM["Small worker<br/>judgement work: QA sweeps, docs,<br/>under-specified size-s and peripheral pieces, the brief falsifier"]
     R -->|m / l / xl| HV["Heavy worker<br/>design-bearing builds, planning research, the validators"]
@@ -154,20 +154,20 @@ flowchart TD
     SM --> X
     HV --> X
     X -->|converging| SR["Stay at the current tier<br/>up to four rounds a rung"]
-    X -->|stuck, build work| EH["Escalation climb<br/>micro to small tier-up, small xhigh rung,<br/>then orchestrator's model at high, then xhigh"]
+    X -->|stuck, build work| EH["Escalation climb<br/>micro to small tier-up, small xhigh rung,<br/>then the heavy tier's model at high, then xhigh"]
     X -->|whack-a-mole, bloat or loop| RT["Rethink<br/>a fresh researcher proposes a different approach;<br/>descope only on the user's yes"]
     X -->|cost blowout| PA["Pause and ask the user"]
     X -->|research, docs or validation fails twice| OL["Off the ladder<br/>orchestrator takes it inline, or the user — validators always go to the user"]
     X -->|passed| DN["Task complete"]
-    EH --> MG{"Max gate: ask the user<br/>max effort (recommended) or frontier?"}
-    MG -->|max, no answer, or unattended — recorded| EM["Orchestrator's model at max effort"]
-    MG -->|frontier, explicitly chosen| EF["Frontier tier, this task only"]
+    EH --> MG{"Max gate: ask the user<br/>max effort (recommended), or frontier in opus only;<br/>in fable the question offers max alone"}
+    MG -->|max, no answer, or unattended — recorded| EM["Heavy tier's model at max effort"]
+    MG -->|frontier, explicitly chosen — opus profile only| EF["Frontier tier, this task only"]
     EF --> ST["Still failing: stop and escalate to the user"]
     EM --> ST
     DN --> MS["Milestone close<br/>orchestrator validates with small-worker sub-agents"]
 ```
 
-**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, each a small-tier survey (`marvin:developer-small`) followed by heavy-worker synthesis (`marvin:researcher`), while `size:m` and below get only an ad hoc survey when the orchestrator asks — findings land as issue comments, docs, or (survey-only) the run report, and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A `size:s` build, a peripheral piece or a correction whose brief the orchestrator fully specified goes to the micro tier's developer (`marvin:developer-micro`); work that needs judgement stays on the small tier (`briefing.md`, `escalation.md`). After every failed round of a build task the orchestrator reads its failure pattern from the validators' tagged findings and a per-task ledger: a stuck task climbs effort within its tier, then tiers up toward the orchestrator's model — never above it by default. The frontier tier is opt-in, offered to the user at the `max` gate as the costlier alternative to the recommended `max` effort. Churn, bloat or a loop sends a task to a read-only rethink that changes the approach instead (`escalation.md`, `escalation-ladder.md`). De-escalate again as soon as work turns mechanical.
+**Tier dispatch.** The orchestrator keeps architecture, security-critical design, irreversible operations, brief authoring and sign-off inline, and routes everything else by size. It never bulk-reads or does bookkeeping itself: a reader sub-agent returns the excerpt it needs, and every tracker call and mechanical release step goes to the micro tier, so multi-KB tracker payloads never land in the orchestrator's context. Sizing also gates research: a `size:xl` or `size:l` plan gets adversarial plan-validation plus solution research, each a small-tier survey (`marvin:developer-small`) followed by heavy-worker synthesis (`marvin:researcher`), while `size:m` and below get only an ad hoc survey when the orchestrator asks — findings land as issue comments, docs, or (survey-only) the run report, and get folded into the plan before a line is built. A `size:m` is split into a design-bearing core on the heavy worker plus peripheral pieces (tests from a spec, docs, wiring, fixtures, index rows) on the small and micro tiers, validated together as one unit; before any `size:m`+ build a small-tier brief falsifier lists undefined terms, unhandled cases and contradictions, and the orchestrator resolves each before dispatch. A `size:s` build, a peripheral piece or a correction whose brief the orchestrator fully specified goes to the micro tier's developer (`marvin:developer-micro`); work that needs judgement stays on the small tier (`briefing.md`, `escalation.md`). After every failed round of a build task the orchestrator reads its failure pattern from the validators' tagged findings and a per-task ledger: a stuck task climbs effort within its tier, then tiers up toward the heavy tier's model — the sub-agent ceiling, never exceeded by default; the orchestrator runs on that model in the `opus` profile and above it in `fable`. In `opus` the frontier tier is opt-in, offered to the user at the `max` gate as the costlier alternative to the recommended `max` effort; `fable` has no frontier tier, so the gate asks for `max` alone. Churn, bloat or a loop sends a task to a read-only rethink that changes the approach instead (`escalation.md`, `escalation-ladder.md`). De-escalate again as soon as work turns mechanical.
 
 ```mermaid
 flowchart LR
@@ -384,7 +384,7 @@ templates/
     document-standard.md           document header keys, index-row format, and the .docs/ crawl protocol
     git-strategy.md                the single source of truth for git — gitflow branches, tagging authority, semver, the release cut
     escalation.md                  round signals — converging, stuck, whack-a-mole, bloat, loop, cost blowout — their precedence, the round cap, and the Rethink step
-    escalation-ladder.md           the escalation climb — micro → small tier-up, the small tier's xhigh rung, then high → xhigh on the orchestrator's model → the ask-at-max gate (max recommended, frontier opt-in) → stop at the user
+    escalation-ladder.md           the escalation climb — micro → small tier-up, the small tier's xhigh rung, then high → xhigh on the heavy tier's model → the ask-at-max gate (max recommended, frontier opt-in in the `opus` profile, `max` only in `fable`) → stop at the user
     model-profile.md               the version's two model profiles (`opus` default, `fable`) — tier → concrete model → context window → default effort each — the profile-dependent Phrases, shared model-specific rules, per-profile validated-set statement
     model-profile-codex.md         the Codex lanes' profile — tier → Codex model → default effort per lane, the Astra and effort-ceiling rules, validated-set statement (read by marvin-codex.sh)
     session-budget.md              how long a session runs — the 400k / 700k budgets, the 70 / 80 / 90 % context ladder, the stop-and-compact nudge, the handoff

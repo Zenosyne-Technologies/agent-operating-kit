@@ -10,7 +10,7 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MODEL_PROFILE MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
+KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL FRONTIER_SWAP_OPTION GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MODEL_PROFILE MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION ORCHESTRATOR_MODEL OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
@@ -157,11 +157,12 @@ fi
 # tiers and cites the profile. Whole-word, case-insensitive, so words that merely contain a name
 # (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it. The Codex
 # names count too: astra|luna as whole words, and gpt-<digit> anywhere. The skill `/marvin:codex-astra`
-# and the flag `--astra` are not model names — those two literal tokens are stripped before matching.
+# and the flag `--astra` are not model names — those two literal tokens are stripped before matching, as are
+# the backticked profile values `opus` and `fable` (the `model_profile` setting's values, not models).
 MP=templates/marvin/agents/model-profile.md
 MPC=templates/marvin/agents/model-profile-codex.md
 [ -d templates ] || fail model-names "templates/ missing"
-mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" -v mpc="$MPC" '$1 != mp && $1 != mpc' | sed 's/codex-astra//g; s/--astra//g')
+mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" -v mpc="$MPC" '$1 != mp && $1 != mpc' | sed 's/codex-astra//g; s/--astra//g; s/`opus`//g; s/`fable`//g')
 mn=$( { printf '%s\n' "$mncand" | grep -iwE 'opus|sonnet|haiku|fable|astra|luna'; printf '%s\n' "$mncand" | grep -iE 'gpt-[0-9]'; } | sort -u )
 if [ -z "$mn" ]; then
   pass model-names
@@ -181,7 +182,7 @@ if [ ! -f "$KC" ] || [ ! -f "$ST" ]; then
   ks=" missing $KC or $ST"
 else
   for p in $(grep -oE '\{\{[A-Z_0-9]+' "$KC" | sed 's/{{//' | sort -u); do
-    case " ESCALATION_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL DOCS_ISSUE_LOG_PATH " in
+    case " ESCALATION_MODEL ORCHESTRATOR_MODEL WORKER_MODEL MICRO_MODEL FRONTIER_MODEL FRONTIER_SWAP_OPTION DOCS_ISSUE_LOG_PATH " in
       *" $p "*) ;; *) ks="$ks (a) $KC: placeholder {{$p}} is not 4b-renderable;";; esac
   done
   nested=$(awk '/^[ ]{0,3}(```|~~~)/ { f = !f; next } !f { gsub(/`[^`]*`/, ""); if ($0 ~ /(^|[[:space:]])@[^[:space:]]/) print FNR }' "$KC")
