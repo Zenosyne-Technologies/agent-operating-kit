@@ -929,10 +929,10 @@ def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str]]:
     p = root / "templates" / "marvin" / "PROJECT-INFO.md"
     lines = _read_text(p).split("\n")
     if not lines or lines[0].rstrip() != "---":
-        raise BuildError("templates/marvin/PROJECT-INFO.md: no YAML frontmatter")
+        raise BuildError("templates/marvin/PROJECT-INFO.md: no YAML frontmatter")  # GUARD:pi-frontmatter-missing
     end = next((i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), None)
     if end is None:
-        raise BuildError("templates/marvin/PROJECT-INFO.md: unterminated YAML frontmatter")
+        raise BuildError("templates/marvin/PROJECT-INFO.md: unterminated YAML frontmatter")  # GUARD:pi-frontmatter-unterminated
     keys: list[tuple[str, str, bool]] = []
     for ln in lines[1:end]:
         m = _PI_KEY.match(ln)
@@ -944,14 +944,14 @@ def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str]]:
 def _install_lines(root: Path) -> dict[str, str]:
     p = root / "site" / "settings-install.md"
     if not p.is_file():
-        raise BuildError("site/settings-install.md: missing (one `- `key`: description` line per install-time key)")
+        raise BuildError("site/settings-install.md: missing (one `- `key`: description` line per install-time key)")  # GUARD:install-file-missing
     out: dict[str, str] = {}
     for no, ln in enumerate(_read_text(p).split("\n"), 1):
         if not ln.strip():
             continue
         m = _INSTALL_LINE.match(ln)
         if not m:
-            raise BuildError(f"site/settings-install.md:{no}: expected `- `key`: description`")
+            raise BuildError(f"site/settings-install.md:{no}: expected `- `key`: description`")  # GUARD:install-line-shape
         if m.group(1) in out:
             raise BuildError(f"site/settings-install.md:{no}: `{m.group(1)}` is described twice")  # GUARD:settings-install-dup
         out[m.group(1)] = m.group(2)
@@ -1077,7 +1077,7 @@ def _tables(text: str, src: str) -> list[tuple[str, list[dict[str, str]]]]:
             while i < len(lines) and lines[i].startswith("|"):
                 cs = _cells(lines[i])
                 if len(cs) != len(cols):
-                    raise BuildError(f"{src}:{i + 1}: table row has {len(cs)} cells, header has {len(cols)}")
+                    raise BuildError(f"{src}:{i + 1}: table row has {len(cs)} cells, header has {len(cols)}")  # GUARD:table-row-width
                 rows.append(dict(zip(cols, cs)))
                 i += 1
             out.append((head, rows))

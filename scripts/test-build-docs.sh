@@ -804,6 +804,33 @@ fx_settings_install_missing && ok "a placeholder key with no install line exits 
 fx_settings_install_extra && ok "an install line with no key exits 2 naming it" || bad "fx_settings_install_extra"
 fx_settings_install_dup && ok "a key described twice exits 2" || bad "fx_settings_install_dup"
 
+fx_pi_frontmatter_missing() {
+  local d="$WORK/fx-pm"; mkgen "$d"; sed -i.bak '1d' "$d/templates/marvin/PROJECT-INFO.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'no YAML frontmatter'
+}
+fx_pi_frontmatter_unterminated() {
+  local d="$WORK/fx-pu"; mkgen "$d"; printf -- '---\nproject: x\n' > "$d/templates/marvin/PROJECT-INFO.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'unterminated'
+}
+fx_install_file_missing() {
+  local d="$WORK/fx-im"; mkgen "$d"; rm "$d/site/settings-install.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'settings-install.md: missing'
+}
+fx_install_line_shape() {
+  local d="$WORK/fx-il"; mkgen "$d"; printf 'not a bullet line\n' >> "$d/site/settings-install.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'expected'
+}
+fx_table_row_width() {
+  local d="$WORK/fx-tw"; mkgen "$d"; sed -i.bak 's/^| micro | Mod Four | 1M | `low` | `D` | none |/| micro | Mod Four | 1M | `low` | `D` | none | extra |/' "$d/templates/marvin/agents/model-profile.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'table row has'
+}
+hd "settings and profile parsers: structural errors"
+fx_pi_frontmatter_missing && ok "PROJECT-INFO without frontmatter exits 2" || bad "fx_pi_frontmatter_missing"
+fx_pi_frontmatter_unterminated && ok "unterminated PROJECT-INFO frontmatter exits 2" || bad "fx_pi_frontmatter_unterminated"
+fx_install_file_missing && ok "a missing settings-install.md exits 2" || bad "fx_install_file_missing"
+fx_install_line_shape && ok "a malformed install line exits 2" || bad "fx_install_line_shape"
+fx_table_row_width && ok "a profile table row with the wrong cell count exits 2" || bad "fx_table_row_width"
+
 hd "skills: list"
 OUT=$(gpage "$G" skills.html)
 has '<code>/marvin:alpha</code>'; has '<code>&lt;x|y&gt; [--z]</code>'; has '<code>/marvin:beta</code>'; has 'A command.'
@@ -978,6 +1005,11 @@ MUTATIONS=(
   "persona-tier:fx_persona_tier"
   "persona-alias:fx_persona_alias"
   "marker-unknown:fx_marker_unknown"
+  "pi-frontmatter-missing:fx_pi_frontmatter_missing"
+  "pi-frontmatter-unterminated:fx_pi_frontmatter_unterminated"
+  "install-file-missing:fx_install_file_missing"
+  "install-line-shape:fx_install_line_shape"
+  "table-row-width:fx_table_row_width"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"
