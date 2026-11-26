@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Reference - Marvin</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="index.html">Home</a><a href="settings.html">Settings</a><a href="skills.html">Skills &amp; commands</a><a href="reference.html" aria-current="page">Reference</a><a href="releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+
+<main id="main">
+<h1>Reference</h1>
+<p>Every guide in the rules cascade that install copies to <code>.marvin/agents/</code>: its title, what it covers, and a link to the file. The cascade lists the guides in the order the kit core points an agent at them.</p>
+<h2 id="group-cascade">Rules cascade</h2>
+<h3 id="validation-agent">Validation agent personas</h3>
+<p>The completion and security validator personas, what each falsifies, and the evidence each must produce.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/validation-agent.md"><code>validation-agent.md</code></a></p>
+<h3 id="visual-validation">Visual validation agent</h3>
+<p>The visual/design validator persona — how it gets surfaces, captures screenshots, applies the generic design checklist, degrades when no UI is runnable, and reports.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/visual-validation.md"><code>visual-validation.md</code></a></p>
+<h3 id="guardrails">Agent guardrails</h3>
+<p>The DO NOT framework binding every agent — four dispositions, the sub-agent→orchestrator→user escalation chain, a generic baseline table, and per-persona additions. Single owner; a prohibition owned elsewhere is cited, never restated.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/guardrails.md"><code>guardrails.md</code></a></p>
+<h3 id="security">Security discipline</h3>
+<p>The security surfaces every task is checked against, plus secrets handling and dependency vetting rules.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/security.md"><code>security.md</code></a></p>
+<h3 id="git-strategy">Git strategy</h3>
+<p>The single source of truth for git — the gitflow branch model, who may tag, how a tag carries its release note, how semver classifies a change, and the ordered release cut.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/git-strategy.md"><code>git-strategy.md</code></a></p>
+<h3 id="session-budget">Session budget</h3>
+<p>How long an orchestrator session runs — the absolute context budgets, the 70 / 80 / 90 % context ladder, keeping the work rate stoppable, the stop-and-compact nudge, and what a handoff carries.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/session-budget.md"><code>session-budget.md</code></a></p>
+<h3 id="briefing">Agent brief discipline</h3>
+<p>What every sub-agent brief must contain, in order, and why a mid-run policy change is refused rather than obeyed.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/briefing.md"><code>briefing.md</code></a></p>
+<h3 id="escalation">Escalation signals and Rethink</h3>
+<p>What happens after a build task's failed round — the orchestrator reads the failure PATTERN (converging, stuck, whack-a-mole, bloat, loop, cost blowout) and stays, climbs one step (a tier-up or an effort rung), RETHINKs the approach, or pauses to ask the user.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/escalation.md"><code>escalation.md</code></a></p>
+<h3 id="codex">Codex handover</h3>
+<p>When and how work goes to OpenAI's Codex — the handover consent switch, the dispatch brief, validation strategies and lanes, the four-eye verdict merge, the auto-debug tollgates, architect-invoked Codex builds and their ladder, and the forwarder's verdicts with the fallback when Codex is unavailable.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex.md"><code>codex.md</code></a></p>
+<h3 id="ponytail">Micro-task profile</h3>
+<p>What a zero-discretion size:xs micro-task looks like, and how to brief one so it needs no clarification.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/ponytail.md"><code>ponytail.md</code></a></p>
+<h3 id="model-profile">Model profile</h3>
+<p>The one owner of this kit version's two model profiles (<code>opus</code> default, <code>fable</code>) — tier to concrete model to default effort — their profile-dependent phrases, the model-specific rules, and the per-profile validated-set statement.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/model-profile.md"><code>model-profile.md</code></a></p>
+<h3 id="escalation-ladder">Escalation ladder</h3>
+<p>The climb a Stuck build task takes — a tier-up from the micro tier, the small tier's xhigh rung, then effort on the heavy tier's model (high → xhigh → the ask-at-max gate, max recommended, frontier opt-in where the profile has one) → stop at the user — plus its entry rule, the escalation brief and de-escalation.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/escalation-ladder.md"><code>escalation-ladder.md</code></a></p>
+<h3 id="ticket-filing">Ticket filing rules</h3>
+<p>How agents create and edit tracker issues, and where the in-tracker intake guide takes over.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/ticket-filing.md"><code>ticket-filing.md</code></a></p>
+<h3 id="documentation-agent">Documentation agent scope</h3>
+<p>What a documentation agent covers once a tracker task has passed both validators, and the order it covers it in.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/documentation-agent.md"><code>documentation-agent.md</code></a></p>
+<h3 id="planning-research">Planning research</h3>
+<p>The size-gated planning passes — size:m build decomposition, the size:m+ brief falsifier, size:l/xl plan-validation and solution research — who runs each and where findings land.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/planning-research.md"><code>planning-research.md</code></a></p>
+<h3 id="handbooks">Handbook system</h3>
+<p>The three-audience handbook wikis — layout, page format, audience voice, and the discovery pass that is mandatory before writing.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/handbooks.md"><code>handbooks.md</code></a></p>
+<h3 id="document-standard">Document standard</h3>
+<p>The YAML header, the index-row format, and the crawl protocol every project document follows — so an agent finds the one document it needs without reading twenty.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/document-standard.md"><code>document-standard.md</code></a></p>
+<h3 id="information-guide">Information system guide</h3>
+<p>How the project's dynamic rule system works — what earns a file under .docs/information/, how files are tagged and indexed, who must read them, and the orchestrator's duty to name them in briefs.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/information-guide.md"><code>information-guide.md</code></a></p>
+<h3 id="information-severity">Information severity</h3>
+<p>The four severity levels an information file can carry, the reading obligation each one imposes, and how that obligation combines with relevance.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/information-severity.md"><code>information-severity.md</code></a></p>
+<h3 id="label-syntax">Label syntax registry</h3>
+<p>The versioned single source of truth for tracker labels — dimensions, allowed values, the sizing rubric, and the backfill-on-touch rule.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/label-syntax.md"><code>label-syntax.md</code></a></p>
+<h3 id="fleet">Fleet mode — master</h3>
+<p>The fleet master ("Deep Thought") — its limits, the program plan and decision log, leases, starting and locking a child, doorbells and the board, the receiving half of every routed child event, epic merges, successors, its own lifetime, and the manual fallback.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/fleet.md"><code>fleet.md</code></a></p>
+<h3 id="fleet-child">Fleet mode — child</h3>
+<p>A fleet child — one epic's orchestrator under the fleet master: what differs from a solo session, the doorbell line, the sending half of every routed event, open questions, verifying a relayed decision, shared files, the budget rule and the epic merge gate.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/fleet-child.md"><code>fleet-child.md</code></a></p>
+<h3 id="worktrees">Agent worktrees and push cadence</h3>
+<p>Where agent worktrees live, how often done work is pushed and merged, when finished worktrees are swept and by what, and the handover line that says one is safe to delete.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/worktrees.md"><code>worktrees.md</code></a></p>
+<h3 id="session-recovery">Session recovery</h3>
+<p>What the orchestrator does when its session's worktree vanished mid-task — recreate it from its branch, re-check the branch, confirm the run state in the project, never mark the worktree, report the loss.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/session-recovery.md"><code>session-recovery.md</code></a></p>
+<h3 id="tidying">Host tidying — Docker resources and throwaway databases</h3>
+<p>The four Docker labels every agent-created resource carries, naming, throwaway vs keep, who removes what and when, the backstop sweep, the handoff listing, and binary logging off for throwaway databases.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/tidying.md"><code>tidying.md</code></a></p>
+<h3 id="reporting">Reporting definitions</h3>
+<p>Collect once, render many — the statistics snapshot contract and the digest, close-out and stakeholder renders built from it.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/reporting.md"><code>reporting.md</code></a></p>
+<h3 id="token-economics">Token economics contract</h3>
+<p>The telemetry contract — cost queries, the pricing rule, the per-issue context sidecar, and how reporting degrades without telemetry.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/token-economics.md"><code>token-economics.md</code></a></p>
+<h3 id="user-updates">User updates</h3>
+<p>The concrete formats the orchestrator uses when talking to the user — a fixed emoji legend, the shipped table, the issue callout with its five ordered points, the Next / Open questions tail, and when a plain line beats a table.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/user-updates.md"><code>user-updates.md</code></a></p>
+<h2 id="group-other">Other guides</h2>
+<h3 id="model-profile-codex">Codex model profile</h3>
+<p>The Codex lanes' tier to concrete model to default effort table, its Astra and effort-ceiling rules, and the validated-set statement — read by scripts/marvin-codex.sh.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/model-profile-codex.md"><code>model-profile-codex.md</code></a></p>
+<h2 id="group-codex-lanes">Codex lanes</h2>
+<h3 id="codex-build">Codex lane brief — build</h3>
+<p>The Codex prompt for the build lane — implement one briefed task to its DoD by editing files in the working directory only, run the named checks the sandbox allows, never commit, and return the changed files and notes, never a verdict.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/build.md"><code>codex/build.md</code></a></p>
+<h3 id="codex-design">Codex lane brief — design</h3>
+<p>The Codex prompt for the design lane — a fresh, read-only, advisory visual review of a UI task's surfaces from captured screenshots against the generic design checklist, returning the review schema plus DoD-item, round-tag and anchor fields.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/design.md"><code>codex/design.md</code></a></p>
+<h3 id="codex-diagnose">Codex lane brief — diagnose</h3>
+<p>The Codex prompt for the diagnose lane — a read-only root-cause pass over a stalled build task's history that returns ranked hypotheses and a suggested approach as advice for the next brief, never a verdict.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/diagnose.md"><code>codex/diagnose.md</code></a></p>
+<h3 id="codex-plan">Codex lane brief — plan</h3>
+<p>The Codex prompt for the plan lane — the read-only brief falsifier (blocking undefined, unhandled and contradiction gaps) and the size l/xl synthesis stage over a survey's facts, returning the review schema plus gap, verdict and memo fields.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/plan.md"><code>codex/plan.md</code></a></p>
+<h3 id="codex-review">Codex lane brief — review</h3>
+<p>The Codex prompt for the review lane — a fresh, read-only completion reviewer that falsifies a done task against its DoD and returns the review schema plus DoD-item, round-tag and anchor fields.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/review.md"><code>codex/review.md</code></a></p>
+<h3 id="codex-security">Codex lane brief — security</h3>
+<p>The Codex prompt for the security lane — a fresh, read-only application-security review of a completed task's change surface, never softened, returning the review schema plus DoD-item, round-tag and anchor fields.</p>
+<p class="ref-meta"><a href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/codex/security.md"><code>codex/security.md</code></a></p>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

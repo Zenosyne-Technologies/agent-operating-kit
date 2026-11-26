@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Skills &amp; commands - Marvin</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="index.html">Home</a><a href="settings.html">Settings</a><a href="skills.html" aria-current="page">Skills &amp; commands</a><a href="reference.html">Reference</a><a href="releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+
+<main id="main">
+<h1>Skills &amp; commands</h1>
+<p>Everything the Marvin plugin adds to Claude Code. Type the command, with its arguments where it takes any.</p>
+<table>
+<thead><tr><th>Command</th><th>Arguments</th><th>Description</th></tr></thead>
+<tbody>
+<tr id="clean-worktrees"><td><code>/marvin:clean-worktrees</code></td><td><code>[--check] [--mark &lt;path&gt;]</code></td><td>Remove finished agent worktrees under .claude/worktrees/ — only those Marvin created and marked, not locked, not in use, idle for 15 minutes, clean, and merged into another branch (any other worktree is left to the app) — plus their local branches when origin has a copy — and the throwaway Docker resources (containers, networks, volumes, images) finished agent worktrees left behind. Use right after merging and pushing a sub-agent's branch, or when the user asks to clean up worktrees. Pass --check to only report; pass --mark &lt;path&gt; to mark a worktree as Marvin's (no sweep runs).</td></tr>
+<tr id="codex"><td><code>/marvin:codex</code></td><td><code>&lt;plan|review|security|design|diagnose|build&gt; [issue|--base &lt;ref&gt;]</code></td><td>Run one OpenAI Codex lane on demand — plan, review, security, design, diagnose or build — for a tracker issue or a diff against a base ref, through the marvin:codex forwarder; build runs the Codex build ladder with Claude validators. Use when the user asks for a Codex (second-vendor) review, plan check, security pass, design critique or diagnosis, or for Codex to build an issue.</td></tr>
+<tr id="codex-astra"><td><code>/marvin:codex-astra</code></td><td><code>&lt;plan|review|security|design|diagnose|build&gt; [issue|--base &lt;ref&gt;] [--effort &lt;none|minimal|low|medium|high|xhigh&gt;]</code></td><td>Run one Codex lane on the frontier Codex tier (Astra) — the same lanes and targets as /marvin:codex, with an optional effort up to xhigh. The ONLY path that reaches the frontier tier; nothing routes to it automatically. Use when the user explicitly asks for Astra or the frontier Codex model, or picks it at the Codex build ladder's user gate.</td></tr>
+<tr id="codex-setup"><td><code>/marvin:codex-setup</code></td><td></td><td>Check whether OpenAI's Codex is usable from this project and, if not, walk the setup runbook one confirmed step at a time — the Codex Claude Code plugin, the Codex CLI, and the login the user runs themselves. Use when the user asks to set up, connect or fix Codex, or when a Codex lane reported unavailable.</td></tr>
+<tr id="fleet"><td><code>/marvin:fleet</code></td><td><code>[milestone | stop]</code></td><td>Turn this session into the fleet master ("Deep Thought") for fleet mode — parallel epics, one child orchestrator per epic — by drafting the milestone's program plan with area leases, getting the architect's approval, committing it on develop, then creating, locking and marking each epic's worktree and starting its child session (or printing resume prompts on hosts without child sessions). <code>stop</code> ends a fleet at its edge. Use when the user asks for fleet mode, to run parallel epics, or for a master orchestrator over a milestone's epics.</td></tr>
+<tr id="info"><td><code>/marvin:info</code></td><td></td><td>Show Marvin (the Agentic Operating System) version and this project's install state and active settings</td></tr>
+<tr id="install-agent-os"><td><code>/marvin:install-agent-os</code></td><td></td><td>Install Marvin — The Agentic Operating System (orchestrator persona + sub-agent methodology) into the current project — writes the kit-owned core rules to .marvin/CLAUDE.marvin.md and imports them from a consumer-owned CLAUDE.md, the .marvin/agents/ cascade, attribution settings, and creates the intake structure in the PM tool the user selects (Linear, Jira, GitHub Issues, or a self-contained Local file tracker). Use when the user asks to install/bootstrap the agent operating kit, agent operating model, or orchestration methodology into a repo.</td></tr>
+<tr id="plan-docs"><td><code>/marvin:plan-docs</code></td><td></td><td>Plan and backfill missing product documentation — the orchestrator surveys the codebase and handbooks for gaps, collects the must-mention details and statements, creates a documentation epic with per-unit tasks in the PM tool, and hands its findings to documentation agents through the issues. Use when the user asks to plan, backfill, or bootstrap the documentation/handbooks, or when handbooks are missing for existing functionality.</td></tr>
+<tr id="play"><td><code>/marvin:play</code></td><td><code>[research-solo|research-deep|quick-fix|taskforce|bug-hunt|visual-sweep]</code></td><td>Run a bounded Marvin play scenario — research, fixes, taskforce, or bug-hunt</td></tr>
+<tr id="project-info"><td><code>/marvin:project-info</code></td><td></td><td>Create the project's .marvin/PROJECT-INFO.md meta page from the kit template, or — if it already exists (including at its pre-v0.21.0 .docs/ location) — validate it against the repo's actual facts and auto-fix discrepancies via a sub-agent, never recreating the file. Use when the user asks to create, generate, check, validate, or fix the project info page / project information overview.</td></tr>
+<tr id="report"><td><code>/marvin:report</code></td><td></td><td>Produce a project report from tracker statistics — architect digest (default), milestone close-out, or stakeholder page. Fills and dispatches the project's installed stats-collection-brief, then the requested render per .marvin/agents/reporting.md. Use when the user asks for a report, digest, project stats, milestone close-out, or stakeholder update.</td></tr>
+<tr id="stress-test"><td><code>/marvin:stress-test</code></td><td></td><td>Plan, develop, and execute a comprehensive stress/performance test for the project — scale dimensions, beyond-comfort multipliers, and the extreme/edge cases that only appear past demo scale. Use when the user asks for stress testing, performance testing, load testing, or to verify the project holds up at scale.</td></tr>
+<tr id="upgrade-agent-os"><td><code>/marvin:upgrade-agent-os</code></td><td></td><td>Upgrade an existing Marvin (Agent Operating Kit) install in the current project to the plugin's current version — migrates files (docs/ → .docs/ → .marvin/, new cascade docs), refreshes the kit-owned guides in .marvin/agents/ from the current templates (backing up what it replaces), refreshes the kit core .marvin/CLAUDE.marvin.md (after a one-time, confirmed split of the kit's rules out of CLAUDE.md), re-syncs tracker labels via the idempotent intake brief, offers gated relabel sweeps for label supersessions, and restamps versions in PROJECT-INFO frontmatter. Use when the user asks to upgrade/update/migrate the agent operating kit in a repo.</td></tr>
+<tr id="validate-kit"><td><code>/marvin:validate-kit</code></td><td></td><td>Run the kit's full pre-release validation — the static check script plus the five agentic scratch-repo scenarios (fresh install, legacy upgrade, current-layout upgrade, no-op re-run, symlink refusal + crawl closure). Use before releasing a new kit version, or when the user asks to validate/test the kit or check the release gate.</td></tr>
+<tr id="whats-new"><td><code>/marvin:whats-new</code></td><td><code>[from] [to]</code></td><td>Explain what changed in Marvin between this project's installed version and the plugin's version (or any two versions) — aggregates the per-release briefs in the plugin's CHANGELOG by category, Action needed first. Use when the user asks what's new, what changed, what an update brings, or what they must do after upgrading Marvin.</td></tr>
+</tbody>
+</table>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

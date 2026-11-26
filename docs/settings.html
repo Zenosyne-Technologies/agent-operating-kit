@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Settings - Marvin</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="index.html">Home</a><a href="settings.html" aria-current="page">Settings</a><a href="skills.html">Skills &amp; commands</a><a href="reference.html">Reference</a><a href="releases/index.html">Releases</a></nav>
+</header>
+<div class="layout">
+
+<main id="main">
+<h1>Settings</h1>
+<p>Marvin is configured in the frontmatter of <code>.marvin/PROJECT-INFO.md</code>. Install writes the file; every key below is one line in it. A key marked optional ships commented out; remove the <code>#</code> to use it.</p>
+<h2 id="behaviour">Behaviour</h2>
+<p>Switches that change how Marvin works. Each has a default; change it by editing the value.</p>
+<table class="settings-table">
+<thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr id="update_gate"><td><code>update_gate</code></td><td><code>advise</code></td><td><code>update_gate</code> sets the user-update format check (<code>advise</code> | <code>block</code> | <code>off</code>, <a href="reference.html#user-updates"><code>.marvin/agents/user-updates.md</code></a> <em>Enforcement</em>)</td></tr>
+<tr id="ticket_lint"><td><code>ticket_lint</code></td><td><code>block</code></td><td><code>ticket_lint</code> sets the tracker-write label check (<code>block</code> | <code>advise</code> | <code>off</code>; absent or empty = <code>advise</code>; an unknown value = <code>block</code>) — <a href="reference.html#ticket-filing"><code>.marvin/agents/ticket-filing.md</code></a></td></tr>
+<tr id="worktree_sweep"><td><code>worktree_sweep</code></td><td><code>on</code></td><td><code>worktree_sweep</code> sets the automatic worktree sweep (<code>on</code> | <code>check</code> | <code>off</code>; absent or invalid = <code>check</code>, which reports what it would remove and removes nothing) — <a href="reference.html#worktrees"><code>.marvin/agents/worktrees.md</code></a></td></tr>
+<tr id="docker_lint"><td><code>docker_lint</code></td><td><code>advise</code></td><td><code>docker_lint</code> sets the Docker-label check (<code>advise</code> | <code>off</code>; absent or invalid = <code>advise</code>; <code>off</code> silences it) — <a href="reference.html#tidying"><code>.marvin/agents/tidying.md</code></a></td></tr>
+<tr id="codex_handover"><td><code>codex_handover</code></td><td><code>off</code></td><td><code>codex_handover</code> (<code>off</code> | <code>ask</code> | <code>auto</code>), <code>validation_strategy</code> (<code>claude</code> | <code>codex</code> | <code>four-eye</code> | <code>claude+lanes</code>), <code>codex_lanes</code> (any of <code>plan</code>, <code>review</code>, <code>security</code>, <code>design</code>) and <code>codex_evidence</code> (<code>claude</code> | <code>codex</code>) set the Codex handover — <a href="reference.html#codex"><code>.marvin/agents/codex.md</code></a></td></tr>
+<tr id="validation_strategy"><td><code>validation_strategy</code></td><td><code>claude</code></td><td><code>codex_handover</code> (<code>off</code> | <code>ask</code> | <code>auto</code>), <code>validation_strategy</code> (<code>claude</code> | <code>codex</code> | <code>four-eye</code> | <code>claude+lanes</code>), <code>codex_lanes</code> (any of <code>plan</code>, <code>review</code>, <code>security</code>, <code>design</code>) and <code>codex_evidence</code> (<code>claude</code> | <code>codex</code>) set the Codex handover — <a href="reference.html#codex"><code>.marvin/agents/codex.md</code></a></td></tr>
+<tr id="codex_lanes"><td><code>codex_lanes</code></td><td><code>[]</code></td><td><code>codex_handover</code> (<code>off</code> | <code>ask</code> | <code>auto</code>), <code>validation_strategy</code> (<code>claude</code> | <code>codex</code> | <code>four-eye</code> | <code>claude+lanes</code>), <code>codex_lanes</code> (any of <code>plan</code>, <code>review</code>, <code>security</code>, <code>design</code>) and <code>codex_evidence</code> (<code>claude</code> | <code>codex</code>) set the Codex handover — <a href="reference.html#codex"><code>.marvin/agents/codex.md</code></a></td></tr>
+<tr id="codex_evidence"><td><code>codex_evidence</code></td><td><code>claude</code></td><td><code>codex_handover</code> (<code>off</code> | <code>ask</code> | <code>auto</code>), <code>validation_strategy</code> (<code>claude</code> | <code>codex</code> | <code>four-eye</code> | <code>claude+lanes</code>), <code>codex_lanes</code> (any of <code>plan</code>, <code>review</code>, <code>security</code>, <code>design</code>) and <code>codex_evidence</code> (<code>claude</code> | <code>codex</code>) set the Codex handover — <a href="reference.html#codex"><code>.marvin/agents/codex.md</code></a></td></tr>
+<tr id="context_window_ktokens"><td><code>context_window_ktokens</code> <span class="badge badge--optional">optional</span></td><td><code>1000</code></td><td><code>context_window_ktokens</code>, <code>session_soft_ktokens</code> and <code>session_hard_ktokens</code> are optional overrides for <a href="reference.html#session-budget"><code>.marvin/agents/session-budget.md</code></a></td></tr>
+<tr id="fleet_max_children"><td><code>fleet_max_children</code> <span class="badge badge--optional">optional</span></td><td><code>3</code></td><td><code>fleet_max_children</code> (1–9), <code>fleet_max_compactions</code> (0–9) and <code>fleet_restart_max_pct</code> (1–99) are optional overrides for <a href="reference.html#fleet"><code>.marvin/agents/fleet.md</code></a> / <a href="reference.html#fleet-child"><code>fleet-child.md</code></a></td></tr>
+<tr id="fleet_max_compactions"><td><code>fleet_max_compactions</code> <span class="badge badge--optional">optional</span></td><td><code>3</code></td><td><code>fleet_max_children</code> (1–9), <code>fleet_max_compactions</code> (0–9) and <code>fleet_restart_max_pct</code> (1–99) are optional overrides for <a href="reference.html#fleet"><code>.marvin/agents/fleet.md</code></a> / <a href="reference.html#fleet-child"><code>fleet-child.md</code></a></td></tr>
+<tr id="fleet_restart_max_pct"><td><code>fleet_restart_max_pct</code> <span class="badge badge--optional">optional</span></td><td><code>33</code></td><td><code>fleet_max_children</code> (1–9), <code>fleet_max_compactions</code> (0–9) and <code>fleet_restart_max_pct</code> (1–99) are optional overrides for <a href="reference.html#fleet"><code>.marvin/agents/fleet.md</code></a> / <a href="reference.html#fleet-child"><code>fleet-child.md</code></a></td></tr>
+</tbody>
+</table>
+<h2 id="install">Set at install</h2>
+<p>Facts about the project that install fills in from the repository and your answers. They describe the project more than they steer Marvin.</p>
+<table class="settings-table">
+<thead><tr><th>Key</th><th>Value</th><th>Description</th></tr></thead>
+<tbody>
+<tr id="project"><td><code>project</code></td><td>set at install</td><td>The project's name, as it appears in the headings and reports Marvin writes.</td></tr>
+<tr id="description"><td><code>description</code></td><td>set at install</td><td>One sentence on what the project is for.</td></tr>
+<tr id="brief"><td><code>brief</code></td><td>set at install</td><td>The project's own short answer to "what are you building?", kept in the user's words.</td></tr>
+<tr id="owner"><td><code>owner</code></td><td>set at install</td><td>The organisation or person who owns the project.</td></tr>
+<tr id="pm_tool"><td><code>pm_tool</code></td><td>set at install</td><td>The tracker Marvin files and reads work in: Linear, Jira, GitHub Issues or the self-contained Local tracker. You choose it at install; it is never guessed.</td></tr>
+<tr id="tracker_coordinates"><td><code>tracker_coordinates</code></td><td>set at install</td><td>Where the project lives in that tracker, such as the site URL and project, the team, or the owner and repository.</td></tr>
+<tr id="project_key"><td><code>project_key</code></td><td>set at install</td><td>The key that prefixes the project's ticket ids and commit messages, or n/a when the tracker has none.</td></tr>
+<tr id="hierarchy_levels"><td><code>hierarchy_levels</code></td><td>set at install</td><td>How many levels the tracker offers above a task (milestone, epic, story), which tells Marvin when it must fake a milestone with a virtual one.</td></tr>
+<tr id="intake_guide_url"><td><code>intake_guide_url</code></td><td>set at install</td><td>A link to the Issue Intake &amp; Triage Guide that install writes into the tracker.</td></tr>
+<tr id="stack"><td><code>stack</code></td><td>set at install</td><td>The languages, frameworks and data stores the project uses.</td></tr>
+<tr id="dev_command"><td><code>dev_command</code></td><td>set at install</td><td>The command, and the ports, that start the project's development stack.</td></tr>
+<tr id="audience"><td><code>audience</code></td><td>set at install</td><td>Who the project is for: personal, intra-team, restricted-public or public. It shapes how much security and polish the work needs.</td></tr>
+<tr id="project_size"><td><code>project_size</code></td><td>set at install</td><td>The project's estimated size, from tiny to huge. It sets how heavy the surrounding process gets.</td></tr>
+<tr id="app_type"><td><code>app_type</code></td><td>set at install</td><td>The kind of application: web, desktop, mobile or a combination.</td></tr>
+<tr id="screens_guide"><td><code>screens_guide</code></td><td>set at install</td><td>Where the UI screen catalog lives, the list of surfaces that design and visual review check against.</td></tr>
+<tr id="visual_validation"><td><code>visual_validation</code></td><td>set at install</td><td>When a UI task gets a visual review: after every task, once per milestone, or never.</td></tr>
+<tr id="model_profile"><td><code>model_profile</code></td><td>set at install</td><td>The model profile the project runs, which decides the model behind each tier. Install asks which one.</td></tr>
+<tr id="docs_location"><td><code>docs_location</code></td><td>set at install</td><td>The folder that holds the project's documentation estate. It is <code>.docs</code> unless you move it.</td></tr>
+<tr id="issue_log_path"><td><code>issue_log_path</code></td><td>set at install</td><td>The file where the running build's real bugs are logged, next to the tracker ticket.</td></tr>
+<tr id="telemetry"><td><code>telemetry</code></td><td>set at install</td><td>Whether the optional token-telemetry plugin records usage for this project (enabled or disabled).</td></tr>
+<tr id="kit_version"><td><code>kit_version</code></td><td>set at install</td><td>The Marvin version this project was installed or last upgraded to. The upgrade skill keeps it current.</td></tr>
+<tr id="label_syntax_version"><td><code>label_syntax_version</code></td><td>set at install</td><td>The version of the label registry the project's tracker labels follow. The upgrade skill keeps it current.</td></tr>
+</tbody>
+</table>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

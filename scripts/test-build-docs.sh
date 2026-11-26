@@ -671,6 +671,283 @@ n_real=$(ls "$ROOT"/docs/releases/v*.html | wc -l | tr -d ' ')
 OUT=$(grep -rhoE '/(Users|home)/[A-Za-z0-9._-]+' "$ROOT/docs/releases" | grep -vxE '/Users/me|/home/user' || true); [ -z "$OUT" ] && ok "no local path in the real pages" || bad "local path in real pages"
 n=$(grep -c 'badge--action' "$ROOT/docs/releases/index.html" || true); [ "$n" -ge 1 ] && ok "index carries Action-needed badges ($n)" || bad "no badge in the real index"
 
+# ---------------------------------------------------------------- generated Settings, Skills, Reference, model data (AOS-304)
+# mkgen <dir>: a fixture repo with the three generated pages, a hand page carrying the three markers, and tiny sources.
+mkgen() {
+  local d="$1"; mkrepo "$d"
+  mkdir -p "$d/templates/marvin/agents/codex" "$d/agents" "$d/skills/alpha" "$d/commands"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"},
+  {"path": "settings", "title": "Settings", "section": "reference", "order": 10, "source": "generated:settings"},
+  {"path": "skills", "title": "Skills", "section": "reference", "order": 20, "source": "generated:skills"},
+  {"path": "reference", "title": "Reference", "section": "reference", "order": 30, "source": "generated:reference"}
+]
+JSON
+  printf '<h1>Home</h1>\n<!-- data: profiles -->\n' > "$d/site/index.html"
+  printf '<h1>X</h1>\n<!-- table: profiles -->\n<!-- table: codex -->\n' > "$d/site/concepts/x.html"
+  cat > "$d/templates/marvin/PROJECT-INFO.md" <<'MD'
+---
+project: "{{PROJECT_NAME}}"
+model_profile: {{MODEL_PROFILE}}
+update_gate: advise
+ticket_lint: block
+# Optional: a comment, not a key
+# fleet_max_children: 3
+kit_version: {{KIT_VERSION}}
+---
+
+# {{PROJECT_NAME}}
+
+- `update_gate` sets the update check (`advise` | `block`, `.marvin/agents/fleet.md`)
+- `ticket_lint` sets the label check — `.marvin/agents/codex/review.md` and `security.md`; `fleet_max_children` is an optional override
+- Label registry: nothing to see
+MD
+  printf -- '- `project`: The name.\n- `model_profile`: Which profile runs.\n- `kit_version`: The version.\n' > "$d/site/settings-install.md"
+  local g
+  for g in fleet security; do printf -- '---\ndoc: Guide %s\ntype: rule\nstatus: active\nsummary: Summary of `%s`.\nupdated: {{INSTALL_DATE}}\n---\nbody\n' "$g" "$g" > "$d/templates/marvin/agents/$g.md"; done
+  printf -- '---\ndoc: Zed guide\ntype: rule\nstatus: active\nsummary: Zed.\nupdated: 2026-01-02\n---\n' > "$d/templates/marvin/agents/zed.md"
+  printf -- '---\ndoc: Codex lane brief — review\ntype: rule\nstatus: active\nsummary: Lane.\nupdated: {{INSTALL_DATE}}\n---\n' > "$d/templates/marvin/agents/codex/review.md"
+  printf -- '---\ndoc: Codex lane brief — security\ntype: rule\nstatus: active\nsummary: Lane two.\nupdated: {{INSTALL_DATE}}\n---\n' > "$d/templates/marvin/agents/codex/security.md"
+  printf 'Rules: `.marvin/agents/security.md` then `.marvin/agents/fleet.md`.\n' > "$d/templates/marvin/CLAUDE.marvin.md"
+  cat > "$d/templates/marvin/agents/model-profile.md" <<'MD'
+---
+doc: Model profile
+type: reference
+status: active
+summary: x
+updated: {{INSTALL_DATE}}
+---
+## Profile: alpha (default)
+
+| Tier | Model | Window | Default effort | Resolves | Personas |
+|---|---|---|---|---|---|
+| orchestrator | Mod One | 1M | `medium`; raise | `A` | the main session |
+| heavy worker | Mod Two | 1M | `high` (pinned) | `B` | `marvin:dev`, the validators |
+| small worker | Mod Three | 1M | `low` | `C` | `marvin:sm` |
+| micro | Mod Four | 1M | `low` | `D` | none |
+| frontier | Mod Five | 1M | inherits the session's (opt-in) | `E` | `marvin:fr` |
+
+## Profile: beta
+
+| Tier | Model | Window | Default effort | Resolves | Personas |
+|---|---|---|---|---|---|
+| orchestrator | Mod Nine | 1M | `medium` | `A` | the main session |
+| heavy worker | Mod Two | 1M | `high` | `B` | as in `alpha` |
+| small worker | Mod Three | 1M | `low` | `C` | as in `alpha` |
+| micro | Mod Four | 1M | `low` | `D` | as in `alpha` |
+| frontier | none | — | — | `E` | none |
+MD
+  cat > "$d/templates/marvin/agents/model-profile-codex.md" <<'MD'
+---
+doc: Codex model profile
+type: reference
+status: active
+summary: x
+updated: {{INSTALL_DATE}}
+---
+| Lane | Tier | Model | Effort | Why |
+|---|---|---|---|---|
+| build | codex workhorse | codex-model-x | medium | default |
+MD
+  printf -- '---\nname: dev\ndescription: Builds.\nmodel: opus\neffort: medium\n---\n' > "$d/agents/dev.md"
+  printf -- '---\nname: val\ndescription: Validates.\nmodel: opus\neffort: high\n---\n' > "$d/agents/val.md"
+  printf -- '---\nname: sm\ndescription: Small.\nmodel: sonnet\neffort: low\n---\n' > "$d/agents/sm.md"
+  printf -- '---\nname: fr\ndescription: Frontier.\nmodel: bigone\n---\n' > "$d/agents/fr.md"
+  # `bigone` is named only through marvin:fr; `opus` -> heavy through marvin:dev
+  printf -- "---\nname: alpha\ndescription: Does alpha.\nargument-hint: '<x|y> [--z]'\n---\nbody\n" > "$d/skills/alpha/SKILL.md"
+  printf -- '---\ndescription: A command.\n---\nbody\n' > "$d/commands/beta.md"
+}
+gp() { python3 -c 'import sys,json; sys.path.insert(0,sys.argv[1]); import importlib.util as u; s=u.spec_from_file_location("bd",sys.argv[1]); m=u.module_from_spec(s); sys.modules["bd"]=m; s.loader.exec_module(m); import pathlib; print(json.dumps(m.profile_data(pathlib.Path(sys.argv[2])),sort_keys=True))' "$MOD" "$1"; }
+gpage() { sed -n '/<main/,/<\/main>/p' "$1/docs/$2" 2>/dev/null; }   # gpage <repo> <file>
+
+hd "settings: groups"
+G="$WORK/g1"; mkgen "$G"; OUT=$(python3 "$MOD" --root "$G" 2>&1); RC=$?; rc 0
+OUT=$(gpage "$G" settings.html)
+has '<h2 id="behaviour">Behaviour</h2>'; has '<h2 id="install">Set at install</h2>'
+n=$(printf '%s' "$OUT" | grep -n -e 'id="behaviour"' -e 'id="install"' | cut -d: -f1 | tr '\n' ' '); set -- $n; [ "$1" -lt "$2" ] && ok "Behaviour comes first" || bad "group order ($n)"
+has '<tr id="update_gate"><td><code>update_gate</code></td><td><code>advise</code></td>'
+has 'href="reference.html#fleet"'; has 'href="reference.html#codex-review"'; has 'href="reference.html#security"'
+has '<tr id="project"><td><code>project</code></td><td>set at install</td><td>The name.</td></tr>'
+has '<tr id="model_profile">'
+printf '%s' "$OUT" | grep 'id="fleet_max_children"' | grep -q 'badge badge--optional">optional' && ok "commented key carries the optional badge" || bad "no optional badge"
+printf '%s' "$OUT" | grep 'id="ticket_lint"' | grep -q 'optional' && bad "badge on a plain key" || ok "no badge on a plain key"
+printf '%s' "$OUT" | grep 'id="update_gate"' | grep -q 'fleet_max' && bad "update_gate row carries another key's clause" || ok "a shared bullet is cut to the clause naming the key"
+printf '%s' "$OUT" | grep 'id="fleet_max_children"' | grep -q '<code>3</code>' && ok "optional key shows the template value" || bad "optional default"
+lacks 'a comment, not a key'; lacks '<tr id="Optional"'
+OUT=$(python3 "$MOD" --root "$G" --check 2>&1); RC=$?; rc 0
+
+hd "settings: bullet text is escaped"
+G2="$WORK/g2"; mkgen "$G2"; sed -i.bak 's/^- `ticket_lint` sets the label check/- `ticket_lint` sets <b>x<\/b> {{P}} the label check/' "$G2/templates/marvin/PROJECT-INFO.md"
+python3 "$MOD" --root "$G2" >/dev/null 2>&1; OUT=$(gpage "$G2" settings.html); has '&lt;b&gt;x&lt;/b&gt;'; lacks '<b>x'
+
+fx_settings_behaviour() {
+  local d="$WORK/fx-sb"; mkgen "$d"; sed -i.bak '/^- `ticket_lint`/d' "$d/templates/marvin/PROJECT-INFO.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'ticket_lint'
+}
+fx_settings_install_missing() {
+  local d="$WORK/fx-sm"; mkgen "$d"; sed -i.bak '/`kit_version`/d' "$d/site/settings-install.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'kit_version'
+}
+fx_settings_install_extra() {
+  local d="$WORK/fx-se"; mkgen "$d"; printf -- '- `ghost_key`: nothing\n' >> "$d/site/settings-install.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'ghost_key'
+}
+fx_settings_install_dup() {
+  local d="$WORK/fx-sd"; mkgen "$d"; printf -- '- `project`: again\n' >> "$d/site/settings-install.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'project'
+}
+hd "settings: guards"
+fx_settings_behaviour && ok "a behaviour key with no bullet exits 2 naming it" || bad "fx_settings_behaviour"
+fx_settings_install_missing && ok "a placeholder key with no install line exits 2 naming it" || bad "fx_settings_install_missing"
+fx_settings_install_extra && ok "an install line with no key exits 2 naming it" || bad "fx_settings_install_extra"
+fx_settings_install_dup && ok "a key described twice exits 2" || bad "fx_settings_install_dup"
+
+hd "skills: list"
+OUT=$(gpage "$G" skills.html)
+has '<code>/marvin:alpha</code>'; has '<code>&lt;x|y&gt; [--z]</code>'; has '<code>/marvin:beta</code>'; has 'A command.'
+n=$(printf '%s' "$OUT" | grep -o '/marvin:[a-z-]*' | tr '\n' ' '); [ "$n" = "/marvin:alpha /marvin:beta " ] && ok "sorted by name" || bad "skills order: $n"
+fx_skill_description() {
+  local d="$WORK/fx-sk"; mkgen "$d"; printf -- '---\nname: nodesc\n---\n' > "$d/commands/nodesc.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'nodesc'
+}
+fx_skill_description && ok "a skill with no description exits 2" || bad "fx_skill_description"
+
+hd "reference: headers"
+OUT=$(gpage "$G" reference.html)
+has '<h3 id="fleet">Guide fleet</h3>'; has '<p>Summary of <code>fleet</code>.</p>'
+has 'href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/templates/marvin/agents/fleet.md"'
+has '<h3 id="codex-review">Codex lane brief — review</h3>'; has '<h3 id="security">Guide security</h3>'
+has 'blob/main/templates/marvin/agents/codex/review.md"'
+has 'updated 2026-01-02'; lacks 'INSTALL_DATE'
+n=$(printf '%s' "$OUT" | grep -o '<h[23] id="[^"]*"' | sed 's/.*id="//; s/"//' | tr '\n' ' ')
+[ "$n" = "group-cascade security fleet group-other model-profile-codex model-profile zed group-codex-lanes codex-review codex-security " ] && ok "cascade order, then other (alphabetical), then Codex lanes" || bad "reference order: $n"
+fx_reference_header() {
+  local d="$WORK/fx-rh"; mkgen "$d"; printf -- '---\ndoc: No summary\n---\n' > "$d/templates/marvin/agents/bad.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'bad.md'
+}
+fx_anchor_collision() {   # top-level codex-review.md and codex/review.md both want id codex-review
+  local d="$WORK/fx-ac"; mkgen "$d"; printf -- '---\ndoc: Clash\nsummary: s\n---\n' > "$d/templates/marvin/agents/codex-review.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'codex-review'
+}
+fx_reference_header && ok "a guide without doc:/summary: exits 2 naming it" || bad "fx_reference_header"
+fx_anchor_collision && ok "an anchor id collision exits 2" || bad "fx_anchor_collision"
+
+hd "profiles: data"
+OUT=$(gp "$G" 2>&1); RC=$?; rc 0
+has '"default": "alpha"'; has '"beta"'
+python3 - "$OUT" <<'PY' && ok "profile_data shape: profiles, personas, codex" || bad "profile_data content"
+import json,sys
+d=json.loads(sys.argv[1])
+assert d["default"]=="alpha" and set(d["profiles"])=={"alpha","beta"}
+a=d["profiles"]["alpha"]; b=d["profiles"]["beta"]
+assert a["orch"]=={"model":"Mod One","effort":"medium"} and a["heavy"]["effort"]=="high"
+assert a["frontier"]["effort"]=="inherits the session's" and b["frontier"]=={"model":"","effort":""} and b["orch"]["model"]=="Mod Nine"
+p=d["personas"]
+assert p["dev"]["tier"]=="heavy" and p["dev"]["model"]=="Mod Two" and p["dev"]["effort"]=="medium" and p["dev"]["description"]=="Builds."
+assert p["val"]["tier"]=="heavy" and p["val"]["effort"]=="high"   # not named: placed by its model alias
+assert p["sm"]["tier"]=="small" and p["fr"]["tier"]=="frontier" and p["fr"]["effort"]=="inherits the session's"
+assert d["codex"]==[{"lane":"build","tier":"codex workhorse","model":"codex-model-x","effort":"medium"}]
+PY
+# a third profile table appears with no code change
+G3="$WORK/g3"; mkgen "$G3"
+printf '\n## Profile: gamma\n\n| Tier | Model | Window | Default effort | Resolves | Personas |\n|---|---|---|---|---|---|\n| orchestrator | Mod Seven | 1M | `high` | `A` | the main session |\n' >> "$G3/templates/marvin/agents/model-profile.md"
+OUT=$(gp "$G3" 2>&1); has '"gamma"'; has 'Mod Seven'
+fx_profile_parse() {
+  local d="$WORK/fx-pp"; mkgen "$d"; sed -i.bak 's/| Tier | Model | Window/| Tier | Engine | Window/' "$d/templates/marvin/agents/model-profile.md"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_profile_tier() {
+  local d="$WORK/fx-pt"; mkgen "$d"; sed -i.bak 's/^| micro |/| nano |/' "$d/templates/marvin/agents/model-profile.md"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_profile_default() {
+  local d="$WORK/fx-pd"; mkgen "$d"; sed -i.bak 's/ (default)//' "$d/templates/marvin/agents/model-profile.md"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_persona_tier() {   # a persona whose model alias no Personas cell vouches for
+  local d="$WORK/fx-ps"; mkgen "$d"; printf -- '---\nname: odd\ndescription: Odd.\nmodel: mystery\n---\n' > "$d/agents/odd.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'odd'
+}
+fx_persona_alias() {   # two named personas share an alias but sit in different tiers
+  local d="$WORK/fx-pa"; mkgen "$d"; printf -- '---\nname: sm2\ndescription: x\nmodel: opus\n---\n' > "$d/agents/sm2.md"
+  sed -i.bak 's/`marvin:sm`/`marvin:sm`, `marvin:sm2`/' "$d/templates/marvin/agents/model-profile.md"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_profile_parse && ok "a profile table without a Model column exits 2" || bad "fx_profile_parse"
+fx_profile_tier && ok "an unknown tier name exits 2" || bad "fx_profile_tier"
+fx_profile_default && ok "no (default) profile exits 2" || bad "fx_profile_default"
+fx_persona_tier && ok "a persona that cannot be placed exits 2 naming it" || bad "fx_persona_tier"
+fx_persona_alias && ok "one model alias in two tiers exits 2" || bad "fx_persona_alias"
+
+hd "profiles: markers"
+OUT=$(cat "$G/docs/index.html"); has '<script type="application/json" id="marvin-data">'; lacks '<!-- data: profiles -->'
+python3 - "$G/docs/index.html" <<'PY' && ok "the data block parses as JSON and cannot close its script" || bad "data block"
+import re,sys,json
+t=open(sys.argv[1]).read()
+m=re.search(r'<script type="application/json" id="marvin-data">(.*?)</script>',t,re.S)
+d=json.loads(m.group(1)); assert d["default"]=="alpha"
+assert "<" not in m.group(1)
+PY
+OUT=$(cat "$G/docs/concepts/x.html")
+has '<div class="tier-legend">'; has '<th>alpha <small>default</small></th><th>beta</th>'; has 'data-tier="orch"'; has 'data-tier="frontier"'
+has 'Mod Nine'; has '<td>none</td>'; has 'href="../settings.html#model_profile"'
+has 'blob/main/templates/marvin/agents/model-profile.md"'; has 'blob/main/templates/marvin/agents/model-profile-codex.md"'
+has '<td><code>build</code></td><td>codex workhorse</td><td>codex-model-x</td><td>medium</td>'
+lacks '<!-- table:'
+P="$WORK/g4p"; mkgen "$P"; printf '<!-- table: profiles -->\n' > "$P/site/index.html"; python3 "$MOD" --root "$P" >/dev/null 2>&1
+grep -Fq 'href="settings.html#model_profile"' "$P/docs/index.html" && ok "a root page links settings.html with no ../" || bad "root-page prefix"
+fx_marker_unknown() {
+  local d="$WORK/fx-mu" k; mkgen "$d"
+  for k in '<!-- table: nope -->' '<!-- data: other -->' '<!--table:profile-->'; do
+    printf '%s\n' "$k" > "$d/site/index.html"; OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] || return 1; printf '%s' "$OUT" | grep -Fq 'unknown marker' || return 1
+  done
+}
+fx_marker_unknown && ok "an unknown <!-- table|data: x --> marker exits 2" || bad "fx_marker_unknown"
+
+hd "profiles: no hand model names"
+# Every Model cell of both profile tables, read at test time. Whole-word, case-insensitive, over every file under site/
+# except the fonts. The bare profile names (`opus`, `fable`) are setting VALUES, not model names, and stay allowed;
+# a family word followed by a version number ("Opus 5.5") is a model name and is not.
+python3 - "$ROOT" <<'PY' && ok "no file under site/ names a model from the profile tables" || bad "a hand-written file names a model"
+import re,sys,pathlib,importlib.util as u
+root=pathlib.Path(sys.argv[1]); s=u.spec_from_file_location("bd",root/"scripts/lib/build_docs.py"); m=u.module_from_spec(s); sys.modules["bd"]=m; s.loader.exec_module(m)
+d=m.profile_data(root)
+names={t["model"] for p in d["profiles"].values() for t in p.values() if t["model"]}|{c["model"] for c in d["codex"]}
+assert names, "no models read"
+pats=[re.compile(r"(?<![\w.-])"+re.escape(n)+r"(?![\w.-])",re.I) for n in names]
+pats.append(re.compile(r"\b(opus|sonnet|haiku|fable|gpt)[ -]?v?\d",re.I))
+bad=[]
+for f in (root/"site").rglob("*"):
+    if f.is_file() and "assets/fonts" not in f.as_posix() and f.suffix in (".html",".md",".css",".js",".json"):
+        t=f.read_text(encoding="utf-8")
+        for p in pats:
+            if p.search(t): bad.append((f.name,p.pattern))
+print(bad); sys.exit(1 if bad else 0)
+PY
+
+hd "settings, skills, reference: real repo"
+OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
+for f in settings skills reference; do [ -f "$ROOT/docs/$f.html" ] && ok "docs/$f.html exists" || bad "docs/$f.html missing"; done
+python3 - "$ROOT" <<'PY' && ok "every PROJECT-INFO key has a row; every guide and skill is listed" || bad "real-repo coverage"
+import re,sys,pathlib
+r=pathlib.Path(sys.argv[1]); s=(r/"docs/settings.html").read_text()
+fm=(r/"templates/marvin/PROJECT-INFO.md").read_text().split("---")[1]
+keys=re.findall(r"^#?\s*([a-z][a-z0-9_]*):",fm,re.M)
+keys=[k for k in keys if k!="optional"]
+miss=[k for k in keys if f'<tr id="{k}">' not in s]; assert not miss,miss
+ref=(r/"docs/reference.html").read_text()
+for f in (r/"templates/marvin/agents").rglob("*.md"):
+    a=f.relative_to(r/"templates/marvin/agents").as_posix()[:-3].replace("/","-"); assert f'<h3 id="{a}">' in ref,a
+sk=(r/"docs/skills.html").read_text()
+for d in (r/"skills").iterdir():
+    if (d/"SKILL.md").is_file(): assert f"/marvin:{d.name}</code>" in sk,d.name
+for f in (r/"commands").glob("*.md"): assert f"/marvin:{f.stem}</code>" in sk,f.stem
+PY
+OUT=$(grep -rhoE '/(Users|home)/[A-Za-z0-9._-]+' "$ROOT/docs/settings.html" "$ROOT/docs/skills.html" "$ROOT/docs/reference.html" || true); [ -z "$OUT" ] && ok "no local path in the generated pages" || bad "local path: $OUT"
+
+
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite
 # survives is a hole, not a pass. Later tasks append "guard-name:fixture_function" pairs.
@@ -688,6 +965,19 @@ MUTATIONS=(
   "registry-protected:fx_registry_protected"
   "path-shape:fx_path_bypass"
   "release-missing:fx_release_missing"
+  "settings-behaviour:fx_settings_behaviour"
+  "settings-install-missing:fx_settings_install_missing"
+  "settings-install-extra:fx_settings_install_extra"
+  "settings-install-dup:fx_settings_install_dup"
+  "skill-description:fx_skill_description"
+  "reference-header:fx_reference_header"
+  "anchor-collision:fx_anchor_collision"
+  "profile-parse:fx_profile_parse"
+  "profile-tier:fx_profile_tier"
+  "profile-default:fx_profile_default"
+  "persona-tier:fx_persona_tier"
+  "persona-alias:fx_persona_alias"
+  "marker-unknown:fx_marker_unknown"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

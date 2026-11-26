@@ -525,10 +525,11 @@ def _expand(root: Path) -> list[tuple[Page, str]]:
     """Registry -> concrete (page, body_html) pairs, generated entries expanded, sorted (section, order, path)."""
     out: list[tuple[Page, str]] = []
     seen: set[str] = set()
+    mcache: dict = {}
     for pg in load_registry(root):
         if pg.source == "hand":
             _claim(seen, pg.path)
-            out.append((pg, _read_text(root / "site" / pg.path)))
+            out.append((pg, _markers(root, _read_text(root / "site" / pg.path), pg.path, mcache)))
         elif pg.source.startswith("generated:"):
             name = pg.source[len("generated:"):]
             if name not in GENERATORS:
@@ -842,6 +843,375 @@ def gen_releases(root: Path) -> dict[str, tuple[str, str]]:
 
 
 GENERATORS["releases"] = gen_releases
+
+
+# ---------------------------------------------------------------- generated Settings, Skills, Reference, model data (AOS-304)
+# settings.html: every `templates/marvin/PROJECT-INFO.md` frontmatter key. Keys with a literal default are "Behaviour"
+# (described by the template body bullet that names them in backticks); keys with a `{{PLACEHOLDER}}` value are "Set at
+# install" (described by site/settings-install.md). skills.html: skills/*/SKILL.md + commands/*.md frontmatter.
+# reference.html: every templates/marvin/agents/**/*.md reduced doc header. profile_data(): the tier/persona/Codex data
+# the hand pages embed through the `<!-- data: profiles -->` / `<!-- table: profiles -->` / `<!-- table: codex -->` markers.
+
+GH_AGENTS = GH_BLOB + "templates/marvin/agents/"
+_PI_KEY = re.compile(r"^(#[ \t]+)?([a-z][a-z0-9_]*):[ \t]*(.*?)[ \t]*$")
+_INSTALL_LINE = re.compile(r"^- `([a-z][a-z0-9_]*)`:[ \t]+(\S.*?)[ \t]*$")
+_GUIDE_CODE = re.compile(r"`(?:\.marvin/agents/)?([A-Za-z0-9_./-]+\.md)`")
+_AGENT_REF = re.compile(r"\.marvin/agents/([A-Za-z0-9_/-]+)\.md")
+_PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}")
+_TIERS = (("orchestrator", "orch"), ("heavy worker", "heavy"), ("small worker", "small"), ("micro", "micro"), ("frontier", "frontier"))
+_TIER_SLUG = dict(_TIERS)
+_TIER_LABEL = {s: n for n, s in _TIERS}
+
+
+def _unq(v: str) -> str:
+    v = v.strip()
+    if len(v) >= 2 and v[0] == v[-1] == "'":
+        return v[1:-1].replace("''", "'")
+    if len(v) >= 2 and v[0] == v[-1] == '"':
+        return v[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return v
+
+
+def _fm(p: Path) -> dict[str, str]:
+    return split_front_matter(_read_text(p))[0]
+
+
+def _inl(text: str, src: str) -> str:
+    return _inline(text, src, 1, _identity)
+
+
+# ---- guides (shared by Reference and the Settings links)
+
+def _guides(root: Path) -> list[dict[str, str]]:
+    """Every templates/marvin/agents/**/*.md as {rel, anchor, doc, summary, updated}, sorted by rel."""
+    base = root / "templates" / "marvin" / "agents"
+    out: list[dict[str, str]] = []
+    ids: dict[str, str] = {}
+    for f in sorted(base.rglob("*.md")) if base.is_dir() else []:
+        rel = f.relative_to(base).as_posix()
+        anchor = rel[:-3].replace("/", "-")
+        hdr = _fm(f)
+        if not hdr.get("doc") or not hdr.get("summary"):
+            raise BuildError(f"templates/marvin/agents/{rel}: the reduced doc header needs `doc:` and `summary:`")  # GUARD:reference-header
+        if anchor in ids:
+            raise BuildError(f"reference anchor '{anchor}' is claimed by both {ids[anchor]} and {rel}")  # GUARD:anchor-collision
+        ids[anchor] = rel
+        out.append({"rel": rel, "anchor": anchor, "doc": _unq(hdr["doc"]), "summary": _unq(hdr["summary"]),
+                    "updated": _unq(hdr.get("updated", ""))})
+    return out
+
+
+def _clauses(bullet: str) -> list[str]:
+    """Split a bullet at its top-level `; ` (never inside parentheses)."""
+    out, depth, cur = [], 0, ""
+    for i, ch in enumerate(bullet):
+        depth += (ch == "(") - (ch == ")" and depth > 0)
+        if ch == ";" and depth == 0 and bullet[i + 1:i + 2] == " ":
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur.strip())
+    return out
+
+
+def _link_guides(text: str, anchors: dict[str, str]) -> str:
+    """`.marvin/agents/fleet.md` (or a bare `fleet-child.md`) in backticks -> a markdown link to reference.html#<anchor>."""
+    def sub(m: re.Match) -> str:
+        a = anchors.get(m.group(1))
+        return f"[{m.group(0)}](reference.html#{a})" if a else m.group(0)
+    return _GUIDE_CODE.sub(sub, text)
+
+
+# ---- Settings
+
+def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str]]:
+    p = root / "templates" / "marvin" / "PROJECT-INFO.md"
+    lines = _read_text(p).split("\n")
+    if not lines or lines[0].rstrip() != "---":
+        raise BuildError("templates/marvin/PROJECT-INFO.md: no YAML frontmatter")
+    end = next((i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), None)
+    if end is None:
+        raise BuildError("templates/marvin/PROJECT-INFO.md: unterminated YAML frontmatter")
+    keys: list[tuple[str, str, bool]] = []
+    for ln in lines[1:end]:
+        m = _PI_KEY.match(ln)
+        if m:
+            keys.append((m.group(2), _unq(m.group(3)), bool(m.group(1))))
+    return keys, lines[end + 1:]
+
+
+def _install_lines(root: Path) -> dict[str, str]:
+    p = root / "site" / "settings-install.md"
+    if not p.is_file():
+        raise BuildError("site/settings-install.md: missing (one `- `key`: description` line per install-time key)")
+    out: dict[str, str] = {}
+    for no, ln in enumerate(_read_text(p).split("\n"), 1):
+        if not ln.strip():
+            continue
+        m = _INSTALL_LINE.match(ln)
+        if not m:
+            raise BuildError(f"site/settings-install.md:{no}: expected `- `key`: description`")
+        if m.group(1) in out:
+            raise BuildError(f"site/settings-install.md:{no}: `{m.group(1)}` is described twice")  # GUARD:settings-install-dup
+        out[m.group(1)] = m.group(2)
+    return out
+
+
+def gen_settings(root: Path) -> dict[str, tuple[str, str]]:
+    keys, body = _project_info(root)
+    anchors = {g["rel"]: g["anchor"] for g in _guides(root)}
+    bullets = [ln[2:] for ln in body if ln.startswith("- ")]
+    install = _install_lines(root)
+    install_keys = [k for k, v, _ in keys if _PLACEHOLDER.search(v)]
+    for k in install_keys:
+        if k not in install:
+            raise BuildError(f"site/settings-install.md: no line for the install-time key `{k}`")  # GUARD:settings-install-missing
+    for k in install:
+        if k not in install_keys:
+            raise BuildError(f"site/settings-install.md: `{k}` is not an install-time (placeholder) key of PROJECT-INFO.md")  # GUARD:settings-install-extra
+    beh: list[str] = []
+    inst: list[str] = []
+    for k, v, opt in keys:
+        badge = ' <span class="badge badge--optional">optional</span>' if opt else ""
+        if k in install_keys:
+            inst.append(f'<tr id="{k}"><td><code>{k}</code>{badge}</td><td>set at install</td><td>{_inl(install[k], "site/settings-install.md")}</td></tr>')
+            continue
+        bullet = next((b for b in bullets if f"`{k}`" in b), None)
+        if bullet is None:
+            raise BuildError(f"templates/marvin/PROJECT-INFO.md: behaviour key `{k}` has no body bullet naming it in backticks")  # GUARD:settings-behaviour
+        mine = [c for c in _clauses(bullet) if f"`{k}`" in c]  # a bullet shared by several keys: just the clause(s) naming this one
+        desc = _inl(_link_guides("; ".join(mine), anchors), "templates/marvin/PROJECT-INFO.md")
+        beh.append(f'<tr id="{k}"><td><code>{k}</code>{badge}</td><td><code>{html.escape(v, quote=False)}</code></td><td>{desc}</td></tr>')
+
+    def table(rows: list[str], default_head: str) -> str:
+        return ('<table class="settings-table">\n<thead><tr><th>Key</th><th>' + default_head + '</th><th>Description</th></tr></thead>\n<tbody>\n'
+                + "\n".join(rows) + "\n</tbody>\n</table>\n")
+    page = ('<h1>Settings</h1>\n<p>Marvin is configured in the frontmatter of <code>.marvin/PROJECT-INFO.md</code>. '
+            'Install writes the file; every key below is one line in it. A key marked optional ships commented out; remove the <code>#</code> to use it.</p>\n'
+            '<h2 id="behaviour">Behaviour</h2>\n<p>Switches that change how Marvin works. Each has a default; change it by editing the value.</p>\n'
+            + table(beh, "Default")
+            + '<h2 id="install">Set at install</h2>\n<p>Facts about the project that install fills in from the repository and your answers. '
+              'They describe the project more than they steer Marvin.</p>\n' + table(inst, "Value"))
+    return {"settings.html": ("Settings", page)}
+
+
+GENERATORS["settings"] = gen_settings
+
+
+# ---- Skills & commands
+
+def gen_skills(root: Path) -> dict[str, tuple[str, str]]:
+    items: list[tuple[str, str, str]] = []
+    srcs = [(d / "SKILL.md", d.name) for d in sorted((root / "skills").glob("*")) if (d / "SKILL.md").is_file()]
+    srcs += [(f, f.stem) for f in sorted((root / "commands").glob("*.md"))]
+    for f, stem in srcs:
+        hdr = _fm(f)
+        desc = _unq(hdr.get("description", ""))
+        if not desc:
+            raise BuildError(f"{f.relative_to(root).as_posix()}: frontmatter needs a `description:`")  # GUARD:skill-description
+        items.append((_unq(hdr.get("name", "")) or stem, _unq(hdr.get("argument-hint", "")), desc))
+    items.sort(key=lambda t: t[0])
+    rows = []
+    for name, hint, desc in items:
+        arg = f"<code>{html.escape(hint, quote=False)}</code>" if hint else ""
+        rows.append(f'<tr id="{html.escape(name)}"><td><code>/marvin:{html.escape(name, quote=False)}</code></td><td>{arg}</td><td>{_inl(desc, name)}</td></tr>')
+    page = ('<h1>Skills &amp; commands</h1>\n<p>Everything the Marvin plugin adds to Claude Code. Type the command, with its arguments where it takes any.</p>\n'
+            '<table>\n<thead><tr><th>Command</th><th>Arguments</th><th>Description</th></tr></thead>\n<tbody>\n'
+            + "\n".join(rows) + "\n</tbody>\n</table>\n")
+    return {"skills.html": ("Skills & commands", page)}
+
+
+GENERATORS["skills"] = gen_skills
+
+
+# ---- Reference
+
+def gen_reference(root: Path) -> dict[str, tuple[str, str]]:
+    guides = _guides(root)
+    by_rel = {g["rel"]: g for g in guides}
+    core = root / "templates" / "marvin" / "CLAUDE.marvin.md"
+    order: list[str] = []
+    if core.is_file():
+        for m in _AGENT_REF.finditer(_read_text(core)):
+            rel = m.group(1) + ".md"
+            if rel in by_rel and "/" not in rel and rel not in order:
+                order.append(rel)
+    groups = [("Rules cascade", "cascade", [by_rel[r] for r in order]),
+              ("Other guides", "other", sorted((g for g in guides if "/" not in g["rel"] and g["rel"] not in order), key=lambda g: g["rel"])),
+              ("Codex lanes", "codex-lanes", sorted((g for g in guides if "/" in g["rel"]), key=lambda g: g["rel"]))]
+    parts = ['<h1>Reference</h1>\n<p>Every guide in the rules cascade that install copies to <code>.marvin/agents/</code>: its title, what it covers, and a link to the file. '
+             'The cascade lists the guides in the order the kit core points an agent at them.</p>\n']
+    for title, gid, items in groups:
+        if not items:
+            continue
+        parts.append(f'<h2 id="group-{gid}">{title}</h2>\n')
+        for g in items:
+            upd = "" if not g["updated"] or _PLACEHOLDER.search(g["updated"]) else f' &middot; updated {html.escape(g["updated"], quote=False)}'
+            parts.append(f'<h3 id="{g["anchor"]}">{html.escape(g["doc"], quote=False)}</h3>\n<p>{_inl(g["summary"], g["rel"])}</p>\n'
+                         f'<p class="ref-meta"><a href="{GH_AGENTS}{html.escape(g["rel"])}"><code>{html.escape(g["rel"], quote=False)}</code></a>{upd}</p>\n')
+    return {"reference.html": ("Reference", "".join(parts))}
+
+
+GENERATORS["reference"] = gen_reference
+
+
+# ---- tier and persona data
+
+def _cells(row: str) -> list[str]:
+    return [c.strip() for c in row.strip().strip("|").split("|")]
+
+
+def _tables(text: str, src: str) -> list[tuple[str, list[dict[str, str]]]]:
+    """[(heading text, rows)] for every pipe table, rows keyed by lower-cased header name; the heading is the last `#` line above."""
+    out: list[tuple[str, list[dict[str, str]]]] = []
+    lines = text.split("\n")
+    head, i = "", 0
+    while i < len(lines):
+        ln = lines[i]
+        if ln.startswith("#"):
+            head = ln.lstrip("#").strip()
+        if ln.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|?\s*$", lines[i + 1]):
+            cols = [c.lower() for c in _cells(ln)]
+            rows, i = [], i + 2
+            while i < len(lines) and lines[i].startswith("|"):
+                cs = _cells(lines[i])
+                if len(cs) != len(cols):
+                    raise BuildError(f"{src}:{i + 1}: table row has {len(cs)} cells, header has {len(cols)}")
+                rows.append(dict(zip(cols, cs)))
+                i += 1
+            out.append((head, rows))
+            continue
+        i += 1
+    return out
+
+
+def _plain(cell: str) -> str:
+    c = cell.strip()
+    return "" if c.lower() in ("", "none", "—", "-", "n/a") else c
+
+
+def _effort(cell: str) -> str:
+    m = re.search(r"`([^`]+)`", cell)
+    if m:
+        return m.group(1)
+    return _plain(re.split(r"\s*[(;]", cell, maxsplit=1)[0])
+
+
+def profile_data(root: Path) -> dict:
+    src = "templates/marvin/agents/model-profile.md"
+    text = _read_text(root / src)
+    profiles: dict[str, dict[str, dict[str, str]]] = {}
+    persona_cells: dict[str, dict[str, str]] = {}
+    default = ""
+    for head, rows in _tables(text, src):
+        m = re.match(r"^Profile:\s*(\S+)(.*)$", head)
+        if not m:
+            continue
+        name = m.group(1)
+        if "(default)" in m.group(2):
+            default = name
+        prof: dict[str, dict[str, str]] = {}
+        pcell: dict[str, str] = {}
+        for r in rows:
+            if "tier" not in r or "model" not in r or not any("effort" in k for k in r):
+                raise BuildError(f"{src}: the `{name}` profile table needs Tier, Model and an effort column")  # GUARD:profile-parse
+            slug = _TIER_SLUG.get(r["tier"].lower())
+            if slug is None:
+                raise BuildError(f"{src}: unknown tier '{r['tier']}' in the `{name}` profile (known: {', '.join(_TIER_SLUG)})")  # GUARD:profile-tier
+            eff = next(v for k, v in r.items() if "effort" in k)
+            prof[slug] = {"model": _plain(r["model"]), "effort": _effort(eff)}
+            pcell[slug] = r.get("personas", "")
+        profiles[name] = prof
+        persona_cells[name] = pcell
+    if not profiles or not default:
+        raise BuildError(f"{src}: needs `## Profile: <name>` tables and exactly one marked `(default)`")  # GUARD:profile-default
+    # persona -> tier: named in the default profile's Personas column (`as in <p>` borrows that profile's cell)
+    named: dict[str, str] = {}
+    for slug, cell in persona_cells[default].items():
+        mm = re.match(r"^as in `?([\w-]+)`?\s*$", cell)
+        if mm and mm.group(1) in persona_cells:
+            cell = persona_cells[mm.group(1)].get(slug, "")
+        for p in re.findall(r"`marvin:([\w-]+)`", cell):
+            named[p] = slug
+    agents: dict[str, tuple[str, dict[str, str]]] = {}
+    for f in sorted((root / "agents").glob("*.md")):
+        fm = _fm(f)
+        agents[f.stem] = (_unq(fm.get("model", "")), fm)
+    # a persona the column does not name takes the tier of the named personas that share its model alias
+    alias_tier: dict[str, str] = {}
+    for p, slug in named.items():
+        if p in agents:
+            al = agents[p][0]
+            if alias_tier.setdefault(al, slug) != slug:
+                raise BuildError(f"agents/{p}.md: model alias '{al}' maps to two tiers in the default profile")  # GUARD:persona-alias
+    personas: dict[str, dict[str, str]] = {}
+    for p in sorted(agents):
+        al, hdr = agents[p]
+        slug = named.get(p) or alias_tier.get(al) or ("orch" if al == "inherit" else None)
+        if slug is None or slug not in profiles[default]:
+            raise BuildError(f"agents/{p}.md: cannot place the persona in a tier (model '{al}' is not one the default profile's Personas column names)")  # GUARD:persona-tier
+        tier = profiles[default][slug]
+        personas[p] = {"tier": slug, "model": tier["model"], "effort": _unq(hdr.get("effort", "")) or tier["effort"],
+                       "description": _unq(hdr.get("description", ""))}
+    csrc = "templates/marvin/agents/model-profile-codex.md"
+    codex: list[dict[str, str]] = []
+    for _h, rows in _tables(_read_text(root / csrc), csrc):
+        if rows and "lane" in rows[0] and "model" in rows[0]:
+            for r in rows:
+                codex.append({"lane": r["lane"], "tier": r.get("tier", ""), "model": _plain(r["model"]), "effort": _plain(r.get("effort", ""))})
+    return {"default": default, "profiles": profiles, "personas": personas, "codex": codex}
+
+
+# ---- hand-page markers
+
+_MARKER = re.compile(r"<!--\s*(data|table):\s*([A-Za-z0-9_-]*)\s*-->")
+
+
+def _table_profiles(d: dict, prefix: str) -> str:
+    names = [d["default"]] + [n for n in d["profiles"] if n != d["default"]]
+    slugs = [s for _n, s in _TIERS if any(s in d["profiles"][n] for n in names)]
+    head = "".join(f"<th>{html.escape(n)}{' <small>default</small>' if n == d['default'] else ''}</th>" for n in names)
+    rows = []
+    for s in slugs:
+        cells = []
+        for n in names:
+            t = d["profiles"][n].get(s)
+            if not t or not t["model"]:
+                cells.append("<td>none</td>")
+            else:
+                cells.append(f"<td>{html.escape(t['model'])}" + (f"<br><small>{html.escape(t['effort'])}</small>" if t["effort"] else "") + "</td>")
+        rows.append(f'<tr><td><span data-tier="{s}"><span class="dot"></span>{_TIER_LABEL[s]}</span></td>{"".join(cells)}</tr>')
+    return ('<div class="tier-legend">\n<table>\n<thead><tr><th>Tier</th>' + head + '</tr></thead>\n<tbody>\n' + "\n".join(rows) + "\n</tbody>\n</table>\n</div>\n"
+            f'<p>A project runs one profile, set by <a href="{prefix}settings.html#model_profile"><code>model_profile</code></a>. '
+            f'The profiles are declared in <a href="{GH_AGENTS}model-profile.md"><code>model-profile.md</code></a>.</p>\n')
+
+
+def _table_codex(d: dict) -> str:
+    rows = "\n".join(f"<tr><td><code>{html.escape(c['lane'])}</code></td><td>{html.escape(c['tier'])}</td><td>{html.escape(c['model'])}</td><td>{html.escape(c['effort'])}</td></tr>"
+                     for c in d["codex"])
+    return ('<table>\n<thead><tr><th>Lane</th><th>Tier</th><th>Model</th><th>Effort</th></tr></thead>\n<tbody>\n' + rows + "\n</tbody>\n</table>\n"
+            f'<p>The Codex lanes read their model and effort from <a href="{GH_AGENTS}model-profile-codex.md"><code>model-profile-codex.md</code></a>.</p>\n')
+
+
+def _data_json(d: dict) -> str:
+    blob = json.dumps(d, sort_keys=True).replace("<", "\\u003c")
+    return f'<script type="application/json" id="marvin-data">{blob}</script>'
+
+
+def _markers(root: Path, body: str, path: str, cache: dict) -> str:
+    """Replace the generator markers in a hand page body; an unknown marker fails the build."""
+    prefix = "../" * path.count("/")
+
+    def sub(m: re.Match) -> str:
+        kind, name = m.group(1), m.group(2)
+        if (kind, name) not in (("data", "profiles"), ("table", "profiles"), ("table", "codex")):
+            raise BuildError(f"{path}: unknown marker <!-- {kind}: {name} --> (known: data: profiles, table: profiles, table: codex)")  # GUARD:marker-unknown
+        if "d" not in cache:
+            cache["d"] = profile_data(root)
+        d = cache["d"]
+        return _data_json(d) if kind == "data" else (_table_profiles(d, prefix) if name == "profiles" else _table_codex(d))
+    return _MARKER.sub(sub, body)
 
 
 # ---------------------------------------------------------------- CLI

@@ -1,4 +1,7 @@
 [
   {"path": "index.html", "title": "Marvin", "section": "home", "order": 0, "source": "hand"},
+  {"path": "settings", "title": "Settings", "section": "reference", "order": 10, "source": "generated:settings"},
+  {"path": "skills", "title": "Skills & commands", "section": "reference", "order": 20, "source": "generated:skills"},
+  {"path": "reference", "title": "Reference", "section": "reference", "order": 30, "source": "generated:reference"},
   {"path": "releases", "title": "Releases", "section": "releases", "order": 0, "source": "generated:releases"}
 ]
