@@ -218,6 +218,21 @@ fx_registry_section() {
   sed -i.bak 's/"section": "concepts"/"section": "nonsense"/' "$d/site/pages.json"
   python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
 }
+fx_registry_protected() {
+  local d="$WORK/fx-prot" p
+  for p in images/keep.png release-notes/v1.html decisions/d.html superpowers/s.html .nojekyll; do
+    mkrepo "$d"; mkdir -p "$d/docs/$(dirname "$p")" "$d/site/$(dirname "$p")"
+    printf 'keep' > "$d/docs/$p"; printf '<p>x</p>\n' > "$d/site/$p"
+    cat > "$d/site/pages.json" <<JSON
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "$p", "title": "P", "section": "concepts", "order": 1, "source": "hand"}
+]
+JSON
+    python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
+    [ "$(cat "$d/docs/$p")" = keep ] || return 1
+  done
+}
 
 hd "build: wraps pages"
 R="$WORK/r1"; mkrepo "$R"; python3 "$MOD" --root "$R" >/dev/null 2>&1; RC=$?; rc 0
@@ -268,6 +283,8 @@ scheck "$R3"; rc 0
 
 hd "registry: duplicate path"
 fx_registry_dup && ok "a duplicate path exits 2" || bad "fx_registry_dup"
+hd "registry: protected path"
+fx_registry_protected && ok "an entry under a protected docs/ path exits 2 and the file is untouched" || bad "fx_registry_protected"
 hd "registry: unknown section"
 fx_registry_section && ok "an unknown section exits 2" || bad "fx_registry_section"
 R4="$WORK/r4"; mkrepo "$R4"; sed -i.bak 's/"source": "hand"}$/"source": "generated:nope"}/' "$R4/site/pages.json"
@@ -293,6 +310,7 @@ MUTATIONS=(
   "abs-link:fx_abs_link"
   "registry-dup:fx_registry_dup"
   "registry-section:fx_registry_section"
+  "registry-protected:fx_registry_protected"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

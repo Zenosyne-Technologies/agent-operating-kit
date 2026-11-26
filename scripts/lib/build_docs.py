@@ -469,6 +469,9 @@ GENERATORS: dict[str, Callable[[Path], dict[str, tuple[str, str]]]] = {}
 
 
 def _claim(seen: set[str], path: str) -> None:
+    """The one choke point every output path (registry, generated, asset) passes through."""
+    if _protected(path):
+        raise BuildError(f"output path is under a protected docs/ path (never written by the build): {path}")  # GUARD:registry-protected
     if path in seen:
         raise BuildError(f"duplicate output path: {path}")  # GUARD:registry-dup
     seen.add(path)
