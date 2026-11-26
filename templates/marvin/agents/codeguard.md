@@ -17,7 +17,7 @@ Validated version: `1.5.0` (Project CodeGuard, plugin `codeguard-security@projec
 ## Availability
 
 - At task start the orchestrator checks its OWN session's skill list for `codeguard-security:codeguard`. Present: the rules below apply.
-- Missing: tell the user ONCE per session, with the fix — `claude plugin marketplace add cosai-oasis/project-codeguard --scope project`, then `claude plugin install codeguard-security@project-codeguard -s project`; active from the next session. Then run with the kit checklist only, and write `CodeGuard: unavailable` in the brief's security-surface item (`briefing.md` item 4).
+- Missing: tell the user ONCE per session, with the fix — `claude plugin marketplace add 'cosai-oasis/project-codeguard#v1.5.0' --scope project`, then `claude plugin install codeguard-security@project-codeguard -s project`; active from the next session. Then run with the kit checklist only, and write `CodeGuard: unavailable` in the brief's security-surface item (`briefing.md` item 4).
 - Absence is never a FAIL and never blocks a task, a validator or a release.
 
 ## Rule selection (advisor, at brief time)
