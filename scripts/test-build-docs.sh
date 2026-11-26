@@ -5,6 +5,8 @@
 # file:line; a YAML header never leaks into a page; every real release note, upgrade note and the CHANGELOG renders;
 # CRLF input renders byte-identically.
 # AOS-306 adds the concept pages: tier marking, the inspector's data, the old-anchor redirect, the sidebar's in-page headings.
+# AOS-307 adds Home (links, the 30-second map, the wireframe grid), Getting started, the slim README (its anchors,
+# suite list and counts), rules 8/10/11 naming the site in CLAUDE.md and AGENTS.md, and the widened marketplace scan.
 # AOS-305 adds the rule-11 galleries (docs/images/<feature>/captions.md -> a See it in Claude Code section, inline shot markers) and the Mods page.
 # AOS-301 adds the site build and the --check gate: pages wrapped in the shell, links relative from nested pages, the
 # nav, determinism, stale/missing/orphan reporting that never touches docs/images|release-notes|decisions|superpowers|
@@ -1326,6 +1328,181 @@ fl = (docs / "concepts/fleet.html").read_text()
 for need in ('href="../reference.html#fleet"', 'href="../reference.html#fleet-child"', "<svg", "/marvin:fleet stop"):
     assert need in fl, need
 PY
+
+# ---------------------------------------------------------------- Home, Getting started, the slim README, the rules (AOS-307)
+# Home links every top section and carries the 30-second map and the wireframe grid (off under reduced motion).
+# Getting started holds what README used to explain. README keeps the pitch, the install one-liner, a Documentation
+# block, Contributing, the Inventory and the License, and every README.md#<anchor> link in the repo still resolves.
+# CLAUDE.md and AGENTS.md carry rules 8, 10 and 11 identically, and those rules name the site.
+SITE_URL="https://zenosyne-technologies.github.io/agent-operating-kit/"
+HOME_SRC="$ROOT/site/index.html"
+hd "home: links"
+for t in start.html concepts/lifecycle.html concepts/sizing.html concepts/escalation.html concepts/around-the-loop.html concepts/fleet.html settings.html skills.html reference.html mods/index.html releases/index.html; do
+  grep -Fq "href=\"$t\"" "$HOME_SRC" 2>/dev/null && ok "the Home body links $t" || bad "the Home body does not link $t"
+done
+OUT=$(cat "$ROOT/docs/index.html" 2>/dev/null); has '<title>Home - Marvin</title>'; lacks 'Marvin - Marvin'; lacks 'being rebuilt'
+
+hd "home: the 30-second map and the grid"
+python3 - "$HOME_SRC" <<'PY' && ok "the map is a .diagram (id=map) of stages with tier chips, linked to the lifecycle page" || bad "Home map"
+import re, sys
+t = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'<(div|section) class="diagram[^"]*" id="map"[^>]*>(.*?)<!-- /map -->', t, re.S)
+assert m, "no .diagram#map ... <!-- /map --> block"
+body = m.group(2)
+assert len(re.findall(r'class="chip"[^>]*data-tier="', body)) >= 6, "fewer than six tier chips in the map"
+assert 'href="concepts/lifecycle.html"' in body, "the map does not link the lifecycle page"
+assert len(re.findall(r'class="st"', body)) >= 5, "fewer than five stages"
+PY
+OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$ROOT/docs/index.html" 2>&1); RC=$?; rc 0; has 'index.html {'
+grep -Eq 'class="[^"]*\bwire-grid\b' "$HOME_SRC" 2>/dev/null && ok "Home paints the wireframe grid" || bad "Home has no .wire-grid band"
+python3 - "$CSS" <<'PY' && ok "the grid is drawn by .wire-grid::before and removed under prefers-reduced-motion: reduce" || bad "wire-grid CSS"
+import re, sys
+css = open(sys.argv[1], encoding="utf-8").read()
+assert re.search(r"\.wire-grid::before\s*\{[^}]*background-image", css), "no grid drawing"
+i = css.index("@media (prefers-reduced-motion: reduce)")
+depth, j = 0, css.index("{", i)
+for k in range(j, len(css)):
+    depth += {"{": 1, "}": -1}.get(css[k], 0)
+    if depth == 0: block = css[j:k]; break
+assert re.search(r"\.wire-grid::before\s*\{\s*display:\s*none", block), "grid not removed under reduced motion"
+PY
+
+hd "start: page"
+python3 - "$ROOT/site/pages.json" <<'PY' && ok "start.html is registered, hand-written, in the start section" || bad "start.html registry entry"
+import json, sys
+e = [p for p in json.load(open(sys.argv[1])) if p["path"] == "start.html"]
+assert len(e) == 1 and e[0]["section"] == "start" and e[0]["source"] == "hand" and "feature" not in e[0], e
+h = [p for p in json.load(open(sys.argv[1])) if p["path"] == "index.html"]
+assert h and h[0]["title"] == "Home", h
+PY
+OUT=$(cat "$ROOT/docs/start.html" 2>/dev/null)
+has '<a href="start.html" aria-current="page">Getting started</a>'
+has 'claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace'; has 'claude plugin install marvin@emprove'
+has 'claude plugin update marvin@emprove'; has '/marvin:install-agent-os'; has '/marvin:upgrade-agent-os'; has '/marvin:whats-new'
+for id in install first-session pm-tools manual-install upgrading hooks windows portability; do has "id=\"$id\""; done
+for t in Linear Jira 'GitHub Issues' Local; do has "<td><strong>$t</strong></td>"; done
+has 'href="settings.html#model_profile"'
+if grep -REq 'https?://[^"]*atlassian|/Users/|/home/' "$ROOT/site/start.html" "$HOME_SRC" 2>/dev/null; then bad "Home or Getting started carries a tracker link or a local path"; else ok "no tracker link or local path on Home or Getting started"; fi
+
+hd "readme: slim"
+python3 - "$ROOT/README.md" "$SITE_URL" <<'PY' && ok "README keeps the pitch, install, docs block, contributing, inventory and licence, and nothing else" || bad "README is not slim"
+import re, sys
+t = open(sys.argv[1], encoding="utf-8").read(); url = sys.argv[2]
+heads, fence = [], False
+for line in t.splitlines():
+    if line.startswith("```"): fence = not fence; continue
+    if not fence and re.match(r"#{1,6} ", line): heads.append(line.split(" ", 1)[1].strip())
+for need in ("At a glance", "Documentation", "Contributing", "Inventory", "License"):
+    assert any(h.endswith(need) for h in heads), f"missing heading {need!r}: {heads}"
+for gone in ("How it works", "PM tools", "Skills and commands", "The discipline stack", "What you get", "Quickstart",
+             "Manual install", "Updating and migrating", "Marvin himself", "SessionStart hook", "Windows", "Portability notes"):
+    assert gone not in heads, f"README still has ## {gone}"
+d = t.split("## Documentation", 1)[1].split("\n## ", 1)[0]
+assert url in d, "the Documentation block does not link the site"
+for p in ("start.html", "concepts/lifecycle.html", "concepts/fleet.html", "settings.html", "skills.html", "reference.html", "mods/index.html", "releases/index.html"):
+    assert url + p in d, f"the Documentation block lacks {p}"
+assert "claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace" in t and "claude plugin install marvin@emprove" in t, "no install one-liner"
+assert "```mermaid" not in t, "a mermaid diagram is left in README"
+PY
+
+# ANCHORS_PY <root> [file...]: every README.md#<anchor> link (in the given files, else in every tracked file outside
+# docs/superpowers/ and .superpowers/, and this suite, whose fixtures dangle on purpose) and every in-page #<anchor> link inside README itself names a heading README still
+# has, under GitHub's slug rule. `--slug <text>` prints one slug.
+ANCHORS_PY='
+import re, sys, subprocess, unicodedata, pathlib
+def slug(text):
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text).strip().lower()
+    keep = "".join(c for c in text if c in " -" or unicodedata.category(c)[0] in "LMN" or unicodedata.category(c) == "Pc")
+    return keep.replace(" ", "-")
+if sys.argv[1] == "--slug": print(slug(sys.argv[2])); sys.exit(0)
+root = pathlib.Path(sys.argv[1]); files = sys.argv[2:]
+readme = (root / "README.md").read_text(encoding="utf-8")
+seen, slugs, fence = {}, set(), False
+for line in readme.splitlines():
+    if line.startswith("```"): fence = not fence; continue
+    m = None if fence else re.match(r"#{1,6} (.+)", line)
+    if m:
+        s = slug(m.group(1)); n = seen.get(s, 0); seen[s] = n + 1
+        slugs.add(s if n == 0 else f"{s}-{n}")
+if not files:
+    out = subprocess.run(["git", "-C", str(root), "ls-files"], capture_output=True, text=True, check=True).stdout.split()
+    files = [f for f in out if not f.startswith(("docs/superpowers/", ".superpowers/")) and f != "scripts/test-build-docs.sh"]
+bad = []
+for f in files:
+    p = root / f
+    try: t = p.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError): continue
+    for a in re.findall(r"(?:\]\(|href=\")[^)\"\s]*README\.md#([A-Za-z0-9_%-]+)", t):
+        if a not in slugs: bad.append(f"{f}: README.md#{a}")
+    if f == "README.md":
+        for a in re.findall(r"\]\(#([^)\s]+)\)", t):
+            if a not in slugs: bad.append(f"README.md: #{a}")
+for b in bad: print("DANGLING:", b)
+sys.exit(1 if bad else 0)
+'
+hd "readme: anchors"
+OUT=$(python3 -c "$ANCHORS_PY" --slug "✨ At a glance"); [ "$OUT" = "-at-a-glance" ] && ok "slug: ✨ At a glance -> -at-a-glance" || bad "slug of the At a glance heading is '$OUT'"
+OUT=$(python3 -c "$ANCHORS_PY" --slug "Marvin himself: \`MEMORY.md\` & [the hook](x.md)"); [ "$OUT" = "marvin-himself-memorymd--the-hook" ] && ok "slug strips punctuation, code ticks and link targets" || bad "slug rule: '$OUT'"
+OUT=$(python3 -c "$ANCHORS_PY" "$ROOT" 2>&1); RC=$?; rc 0
+AF="$WORK/anchors"; mkdir -p "$AF"
+printf '# T\n\n- [k](#kept)\n\n## Kept\n\n## Kept\n' > "$AF/README.md"
+printf 'see [x](README.md#kept) and [y](README.md#kept-1)\n' > "$AF/ok.md"
+printf 'see [x](README.md#gone)\n' > "$AF/dangling.md"
+printf '# T\n\n- [n](#nope)\n' > "$AF/README2.md"
+OUT=$(python3 -c "$ANCHORS_PY" "$AF" ok.md README.md 2>&1); [ "$?" = 0 ] && ok "a live anchor (and a duplicate heading's -1) passes" || bad "a live anchor was rejected ($OUT)"
+OUT=$(python3 -c "$ANCHORS_PY" "$AF" ok.md dangling.md 2>&1); RC=$?; rc 1; has 'DANGLING: dangling.md: README.md#gone'
+mv "$AF/README2.md" "$AF/README.md"; OUT=$(python3 -c "$ANCHORS_PY" "$AF" README.md 2>&1); RC=$?; rc 1; has 'DANGLING: README.md: #nope'
+
+hd "readme: suites and gates"
+python3 - "$ROOT" <<'PY' && ok "README lists every suite, spells their number, and counts the gate's checks right" || bad "README suite list or counts"
+import re, sys, pathlib
+root = pathlib.Path(sys.argv[1]); t = (root / "README.md").read_text(encoding="utf-8")
+W = "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split()
+W += ["twenty-" + w for w in W[1:10]] + ["thirty"]
+suites = sorted(p.name for p in (root / "scripts").glob("test-*.sh"))
+listed = sorted(re.findall(r"^bash scripts/(test-[a-z0-9-]+\.sh)$", t, re.M))
+assert listed == suites, (listed, suites)
+m = re.search(r"the static release gate and the ([a-z-]+) test suites", t); assert m and W.index(m.group(1)) == len(suites), m and m.group(1)
+checks = len(re.findall(r"^# ── [0-9]+\. ", (root / "scripts/validate-kit.sh").read_text(encoding="utf-8"), re.M))
+m = re.search(r"The static gate's ([a-z-]+) checks", t); assert m and W.index(m.group(1)) == checks, (m and m.group(1), checks)
+PY
+
+hd "rules: 8, 10 and 11 name the site"
+python3 - "$ROOT" <<'PY' && ok "CLAUDE.md and AGENTS.md carry the same rules 8/10/11, and they name site/, the build and its check" || bad "rules 8/10/11"
+import re, sys, pathlib
+root = pathlib.Path(sys.argv[1])
+def rules(f):
+    return {m.group(1): m.group(0) for m in re.finditer(r"^(8|10|11)\. .*$", (root / f).read_text(encoding="utf-8"), re.M)}
+c, a = rules("CLAUDE.md"), rules("AGENTS.md")
+assert set(c) == {"8", "10", "11"}, sorted(c)
+for k in c: assert c[k] == a.get(k), f"rule {k} differs between CLAUDE.md and AGENTS.md"
+r8 = c["8"]
+assert "docs-site build" in r8, "rule 8 does not list the docs-site build suite"
+items = r8.split("suite** (", 1)[1].split(" — CI runs them all", 1)[0].split(", ")
+assert len(items) == len(list((root / "scripts").glob("test-*.sh"))), (len(items), items)
+r10 = c["10"]
+for need in ("the README (the inventory row for every file added, renamed or removed; the gate and suite counts and lists)",
+             "the site page under `site/` that covers the changed area, regenerated with `scripts/build-docs.sh`"):
+    assert need in r10, f"rule 10 lacks: {need}"
+for gone in ("the skills and commands table", "the section that describes a consumer-visible behaviour", "`docs/index.html` where it describes"):
+    assert gone not in r10, f"rule 10 still says: {gone}"
+r11 = c["11"]
+for need in ("`site/`", "`site/concepts/`", "`site/mods/<feature>.html`", '`"feature": "<feature>"`', "`site/pages.json`",
+             "`docs/images/<feature>/`", "`captions.md`", "`scripts/build-docs.sh --check`", "`docs-site`"):
+    assert need in r11, f"rule 11 lacks {need}"
+assert "(`docs/index.html`)" not in r11, "rule 11 still names docs/index.html as the guide"
+PY
+
+hd "validate-kit: marketplace scans the whole site"
+# Runs the check's own scan lines (between its header and its verdict) in a fixture tree.
+MK_SCAN=$(sed -n '/^# ── 25\. marketplace/,/^\[ -z "\$mk" \]/p' "$ROOT/scripts/validate-kit.sh" | grep -vE '^#|^\[ -z')
+MKF="$WORK/mkt"; mkdir -p "$MKF/docs/releases" "$MKF/docs/concepts" "$MKF/site/concepts" "$MKF/skills" "$MKF/templates" "$MKF/commands"
+printf 'claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace\n' > "$MKF/docs/index.html"
+printf 'claude plugin marketplace add Zenosyne-Technologies/agent-operating-kit\n' > "$MKF/docs/releases/v1.html"
+printf 'claude plugin marketplace add Zenosyne-Technologies/agent-operating-kit\n' > "$MKF/site/concepts/x.html"
+printf 'claude plugin marketplace add Zenosyne-Technologies/emprove-marketplace\n' > "$MKF/README.md"; : > "$MKF/BOOTSTRAP.md"
+OUT=$(cd "$MKF" && { eval "$MK_SCAN"; printf '%s' "$mk"; }); has 'docs/releases/v1.html'; has 'site/concepts/x.html'; lacks 'docs/index.html'
+rm "$MKF/docs/releases/v1.html" "$MKF/site/concepts/x.html"; OUT=$(cd "$MKF" && { eval "$MK_SCAN"; printf '[%s]' "$mk"; }); has '[]'
 
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite

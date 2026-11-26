@@ -4,19 +4,98 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Marvin - Marvin</title>
+<title>Home - Marvin</title>
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
 <a class="brand" href="index.html">Marvin</a>
-<nav class="top-nav" aria-label="Primary"><a href="index.html" aria-current="page">Home</a><a href="concepts/lifecycle.html">Concepts</a><a href="settings.html">Settings</a><a href="skills.html">Skills &amp; commands</a><a href="reference.html">Reference</a><a href="mods/index.html">Mods</a><a href="releases/index.html">Releases</a></nav>
+<nav class="top-nav" aria-label="Primary"><a href="index.html" aria-current="page">Home</a><a href="start.html">Getting started</a><a href="concepts/lifecycle.html">Concepts</a><a href="settings.html">Settings</a><a href="skills.html">Skills &amp; commands</a><a href="reference.html">Reference</a><a href="mods/index.html">Mods</a><a href="releases/index.html">Releases</a></nav>
 </header>
 <div class="layout">
 
 <main id="main">
-<h1>Marvin</h1><p>The documentation site is being rebuilt.</p>
+<section class="hero wire-grid">
+<p class="eyebrow">The Agentic Operating System</p>
+<h1>Give your AI software team an <span class="signal">operating system</span></h1>
+<p class="lede">Not another enormous prompt. Marvin is an orchestrator with a name, a personality and a memory. It plans, briefs specialised sub-agents, sequences their work and verifies it, but never bulk-implements.</p>
+<p class="cta-row"><a class="cta" href="start.html">Get started</a><a class="cta cta--ghost" href="concepts/lifecycle.html">How a task runs</a></p>
+</section>
+
+<h2 id="what">What Marvin is</h2>
+<p><strong>Marvin</strong> is a reusable agentic operating system for AI-assisted software projects, installed as a Claude Code plugin. Install it into a repo and that repo gets an orchestrator, plus the machinery that makes agent work auditable: size-routed model-tier dispatch, a cascading ruleset that keeps context proportional to the task, task lifecycles gated by a definition of done (DoD) with two adversarial validators in sequence, a versioned label registry feeding collect-once reporting, three living product handbooks, and, with the companion <strong>token-telemetry</strong> plugin, token and dollar cost down to the individual tracker issue.</p>
+<p>It is for anyone running real software delivery through Claude Code and tired of "done" without evidence. It works with <strong>Linear, Jira, GitHub Issues or a Local</strong> markdown tracker, and installs a lean, self-contained payload in any repo. Marvin is built and operated under the same rules it installs.</p>
+
+<h2 id="map-title">The 30-second map</h2>
+<p>Every tracker task walks one loop. Each stage is run by a persona pinned to a model tier, and each arrow is a gate.</p>
+<div class="diagram home-map" id="map">
+<div class="flow">
+<div class="st"><span class="cap">1 · Plan and brief</span><span class="chip" data-p="marvin" data-tier="orch"><span class="dot"></span><span class="cn">Marvin</span><span class="cm"><span class="tier">orchestrator</span></span></span><span class="tx">Writes the DoD on the issue, sizes the task, writes the brief.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">2 · Build, picked by size</span><div class="stack"><span class="chip" data-p="developer" data-tier="heavy"><span class="dot"></span><span class="cn">developer</span><span class="cm"><span class="tier">heavy</span> · size:m+</span></span><span class="chip" data-p="developer-small" data-tier="small"><span class="dot"></span><span class="cn">developer-small</span><span class="cm"><span class="tier">small</span> · size:s</span></span><span class="chip" data-p="developer-micro" data-tier="micro"><span class="dot"></span><span class="cn">developer-micro</span><span class="cm"><span class="tier">micro</span> · full spec</span></span></div></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">3 · Completion gate</span><span class="chip" data-p="validator-completion" data-tier="heavy"><span class="dot"></span><span class="cn">validator-completion</span><span class="cm"><span class="tier">heavy</span></span></span><span class="tx">A fresh agent tries to falsify "done".</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">4 · Security gate</span><span class="chip" data-p="validator-security" data-tier="heavy"><span class="dot"></span><span class="cn">validator-security</span><span class="cm"><span class="tier">heavy</span></span></span><span class="tx">Reviews the change for security regressions.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">5 · Document</span><span class="chip" data-p="documenter" data-tier="small"><span class="dot"></span><span class="cn">documenter</span><span class="cm"><span class="tier">small</span></span></span><span class="tx">Handbooks and the issue log, before the issue may close.</span></div>
+<span class="ar" aria-hidden="true">→</span>
+<div class="st"><span class="cap">6 · Close-out</span><span class="chip" data-p="ponytail" data-tier="micro"><span class="dot"></span><span class="cn">ponytail</span><span class="cm"><span class="tier">micro</span></span></span><span class="tx">Closes the issue with its commit refs.</span></div>
+</div>
+<p class="map-note"><span class="fail">A failed gate</span> sends the task back to its build tier with the findings. <a href="concepts/lifecycle.html">The full lifecycle</a> lets you select any persona for its model, job and limits.</p>
+</div><!-- /map -->
+<p>Before build, <a href="concepts/sizing.html">sizing</a> decides who works. When a build is stuck, <a href="concepts/escalation.html">escalation</a> reads the failure pattern and climbs, rethinks or asks you. <a href="concepts/around-the-loop.html">Around the loop</a> covers everything else that keeps it honest, and <a href="concepts/fleet.html">fleet mode</a> runs several epics at once.</p>
+
+<h2 id="what-you-get">What you get</h2>
+<div class="card-grid">
+<div class="card"><h3>An orchestrator with a name</h3><p>Marvin stays in character for the project's lifetime, with a memory file it manages itself that survives context compaction.</p></div>
+<div class="card"><h3>Size-routed dispatch</h3><p>Every task carries a <code>size:</code> label, and the label plus the brief's completeness decide which model tier builds it, down to a micro tier for mechanical work. The heavy tier's model is the sub-agent ceiling. After each failed round Marvin reads the failure pattern, and only at <code>max</code> does it ask you (<a href="concepts/escalation.html">Escalation</a>).</p></div>
+<div class="card"><h3>A DoD-gated lifecycle</h3><p>No task enters build without verifiable done-statements on the tracker issue. Fresh validators, never the builder, try to falsify them afterwards: completion first, then security. Anything web-facing is checked in a real browser (Playwright or direct browser driving), because an API-level curl check is not browser end-to-end testing.</p></div>
+<div class="card"><h3>A cascading ruleset</h3><p>One always-loaded core (your <code>CLAUDE.md</code> plus the kit core it imports) holds only what applies to every turn. Per-activity rules live beside it and are <em>cited</em> in briefs, never pasted in.</p></div>
+<div class="card"><h3>A versioned label registry</h3><p>Type, area, severity, origin and size on every item an agent creates or edits, with backfill-on-touch for legacy issues. This is what makes statistics possible at all.</p></div>
+<div class="card"><h3>Collect-once reporting</h3><p>One stats snapshot per collection run, three renders on top of it: architect digest, milestone close-out, and a stakeholder page with no agent internals.</p></div>
+<div class="card"><h3>Three living handbooks</h3><p>Developer, user and admin wikis in the project's docs, Obsidian-compatible, each page naming the code paths it documents so the docs agent amends instead of duplicating.</p></div>
+<div class="card"><h3>Security discipline</h3><p>Secrets never committed or pasted into the tracker, dependency changes vetted and pinned, every brief naming its security surface, and security-critical design kept with Marvin.</p></div>
+<div class="card"><h3>Your PM tool, set up</h3><p>A labelled, deduped intake structure created for you in Linear, Jira or GitHub Issues, or a self-contained markdown tracker inside the repo (<a href="start.html#pm-tools">PM tools</a>).</p></div>
+<div class="card"><h3>Cost visibility, optional</h3><p>With the token-telemetry companion: dollars per issue, per milestone and per tier, in the same snapshots and reports. Everything degrades silently without it.</p></div>
+</div>
+
+<h2 id="marvin">Who is Marvin</h2>
+<p>Named for the Hitchhiker's android: the brain the size of a planet is canon, the depression is not. Smart, thorough, with a keen eye for detail and management; young and snappy. Marvin questions everything that does not add up: a brief that contradicts the code, a "done" without evidence, a number that appears from nowhere.</p>
+<p>Its memory is its own to manage. Noteworthy findings (decisions, surprises, hard-won gotchas) go into <code>MEMORY.md</code> as they happen, <em>before</em> context compaction can lose them. Marvin reads it when a session starts and tidies it at milestone close so it never rots. Nothing goes in that the repo, the tracker or the handbooks already record.</p>
+<p>That memory is also what lets Marvin keep sessions short. A plugin hook measures the session's context from its transcript (no telemetry needed), and Marvin plans, winds down and stops cleanly on the 400k / 700k budgets and the 70 / 80 / 90 % context steps. It writes the handoff and suggests <code>/compact</code> or a fresh session with a one-line resume prompt. Nothing is ever blocked. A project can move the budgets and the window with <a href="settings.html"><code>session_soft_ktokens</code>, <code>session_hard_ktokens</code> and <code>context_window_ktokens</code></a> (<a href="reference.html#session-budget"><code>session-budget.md</code></a>).</p>
+
+<h2 id="discipline">The discipline stack</h2>
+<p>Each of these is one guide in the installed cascade. <a href="reference.html">Reference</a> lists them all, and <a href="concepts/around-the-loop.html">Around the loop</a> shows where each one acts.</p>
+<ul>
+<li><strong>Context proportionality.</strong> <code>CLAUDE.md</code> and the kit core it imports (<code>.marvin/CLAUDE.marvin.md</code>) are the only always-loaded files, and they hold only rules that apply to <em>every</em> turn. Everything else lives in the <code>.marvin/agents/</code> cascade and is loaded only while that activity is happening. Briefs cite the file; they never paste its content.</li>
+<li><strong>Brief discipline.</strong> Every sub-agent brief carries the env preamble, exact scope, ownership boundaries, the exact branch plus autocommit instructions, idempotency, and a machine-read final message of 25 lines at most. The full report goes to a gitignored run report under <code>.marvin/runs/</code> that Marvin opens only to act on a finding. No policy changes mid-run (<a href="reference.html#briefing"><code>briefing.md</code></a>).</li>
+<li><strong>Guardrails, the DO NOT framework.</strong> One guide owns what an agent must not do. Every prohibition resolves to one of four dispositions: do the safe thing instead, stop and clarify, ask for approval from above, or skip and report. A blocked sub-agent follows a fixed chain (sub-agent → Marvin → you), commits whatever safe work it finished and names the block; no agent treats silence as approval (<a href="reference.html#guardrails"><code>guardrails.md</code></a>).</li>
+<li><strong>Labels as infrastructure.</strong> A self-contained, versioned registry: type, area, severity, origin and size on every item agents create or edit, plus backfill-on-touch for unlabelled legacy issues. An unlabelled item is invisible to reporting. The taxonomy, a filing template, dedupe rules and QA-sweep conventions are also published as a guide inside the tracker (<a href="reference.html#label-syntax"><code>label-syntax.md</code></a>).</li>
+<li><strong>Collect once, render many.</strong> A per-tracker stats brief snapshots every label dimension into versioned JSON. The three renders read that snapshot as is, and a render without a fresh same-day snapshot starts by collecting one. The stakeholder page strips agent internals entirely: product progress only (<a href="reference.html#reporting"><code>reporting.md</code></a>).</li>
+<li><strong>Traceability by convention.</strong> One guide owns everything git: a gitflow branch model, annotated tags only Marvin may cut, and semver classified by what a consumer must do. Agents autocommit finished work, atomic and selectively staged, and every commit message starts with its tracker key as <code>&lt;KEY&gt;: &lt;message&gt;</code>, so commits, branches and costs all resolve back to the PM tool (<a href="reference.html#git-strategy"><code>git-strategy.md</code></a>).</li>
+<li><strong>The DoD as the contract.</strong> The planner writes it onto the issue before build starts. It is what the builder targets, what two independent validators attack, what the documentation agent documents against, and what the close comment quotes.</li>
+<li><strong>Security and secrets.</strong> Secrets are never committed and never pasted into PM-tool surfaces. A leaked secret is a sev1: rotate first, discuss second. Dependency changes are sized <code>m</code> or larger and get advisory checks with pinned versions (<a href="reference.html#security"><code>security.md</code></a>).</li>
+<li><strong>Handbooks that stay alive.</strong> The developer handbook explains the software's logic and the why behind it; the user and admin handbooks give plain-language guides per module. Pages carry <code>sources:</code> frontmatter naming the code paths they document, so the documentation agent finds every affected page with one grep and amends it (<a href="reference.html#handbooks"><code>handbooks.md</code></a>).</li>
+<li><strong>Code that documents its own surface.</strong> Every new or changed public class or method carries a contract docblock (summary, parameters, return, errors) in its ecosystem's own idiom: PHPDoc, TSDoc, Javadoc, PEP 257, rustdoc, GoDoc. It states WHAT the contract is; a non-obvious inline comment explains WHY (<a href="reference.html#documentation-agent"><code>documentation-agent.md</code></a>).</li>
+<li><strong>Token economics.</strong> With telemetry installed, Marvin writes a context sidecar (issue key, project, size, a one-line summary) at each task start, and the telemetry hooks stamp it onto every captured event. Cost joins to issues, milestones and tiers for free, an effective-dated price table turns tokens into dollars at query time (every figure carries the date of the rate it used), and closed issues get a one-line cost figure. Without telemetry every cost output is omitted silently (<a href="reference.html#token-economics"><code>token-economics.md</code></a>).</li>
+</ul>
+
+<h2 id="next">Where to go next</h2>
+<div class="card-grid">
+<a class="card" href="start.html"><h3>Getting started</h3><p>Install, the first session, PM tools, upgrading, Windows.</p></a>
+<a class="card" href="concepts/lifecycle.html"><h3>Lifecycle</h3><p>The loop every task walks, persona by persona.</p></a>
+<a class="card" href="concepts/sizing.html"><h3>Sizing</h3><p>How the size label picks who builds.</p></a>
+<a class="card" href="concepts/escalation.html"><h3>Escalation</h3><p>What happens when a build is stuck.</p></a>
+<a class="card" href="concepts/around-the-loop.html"><h3>Around the loop</h3><p>Reporting, handbooks, worktrees, budgets, Codex and more.</p></a>
+<a class="card" href="concepts/fleet.html"><h3>Fleet mode</h3><p>Several epics at once, one child orchestrator each.</p></a>
+<a class="card" href="settings.html"><h3>Settings</h3><p>Every <code>PROJECT-INFO.md</code> key.</p></a>
+<a class="card" href="skills.html"><h3>Skills &amp; commands</h3><p>Everything you can run.</p></a>
+<a class="card" href="reference.html"><h3>Reference</h3><p>Every guide in the installed cascade.</p></a>
+<a class="card" href="mods/index.html"><h3>Mods</h3><p>What Marvin shows you in Claude Code.</p></a>
+<a class="card" href="releases/index.html"><h3>Releases</h3><p>Every version, its upgrade steps and changes.</p></a>
+</div>
 
 </main>
 </div>

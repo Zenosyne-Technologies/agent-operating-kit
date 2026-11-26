@@ -136,6 +136,11 @@ th, td { padding: 10px 12px; border-bottom: 1px solid var(--em-line); vertical-a
 th { font-family: var(--em-mono); font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; color: var(--em-text); border-bottom-color: var(--em-green-20); white-space: nowrap; }
 td { color: var(--em-text-2); }
 tbody tr:hover td { background: var(--em-white-06); }
+/* a hand-written table too wide for a phone scrolls inside its own box, never the page */
+.table-scroll { max-width: 100%; overflow-x: auto; margin: 0 0 1.4em; }
+.table-scroll > table { margin: 0; min-width: 560px; }
+.table-scroll td, .table-scroll th { overflow-wrap: normal; }
+.table-scroll td:first-child { white-space: nowrap; }
 .align-left { text-align: left; }
 .align-center { text-align: center; }
 .align-right { text-align: right; }
@@ -315,6 +320,21 @@ a.card:focus-visible { outline: 2px solid var(--em-green); outline-offset: 2px; 
   animation: wire-drift 40s linear infinite;
 }
 @keyframes wire-drift { from { background-position: 0 0, 0 0; } to { background-position: 0 48px, 48px 0; } }
+.hero { padding: 40px 0 32px; margin: 0 0 8px; }
+.hero h1 { max-width: 20ch; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0 0; }
+
+/* Home: the 30-second map, a compact lifecycle. Its chips are labels, not controls (Home has no inspector). */
+.home-map .flow { align-items: flex-start; }
+.home-map .st { flex: 1 1 140px; }
+.home-map .chip { cursor: default; }
+.home-map .chip:hover { box-shadow: none; }
+.home-map .map-note { margin: 14px 0 0; font-size: 13.5px; color: var(--em-text-2); }
+@media (max-width: 760px) {
+  .home-map .flow { flex-direction: column; }
+  .home-map .st { flex: 0 0 auto; }
+  .home-map .ar { align-self: flex-start; padding: 0 0 0 12px; transform: rotate(90deg); }
+}
 
 /* ---------------------------------------------------------------- the diagram palette exception
    Emprove's Three Colours Rule allows laser green, abyss black and white (and their alpha mixes) and nothing else.
