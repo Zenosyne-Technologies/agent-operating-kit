@@ -10,7 +10,9 @@
 # AOS-305 adds the rule-11 galleries (docs/images/<feature>/captions.md -> a See it in Claude Code section, inline shot markers) and the Mods page.
 # AOS-301 adds the site build and the --check gate: pages wrapped in the shell, links relative from nested pages, the
 # nav, determinism, stale/missing/orphan reporting that never touches docs/images|release-notes|decisions|superpowers|
-# .nojekyll, CRLF sources, registry validation. Mutations at the end: each `# GUARD:<name>` line in the module is neutralised in a
+# .nojekyll, CRLF sources, registry validation. The whole-branch review adds: OS metadata ignored, a build that prunes
+# only its own output and fails on any other orphan, every page reachable, the registry schema, wrapped settings bullets
+# and unparseable CHANGELOG headings failing loud. Mutations at the end: each `# GUARD:<name>` line in the module is neutralised in a
 # copy and the named fixture must then FAIL. Later tasks append `name:fixture` pairs to MUTATIONS.
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd); ROOT="$SCRIPT_DIR/.."
@@ -270,6 +272,74 @@ except b.BuildError: sys.exit(2)
   done
 }
 
+# fx_build_orphan: a stale page carrying the shell's generator meta and a stale docs/assets/ file are owned, so a plain
+# build removes them and prints `removed docs/<rel>`; docs/CNAME and docs/robots.txt are not, so they survive, are
+# printed as ORPHAN and the build exits 1. A rebuild with them gone is clean again.
+fx_build_orphan() {
+  local d="$WORK/fx-borph"; mkrepo "$d"; sbuild "$d" || return 1
+  cp "$d/docs/concepts/x.html" "$d/docs/concepts/old.html"; printf 'x' > "$d/docs/assets/old.css"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 0 ] || return 1
+  printf '%s' "$OUT" | grep -Fq 'removed docs/concepts/old.html' && printf '%s' "$OUT" | grep -Fq 'removed docs/assets/old.css' || return 1
+  [ ! -e "$d/docs/concepts/old.html" ] && [ ! -e "$d/docs/assets/old.css" ] || return 1
+  printf 'docs.example.com\n' > "$d/docs/CNAME"; printf 'User-agent: *\n' > "$d/docs/robots.txt"; printf '<p>hand</p>\n' > "$d/docs/hand.html"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 1 ] || return 1
+  printf '%s' "$OUT" | grep -Fq 'ORPHAN docs/CNAME' && printf '%s' "$OUT" | grep -Fq 'ORPHAN docs/robots.txt' && printf '%s' "$OUT" | grep -Fq 'ORPHAN docs/hand.html' || return 1
+  [ -f "$d/docs/CNAME" ] && [ -f "$d/docs/robots.txt" ] && [ -f "$d/docs/hand.html" ] || return 1
+  rm "$d/docs/CNAME" "$d/docs/robots.txt" "$d/docs/hand.html"; sbuild "$d"
+}
+# fx_os_junk: .DS_Store / Thumbs.db / desktop.ini / ._* under docs/, docs/assets/, docs/images/ and a feature folder (and
+# under site/assets/) are not content: --check and a build both exit 0, nothing is deleted, nothing junk is published.
+fx_os_junk() {
+  local d="$WORK/fx-junk" f; mkrepo "$d"; mkdir -p "$d/site/mods" "$d/docs/images/demo"
+  printf '<h1>Demo</h1>\n' > "$d/site/mods/demo.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "mods/demo.html", "title": "Demo", "section": "mods", "order": 0, "source": "hand", "feature": "demo"}
+]
+JSON
+  sbuild "$d" || return 1
+  for f in .DS_Store Thumbs.db desktop.ini ._index.html assets/.DS_Store images/.DS_Store images/demo/.DS_Store images/demo/._x.png images/demo/Thumbs.db; do printf 'junk' > "$d/docs/$f"; done
+  printf 'junk' > "$d/site/assets/.DS_Store"; printf 'junk' > "$d/site/assets/._site.css"
+  scheck "$d"; [ "$RC" = 0 ] || return 1
+  sbuild "$d" || return 1
+  for f in .DS_Store Thumbs.db desktop.ini ._index.html assets/.DS_Store images/.DS_Store images/demo/.DS_Store images/demo/._x.png images/demo/Thumbs.db; do [ "$(cat "$d/docs/$f" 2>/dev/null)" = junk ] || return 1; done
+  [ ! -e "$d/docs/assets/._site.css" ]
+}
+# fx_unreachable: a registered page nothing links to (not in the nav, not in a sidebar section, not linked from a body)
+# fails the build naming it; linking it from Home makes it reachable.
+fx_unreachable() {
+  local d="$WORK/fx-unreach"; mkrepo "$d"; printf '<h1>Other</h1>\n' > "$d/site/other.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"},
+  {"path": "other.html", "title": "Other", "section": "home", "order": 5, "source": "hand"}
+]
+JSON
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'other.html: no other page links to it' || return 1
+  printf '<h1>Home</h1>\n<p><a href="other.html#top">other</a></p>\n' > "$d/site/index.html"
+  sbuild "$d"
+}
+# regfail <name> <pages.json text> <message>: the registry exits 2 with that message (each schema guard has its own).
+regfail() {
+  local d="$WORK/fx-reg-$1"; mkrepo "$d"; printf '%s\n' "$2" > "$d/site/pages.json"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq -- "$3"
+}
+REG_HOME='{"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"}'
+fx_registry_json() { regfail json '[{"path": ' 'site/pages.json: '; }
+fx_registry_list() { regfail list '{"path": "index.html"}' 'top level must be a list'; }
+fx_registry_entry() { regfail entry "[$REG_HOME, \"concepts/x.html\"]" 'site/pages.json[1]: entry must be an object'; }
+fx_registry_key() { regfail key "[$REG_HOME, {\"path\": \"concepts/x.html\", \"title\": \"X\", \"section\": \"concepts\", \"source\": \"hand\"}]" "site/pages.json[1]: missing 'order'"; }
+fx_registry_types() {
+  regfail types "[$REG_HOME, {\"path\": \"concepts/x.html\", \"title\": 7, \"section\": \"concepts\", \"order\": 1, \"source\": \"hand\"}]" 'must be non-empty strings and order an integer' || return 1
+  regfail types "[$REG_HOME, {\"path\": \"concepts/x.html\", \"title\": \"X\", \"section\": \"concepts\", \"order\": \"1\", \"source\": \"hand\"}]" 'must be non-empty strings and order an integer'
+}
+fx_registry_path() { regfail path "[$REG_HOME, {\"path\": \"../x.html\", \"title\": \"X\", \"section\": \"concepts\", \"order\": 1, \"source\": \"hand\"}]" 'path must be relative and stay inside docs/'; }
+fx_registry_feature_type() { regfail ftype "[$REG_HOME, {\"path\": \"concepts/x.html\", \"title\": \"X\", \"section\": \"concepts\", \"order\": 1, \"source\": \"hand\", \"feature\": 5}]" 'feature must be a string'; }
+fx_registry_generator() { regfail gen "[$REG_HOME, {\"path\": \"g\", \"title\": \"G\", \"section\": \"concepts\", \"order\": 1, \"source\": \"generated:nope\"}]" "no generator named 'nope'"; }
+fx_registry_source() { regfail src "[$REG_HOME, {\"path\": \"concepts/x.html\", \"title\": \"X\", \"section\": \"concepts\", \"order\": 1, \"source\": \"handmade\"}]" "source must be 'hand' or 'generated:<name>'"; }
+
 hd "build: wraps pages"
 R="$WORK/r1"; mkrepo "$R"; python3 "$MOD" --root "$R" >/dev/null 2>&1; RC=$?; rc 0
 OUT=$(cat "$R/docs/index.html"); has '<!doctype html>'; has '<html lang="en">'; has '<title>Home - Marvin</title>'; has '<h1>Home body</h1>'
@@ -307,8 +377,7 @@ R2="$WORK/r2"; mkrepo "$R2"; sbuild "$R2"
 mkdir -p "$R2/docs/images" "$R2/docs/release-notes" "$R2/docs/decisions" "$R2/docs/superpowers/specs"
 for f in images/README.md release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do printf 'keep' > "$R2/docs/$f"; done
 scheck "$R2"; rc 0; lacks ORPHAN
-sbuild "$R2"; printf 'x' > "$R2/docs/old.html"; sbuild "$R2"
-[ ! -e "$R2/docs/old.html" ] && ok "a plain build removes its own stale output" || bad "old.html survived a build"
+fx_build_orphan && ok "a plain build removes (and prints) only stale output it owns; an unowned file survives and fails the build (exit 1)" || bad "fx_build_orphan"
 n=0; for f in images/README.md release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do [ "$(cat "$R2/docs/$f" 2>/dev/null)" = keep ] && n=$((n+1)); done
 [ "$n" = 5 ] && ok "protected paths are never written or removed" || bad "protected paths touched ($n/5 intact)"
 
@@ -328,6 +397,34 @@ R4="$WORK/r4"; mkrepo "$R4"; sed -i.bak 's/"source": "hand"}$/"source": "generat
 OUT=$(python3 "$MOD" --root "$R4" 2>&1); RC=$?; rc 2; has "no generator named 'nope'"
 R5="$WORK/r5"; mkrepo "$R5"; rm "$R5/site/concepts/x.html"
 OUT=$(python3 "$MOD" --root "$R5" 2>&1); RC=$?; rc 2; has 'x.html'
+hd "registry: schema"
+fx_registry_json && ok "a registry that is not JSON exits 2" || bad "fx_registry_json"
+fx_registry_list && ok "a top level that is not a list exits 2" || bad "fx_registry_list"
+fx_registry_entry && ok "an entry that is not an object exits 2" || bad "fx_registry_entry"
+fx_registry_key && ok "an entry missing a key exits 2 naming it" || bad "fx_registry_key"
+fx_registry_types && ok "a non-string title or a non-integer order exits 2" || bad "fx_registry_types"
+fx_registry_path && ok "a path that leaves docs/ exits 2 with the registry's own message" || bad "fx_registry_path"
+fx_registry_feature_type && ok "a non-string feature exits 2" || bad "fx_registry_feature_type"
+fx_registry_generator && ok "an unknown generator exits 2 naming it" || bad "fx_registry_generator"
+fx_registry_source && ok "a source that is neither hand nor generated:<name> exits 2" || bad "fx_registry_source"
+
+hd "build: OS metadata is not content"
+fx_os_junk && ok ".DS_Store, Thumbs.db, desktop.ini and ._* are ignored by --check, kept by the build, never published" || bad "fx_os_junk"
+
+hd "build: every page is reachable"
+fx_unreachable && ok "a page no other page links to exits 2 naming it" || bad "fx_unreachable"
+R7="$WORK/r7"; mkrepo "$R7"; mkdir -p "$R7/site/mods"; printf '<h1>Mods</h1>\n' > "$R7/site/mods/index.html"; printf '<h1>Late mod</h1>\n' > "$R7/site/mods/late.html"
+cat > "$R7/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"},
+  {"path": "mods/index.html", "title": "Mods", "section": "mods", "order": 0, "source": "hand"},
+  {"path": "mods/late.html", "title": "Late mod", "section": "mods", "order": 10, "source": "hand"}
+]
+JSON
+OUT=$(python3 "$MOD" --root "$R7" 2>&1); RC=$?; rc 0
+OUT=$(cat "$R7/docs/mods/index.html" 2>/dev/null); has '<aside class="sidebar">'; has '<a href="../mods/late.html">Late mod</a>'
+OUT=$(cat "$R7/docs/index.html" 2>/dev/null); has 'content="marvin build-docs"'
 
 # ---------------------------------------------------------------- theme (AOS-302)
 # The Emprove dark theme in site/assets/site.css, the self-hosted fonts and the scoped diagram palette. One python
@@ -500,9 +597,13 @@ hd "theme: fonts self-hosted"
 FONTS_SHA="52de70091213c9eab340e2a7ac59e7b6b2b94e089bf69ef38479b22cfde4274c  ibm-plex-mono-latin-400.woff2
 f17f51948d10b67d907393ccbac551912f2c2bd2c5af19be3aabe2f456f8fe54  ibm-plex-mono-latin-500.woff2
 6438d7b8ea9c7c3992d5e2fd2afdb1ff948570a3ef0bedae76247b51632960ba  montserrat-latin-variable.woff2"
+FONTS_SHA="$FONTS_SHA
+8b7141c03fa4f8d44e6345d5d4931709290f0f67875e452e95ac1fd3a027802e  OFL-Montserrat.txt
+37784b44044a4ffd9256702b7c0982c37e5c8887ba90c6dca0479aea93dc898d  OFL-IBMPlexMono.txt"
 for d in site/assets/fonts docs/assets/fonts; do
-  if [ -d "$ROOT/$d" ] && (cd "$ROOT/$d" && printf '%s\n' "$FONTS_SHA" | shasum -a 256 -c - >/dev/null 2>&1); then ok "$d woff2 match the recorded sha256"; else bad "$d woff2 missing or sha256 mismatch"; fi
+  if [ -d "$ROOT/$d" ] && (cd "$ROOT/$d" && printf '%s\n' "$FONTS_SHA" | shasum -a 256 -c - >/dev/null 2>&1); then ok "$d woff2 and OFL texts match the recorded sha256"; else bad "$d woff2/OFL missing or sha256 mismatch"; fi
 done
+OUT=$(cat "$ROOT/site/assets/fonts/README.md"); while read -r sum f; do has "$sum  $f"; done <<< "$FONTS_SHA"
 for f in OFL-Montserrat.txt OFL-IBMPlexMono.txt README.md; do
   [ -f "$ROOT/site/assets/fonts/$f" ] && cmp -s "$ROOT/site/assets/fonts/$f" "$ROOT/docs/assets/fonts/$f" && ok "$f shipped" || bad "$f missing or differs in docs/"
 done
@@ -537,7 +638,13 @@ if grep -Eq '\b(import|require)\b|https?:' "$JS"; then bad "site.js pulls a depe
 
 hd "site: the real repo is fresh and hand sources name no model"
 OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
-if grep -rniE '\b(opus|sonnet|haiku|fable|gpt-[0-9])' "$ROOT/site" --include='*.html' --include='*.json' --include='*.md' -l >/dev/null 2>&1; then bad "a model name is hand-typed in site/"; else ok "no model name in site/"; fi
+# model_scan <dir>: exit 0 when a hand source (html, json, md, and the site's own js and css) names a model family
+model_scan() { grep -rniE '\b(opus|sonnet|haiku|fable|gpt-[0-9])' "$1" --include='*.html' --include='*.json' --include='*.md' --include='*.js' --include='*.css' -l >/dev/null 2>&1; }
+if model_scan "$ROOT/site"; then bad "a model name is hand-typed in site/"; else ok "no model name in site/ (html, json, md, js, css)"; fi
+MS="$WORK/model-scan"; mkdir -p "$MS"; printf 'var x = "Sonnet 9";\n' > "$MS/a.js"
+model_scan "$MS" && ok "negative control: a model name in a .js file is caught" || bad "the model scan misses a .js file"
+rm "$MS/a.js"; printf '.x::after { content: "opus"; }\n' > "$MS/b.css"
+model_scan "$MS" && ok "negative control: a model name in a .css file is caught" || bad "the model scan misses a .css file"
 
 # ---------------------------------------------------------------- generated Releases (AOS-303)
 # mkrel <dir>: mkrepo plus a generated Releases entry and a CHANGELOG / upgrades / release-notes tree:
@@ -662,6 +769,11 @@ fx_release_missing() {   # a CHANGELOG header with no body and no other source: 
   scheck "$d"; [ "$RC" = 2 ] && printf '%s' "$OUT" | grep -Fq '0.31.0'
 }
 fx_release_missing && ok "release-missing: an empty-source version exits 2 naming it (build and --check)" || bad "fx_release_missing"
+fx_changelog_heading() {   # a `## [` heading the parser cannot read (an ASCII hyphen for the em dash) fails loud, never drops its section
+  local d="$WORK/fx-ch"; mkrel "$d"; printf '\n## [0.43.0] - 2026-11-26\n\n### Added\n- dropped-silently\n' >> "$d/CHANGELOG.md"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'CHANGELOG.md:' && printf '%s' "$OUT" | grep -Fq 'unparseable release heading'
+}
+fx_changelog_heading && ok "an unparseable ## [ heading exits 2 naming CHANGELOG.md:<line>" || bad "fx_changelog_heading"
 
 hd "releases: real repo"
 OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
@@ -802,7 +914,14 @@ fx_settings_install_dup() {
   local d="$WORK/fx-sd"; mkgen "$d"; printf -- '- `project`: again\n' >> "$d/site/settings-install.md"
   OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'project'
 }
+fx_settings_bullet_wrap() {   # a hard-wrapped body bullet (line 14 continues on 15) fails loud naming file:line; a blank line ends a bullet
+  local d="$WORK/fx-bw" t; mkgen "$d"; t="$d/templates/marvin/PROJECT-INFO.md"
+  awk '{print} /^- `ticket_lint`/{print "  wrapped tail that would be lost"}' "$t" > "$t.new" && mv "$t.new" "$t"
+  OUT=$(python3 "$MOD" --root "$d" 2>&1); [ "$?" = 2 ] && printf '%s' "$OUT" | grep -Fq 'PROJECT-INFO.md:15: a body bullet continues' || return 1
+  mkgen "$d"; printf '\nA closing paragraph after a blank line.\n' >> "$t"; sbuild "$d"
+}
 hd "settings: guards"
+fx_settings_bullet_wrap && ok "a wrapped settings bullet exits 2 naming PROJECT-INFO.md:<line>; prose after a blank line is fine" || bad "fx_settings_bullet_wrap"
 fx_settings_behaviour && ok "a behaviour key with no bullet exits 2 naming it" || bad "fx_settings_behaviour"
 fx_settings_install_missing && ok "a placeholder key with no install line exits 2 naming it" || bad "fx_settings_install_missing"
 fx_settings_install_extra && ok "an install line with no key exits 2 naming it" || bad "fx_settings_install_extra"
@@ -1262,7 +1381,8 @@ blk = re.search(r"var NOTES = \{\n(.*?)\n  \};", js, re.S)
 assert blk, "no NOTES block"
 keys = set(re.findall(r'^    "([a-z-]+)": \{', blk.group(1), re.M))
 want = set(m.profile_data(root)["personas"]) | {"marvin"}
-assert keys == want, (sorted(keys - want), sorted(want - keys))
+assert keys == want, ("site/assets/site.js NOTES block drifted from agents/: add a note there for each persona in 'missing', "
+                      "remove the note for each in 'extra'", {"extra": sorted(keys - want), "missing": sorted(want - keys)})
 for stem in re.findall(r'rules: "([a-z-]+)"', blk.group(1)):
     assert (root / "templates/marvin/agents" / f"{stem}.md").is_file(), stem
 PY
@@ -1550,6 +1670,19 @@ MUTATIONS=(
   "shot-unknown:fx_shot_unknown"
   "shot-no-feature:fx_shot_no_feature"
   "feature-name:fx_feature_name"
+  "registry-json:fx_registry_json"
+  "registry-list:fx_registry_list"
+  "registry-entry:fx_registry_entry"
+  "registry-key:fx_registry_key"
+  "registry-types:fx_registry_types"
+  "registry-path:fx_registry_path"
+  "registry-feature-type:fx_registry_feature_type"
+  "registry-generator:fx_registry_generator"
+  "registry-source:fx_registry_source"
+  "build-orphan:fx_build_orphan"
+  "page-unreachable:fx_unreachable"
+  "settings-bullet-wrap:fx_settings_bullet_wrap"
+  "changelog-heading:fx_changelog_heading"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

@@ -441,7 +441,8 @@ a.card:focus-visible { outline: 2px solid var(--em-green); outline-offset: 2px; 
 .legend-arrow { display: block; flex: none; }
 .tier-legend .lg--fail { color: var(--em-red); }
 
-/* the inspector: sticks to the bottom of the viewport while its page scrolls */
+/* the inspector: sticks to the bottom of the viewport while its page scrolls; the scroll padding keeps a focused node clear of it */
+html:has(.diagram.insp) { scroll-padding-bottom: calc(46vh + 16px); }
 .diagram.insp {
   position: sticky; bottom: 0; z-index: 5; margin: 40px 0 0; padding: 12px 16px 14px; overflow: auto; max-height: 46vh;
   background: var(--em-surface-2); border-color: var(--em-green-20);
@@ -518,6 +519,7 @@ a.card:focus-visible { outline: 2px solid var(--em-green); outline-offset: 2px; 
   .stair { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
   .stair .rung { flex: 0 0 auto; min-height: 0; }
   .diagram.insp { padding: 10px 12px; max-height: 30vh; }
+  html:has(.diagram.insp) { scroll-padding-bottom: calc(30vh + 16px); }
   .insp .ih { margin-bottom: 4px; }
   .insp .in { font-size: 14px; }
   .insp .cols { grid-template-columns: minmax(0, 1fr); gap: 6px; }

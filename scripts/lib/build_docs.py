@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import html
 import json
+import posixpath
 import re
 import sys
 from dataclasses import dataclass
@@ -446,9 +447,19 @@ class BuildError(Exception):
     """Any rule violation in the site build; the message names the file."""
 
 
+class OrphanOutput(Exception):
+    """build() wrote the site but docs/ holds files it does not own; each line is `ORPHAN docs/<rel>`. Exit 1."""
+
+
+def _junk(name: str) -> bool:
+    return name in OS_JUNK or name.startswith("._")
+
+
 SECTIONS = ("home", "start", "concepts", "reference", "mods", "releases")
 PROTECTED = ("images", "release-notes", "decisions", "superpowers")  # docs/ dirs the build never writes or removes
 PROTECTED_FILES = (".nojekyll",)
+OS_JUNK = (".DS_Store", "Thumbs.db", "desktop.ini")  # OS metadata: never content, never an orphan, never published
+GENERATOR_META = '<meta name="generator" content="marvin build-docs">'  # site/_shell.html: marks a page the build owns
 TEXT_EXT = (".html", ".css", ".js", ".json", ".svg", ".txt", ".md", ".xml")
 _TOKENS = re.compile(r"\{\{(TITLE|ROOT|NAV|SIDEBAR|BODY)\}\}")
 _FEATURE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -496,27 +507,27 @@ def load_registry(root: Path) -> list[Page]:
     try:
         data = json.loads(_read_text(reg))
     except (BuildError, ValueError) as exc:
-        raise BuildError(f"site/pages.json: {exc}") from exc
+        raise BuildError(f"site/pages.json: {exc}") from exc  # GUARD:registry-json
     if not isinstance(data, list):
-        raise BuildError("site/pages.json: top level must be a list")
+        raise BuildError("site/pages.json: top level must be a list")  # GUARD:registry-list
     pages: list[Page] = []
     seen: set[str] = set()
     for k, e in enumerate(data):
         where = f"site/pages.json[{k}]"
         if not isinstance(e, dict):
-            raise BuildError(f"{where}: entry must be an object")
+            raise BuildError(f"{where}: entry must be an object")  # GUARD:registry-entry
         for key in ("path", "title", "section", "order", "source"):
             if key not in e:
-                raise BuildError(f"{where}: missing '{key}'")
+                raise BuildError(f"{where}: missing '{key}'")  # GUARD:registry-key
         if not all(isinstance(e[x], str) and e[x] for x in ("path", "title", "source")) or not isinstance(e["order"], int):
-            raise BuildError(f"{where}: path/title/source must be non-empty strings and order an integer")
+            raise BuildError(f"{where}: path/title/source must be non-empty strings and order an integer")  # GUARD:registry-types
         if e["section"] not in SECTIONS:
             raise BuildError(f"{where}: unknown section '{e['section']}' (one of {', '.join(SECTIONS)})")  # GUARD:registry-section
         if e["path"].startswith("/") or ".." in e["path"].split("/"):
-            raise BuildError(f"{where}: path must be relative and stay inside docs/: {e['path']}")
+            raise BuildError(f"{where}: path must be relative and stay inside docs/: {e['path']}")  # GUARD:registry-path
         feat = e.get("feature")
         if feat is not None and not isinstance(feat, str):
-            raise BuildError(f"{where}: feature must be a string")
+            raise BuildError(f"{where}: feature must be a string")  # GUARD:registry-feature-type
         if feat is not None and not _FEATURE.match(feat):
             raise BuildError(f"{where}: feature must be a folder name under docs/images/ (lowercase letters, digits, '-'): {feat!r}")  # GUARD:feature-name
         _claim(seen, e["path"])
@@ -543,12 +554,12 @@ def _expand(root: Path) -> list[tuple[Page, str]]:
         elif pg.source.startswith("generated:"):
             name = pg.source[len("generated:"):]
             if name not in GENERATORS:
-                raise BuildError(f"site/pages.json: no generator named '{name}' ({pg.path})")
+                raise BuildError(f"site/pages.json: no generator named '{name}' ({pg.path})")  # GUARD:registry-generator
             for k, (rel, (title, body)) in enumerate(GENERATORS[name](root).items()):
                 _claim(seen, rel)
                 out.append((Page(rel, title, pg.section, pg.order + k, pg.source, pg.feature), body))
         else:
-            raise BuildError(f"site/pages.json: source must be 'hand' or 'generated:<name>': {pg.source}")
+            raise BuildError(f"site/pages.json: source must be 'hand' or 'generated:<name>': {pg.source}")  # GUARD:registry-source
     out.sort(key=lambda t: (SECTIONS.index(t[0].section), t[0].order, t[0].path))
     return out
 
@@ -598,8 +609,11 @@ def _toc(body: str) -> str:
     return "<ul>" + "".join(rows) + "</ul>" if rows else ""
 
 
+SIDEBAR_SECTIONS = ("concepts", "mods", "releases")  # each lists its pages, so a new page there is reachable
+
+
 def _sidebar(pages: list[Page], cur: Page, prefix: str, body: str = "") -> str:
-    if cur.section not in ("concepts", "releases"):
+    if cur.section not in SIDEBAR_SECTIONS:
         return ""
     rows = []
     for p in pages:
@@ -618,7 +632,7 @@ def _assets(root: Path) -> dict[str, bytes]:
     if not base.is_dir():
         return out
     for f in sorted(base.rglob("*")):
-        if not f.is_file():
+        if not f.is_file() or _junk(f.name):
             continue
         rel = "assets/" + f.relative_to(base).as_posix()
         raw = f.read_bytes()
@@ -629,6 +643,26 @@ def _assets(root: Path) -> dict[str, bytes]:
                 raise BuildError(f"{rel}: {exc}") from exc
         out[rel] = raw
     return out
+
+
+_HREF = re.compile(r'\bhref="([^"]*)"')
+
+
+def _reachable(pages: list[Page], files: dict[str, bytes]) -> None:
+    """Every page but Home is linked from another page (its nav, sidebar or body); an unlinked page is a BuildError."""
+    linked: set[str] = set()
+    for pg in pages:
+        base = posixpath.dirname(pg.path)
+        for href in _HREF.findall(files[pg.path].decode("utf-8")):
+            href = html.unescape(href).split("#", 1)[0].split("?", 1)[0]
+            if not href or _SCHEME.match(href):
+                continue
+            target = posixpath.normpath(posixpath.join(base, href))
+            if target != posixpath.normpath(pg.path):
+                linked.add(target)
+    for pg in pages:  # compared normalised: path shape is _claim's job, not this guard's
+        if pg.path != "index.html" and posixpath.normpath(pg.path) not in linked:
+            raise BuildError(f"{pg.path}: no other page links to it; put it in a section with a sidebar ({', '.join(SIDEBAR_SECTIONS)}) or link it from a page")  # GUARD:page-unreachable
 
 
 def render_site(root: Path) -> dict[str, bytes]:
@@ -647,6 +681,7 @@ def render_site(root: Path) -> dict[str, bytes]:
         if 'href="/' in page_html or 'src="/' in page_html:
             raise BuildError(f"{pg.path}: root-absolute href/src (the site lives under a project URL; use a relative link)")  # GUARD:abs-link
         files[pg.path] = page_html.encode("utf-8")
+    _reachable(pages, files)
     for rel, raw in _assets(root).items():
         _claim(seen, rel)
         files[rel] = raw
@@ -659,24 +694,46 @@ def _protected(rel: str) -> bool:
 
 
 def _existing(docs: Path) -> list[str]:
+    """Every file under docs/ except OS metadata (.DS_Store, ._*, ...), which is never content."""
     if not docs.is_dir():
         return []
-    return sorted(f.relative_to(docs).as_posix() for f in docs.rglob("*") if f.is_file())
+    return sorted(f.relative_to(docs).as_posix() for f in docs.rglob("*") if f.is_file() and not _junk(f.name))
+
+
+def _owned(out: Path, rel: str) -> bool:
+    """A file the build provably wrote: anything under assets/, or a page carrying the shell's generator meta."""
+    if rel.startswith("assets/"):
+        return True
+    if not rel.endswith(".html"):
+        return False
+    try:
+        return GENERATOR_META.encode("utf-8") in (out / rel).read_bytes()
+    except OSError:
+        return False
 
 
 def build(root: Path, out: Path) -> list[str]:
-    """Write the site into `out`, removing outputs the registry no longer produces (never the protected paths)."""
+    """Write the site into `out`. A stale output the build owns is removed and printed; any other file the registry does
+    not produce (never the protected paths) is left in place and reported, and the build then fails (OrphanOutput)."""
     files = render_site(root)
     for rel, raw in sorted(files.items()):
         dest = out / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(raw)
+    orphans: list[str] = []
     for rel in _existing(out):
-        if rel not in files and not _protected(rel):
+        if rel in files or _protected(rel):
+            continue
+        if _owned(out, rel):
             (out / rel).unlink()
+            print(f"removed docs/{rel}")
+        else:
+            orphans.append(f"ORPHAN docs/{rel}")
     for d in sorted((p for p in out.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
         if not any(d.iterdir()) and not _protected(d.relative_to(out).as_posix() + "/x"):
             d.rmdir()
+    if orphans:
+        raise OrphanOutput("\n".join(orphans))  # GUARD:build-orphan
     return sorted(files)
 
 
@@ -760,6 +817,8 @@ def _changelog(root: Path) -> dict[str, tuple[str | None, str]]:
             out[cur[0]] = (cur[1], "\n" * cur[2] + "\n".join(buf))
     for no, line in enumerate(_read_text(p).split("\n")):
         m = _CL_HEAD.match(line)
+        if not m and line.startswith("## ["):
+            raise BuildError(f"CHANGELOG.md:{no + 1}: unparseable release heading (want `## [<version>] — <date>`): {line}")  # GUARD:changelog-heading
         if m or line.startswith("## "):
             flush()
             cur, buf = ((m.group(1), m.group(2), no + 1) if m else None), []
@@ -948,7 +1007,7 @@ def _link_guides(text: str, anchors: dict[str, str]) -> str:
 
 # ---- Settings
 
-def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str]]:
+def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str], int]:
     p = root / "templates" / "marvin" / "PROJECT-INFO.md"
     lines = _read_text(p).split("\n")
     if not lines or lines[0].rstrip() != "---":
@@ -961,7 +1020,7 @@ def _project_info(root: Path) -> tuple[list[tuple[str, str, bool]], list[str]]:
         m = _PI_KEY.match(ln)
         if m:
             keys.append((m.group(2), _unq(m.group(3)), bool(m.group(1))))
-    return keys, lines[end + 1:]
+    return keys, lines[end + 1:], end + 2  # the body, and its first line's 1-based number
 
 
 def _install_lines(root: Path) -> dict[str, str]:
@@ -982,9 +1041,18 @@ def _install_lines(root: Path) -> dict[str, str]:
 
 
 def gen_settings(root: Path) -> dict[str, tuple[str, str]]:
-    keys, body = _project_info(root)
+    keys, body, first = _project_info(root)
     anchors = {g["rel"]: g["anchor"] for g in _guides(root)}
-    bullets = [ln[2:] for ln in body if ln.startswith("- ")]
+    bullets: list[str] = []
+    after_bullet = False
+    for no, ln in enumerate(body, first):  # one bullet per line: a wrapped bullet would lose its tail silently
+        if ln.startswith("- "):
+            bullets.append(ln[2:])
+            after_bullet = True
+        elif not ln.strip():
+            after_bullet = False
+        elif after_bullet:
+            raise BuildError(f"templates/marvin/PROJECT-INFO.md:{no}: a body bullet continues on this line; keep each bullet on one line")  # GUARD:settings-bullet-wrap
     install = _install_lines(root)
     install_keys = [k for k, v, _ in keys if _PLACEHOLDER.search(v)]
     for k in install_keys:
@@ -1336,7 +1404,7 @@ def image_errors(root: Path, pages: list[Page]) -> list[str]:
             claimed[pg.feature] = pg.path
         if not (images / pg.feature).is_dir():
             errs.append(f"{pg.path}: feature '{pg.feature}' has no folder docs/images/{pg.feature}/")  # GUARD:feature-no-folder
-    entries = sorted(images.iterdir(), key=lambda e: e.name) if images.is_dir() else []
+    entries = sorted((e for e in images.iterdir() if not _junk(e.name)), key=lambda e: e.name) if images.is_dir() else []
     for e in entries:
         if not e.is_dir():
             if e.name != "README.md":
@@ -1344,7 +1412,7 @@ def image_errors(root: Path, pages: list[Page]) -> list[str]:
             continue
         if e.name not in claimed:
             errs.append(f"docs/images/{e.name}/ has no page: set \"feature\": \"{e.name}\" on a page in site/pages.json")  # GUARD:folder-no-page
-        files = sorted(e.iterdir(), key=lambda x: x.name)
+        files = sorted((x for x in e.iterdir() if not _junk(x.name)), key=lambda x: x.name)
         for f in files:
             if f.is_dir() or (not f.name.endswith(".png") and f.name not in IMAGES_ALLOWED):
                 errs.append(f"docs/images/{e.name}/{f.name}: not a PNG (only .png files, README.md and captions.md are allowed)")  # GUARD:non-png
@@ -1407,6 +1475,11 @@ def main(argv: list[str]) -> int:
     except (BuildError, RenderError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    except OrphanOutput as exc:
+        print(str(exc))
+        print("build-docs: docs/ holds files the build does not own (listed above); move or delete them, "
+              "or add them to site/ so the build produces them", file=sys.stderr)
+        return 1
     print(f"build-docs: wrote {len(written)} files to docs/")
     return 0
 

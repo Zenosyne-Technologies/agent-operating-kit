@@ -65,6 +65,8 @@ The site is built from `site/` into `docs/` by `scripts/build-docs.sh`; see [Con
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
+**The docs site is built, not hand-edited.** Its sources live in `site/`, with the page registry in `site/pages.json`; the Releases, Settings, Skills & commands and Reference pages are generated from the repo itself. Edit the source, run `bash scripts/build-docs.sh` and commit `docs/` with the change. `bash scripts/build-docs.sh --check` (validate-kit `docs-site`) fails on any stale, missing or orphan output. Screenshots follow `docs/images/README.md`.
+
 Every PR must pass the static release gate and the nineteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
