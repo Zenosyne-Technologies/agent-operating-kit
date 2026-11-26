@@ -2,6 +2,18 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.42.2] — 2026-11-26
+
+### Added
+- `scripts/marvin-placeholder-check.sh`: a read-only check that no install-time `{{PLACEHOLDER}}` is left in the files the kit writes (`.marvin/` minus runs/reports/backups, the seeded `.docs/` files, root `CLAUDE.md`); exit 0 clean, 1 hits, 2 check failed.
+- `scripts/test-placeholder-check.sh`, mutation-tested and run in CI.
+
+### Changed
+- Install (step 10) and upgrade (step 7) end with the placeholder check: hits in files the run wrote are resolved, and what cannot be resolved or sits in consumer-owned content is reported as a count, never edited.
+
+### Action needed
+- None: update the plugin; the next `/marvin:upgrade-agent-os` runs the check.
+
 ## [0.42.1] — 2026-10-20
 
 ### Added
