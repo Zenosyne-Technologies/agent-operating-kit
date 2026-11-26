@@ -40,7 +40,7 @@ The install skill writes the active profile's row models wherever an installed f
 
 | Placeholder | opus | fable |
 |---|---|---|
-| `FRONTIER_SWAP_OPTION` | SECOND, swap this task to the frontier tier (Fable 5.2, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb) | No frontier tier in this profile: the gate asks `max` only. |
+| `FRONTIER_SWAP_OPTION` | , marked recommended (`model-profile.md` rule 1); the second option is a swap of this task to the frontier tier (Fable 5.2, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb), dispatched only on an explicit frontier choice. | , and the only option: this profile has no frontier tier (`model-profile.md` rule 4), so the question asks consent to go to `max`. |
 
 ## Model-specific rules
 

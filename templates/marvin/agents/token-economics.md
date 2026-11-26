@@ -25,7 +25,7 @@ A branch name carries ONE work item's key, never a milestone's or a version's (`
 
 ## Tier mapping
 
-By ROLE, not model — the orchestrator runs on the heavy tier's model in the `opus` profile, and on its own model in `fable` (`model-profile.md`) — so a model prefix cannot tell the tiers apart:
+By ROLE, not model — the orchestrator shares the heavy tier's model in the `opus` profile, so a model prefix cannot identify it; in `fable` it is mapped by role too (`model-profile.md`):
 
 | Events | Tier |
 |---|---|

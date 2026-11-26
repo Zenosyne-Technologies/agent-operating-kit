@@ -158,11 +158,12 @@ fi
 # (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it. The Codex
 # names count too: astra|luna as whole words, and gpt-<digit> anywhere. The skill `/marvin:codex-astra`
 # and the flag `--astra` are not model names — those two literal tokens are stripped before matching, as are
-# the backticked profile values `opus` and `fable` (the `model_profile` setting's values, not models).
+# the profile values `opus`/`fable` in profile context only: "`opus` profile", "in `fable`", the "`opus` | `fable`"
+# value list and "model_profile: opus" (the setting's values, not models) — "runs `opus` 5.5" still fails.
 MP=templates/marvin/agents/model-profile.md
 MPC=templates/marvin/agents/model-profile-codex.md
 [ -d templates ] || fail model-names "templates/ missing"
-mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" -v mpc="$MPC" '$1 != mp && $1 != mpc' | sed 's/codex-astra//g; s/--astra//g; s/`opus`//g; s/`fable`//g')
+mncand=$(grep -rniE 'opus|sonnet|haiku|fable|astra|luna|gpt-[0-9]' templates/ | awk -F: -v mp="$MP" -v mpc="$MPC" '$1 != mp && $1 != mpc' | sed -E 's/codex-astra//g; s/--astra//g; s/`(opus|fable)` profile//g; s/in `(opus|fable)`//g; s/`opus` \| `fable`//g; s/model_profile: (opus|fable)//g')
 mn=$( { printf '%s\n' "$mncand" | grep -iwE 'opus|sonnet|haiku|fable|astra|luna'; printf '%s\n' "$mncand" | grep -iE 'gpt-[0-9]'; } | sort -u )
 if [ -z "$mn" ]; then
   pass model-names
