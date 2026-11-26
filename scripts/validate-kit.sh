@@ -10,7 +10,7 @@ pass() { echo "ok   [$1]"; }
 
 # ── 1. placeholders: every {{NAME}} used in templates/ must be in the maintained known-set
 # (v1: maintained list — extend it when a template legitimately introduces a new placeholder)
-KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
+KNOWN=" APP_TYPE AREA_1 AREA_2 AREA_3 AUDIENCE CONFLUENCE_SPACE_KEY CONVENTIONS_THAT_BITE DELETE_THIS_LINE_TO_KEEP_DEFAULT_ATTRIBUTION DEV_COMMAND_AND_PORTS DOCS_ISSUE_LOG_PATH DOCS_LOCATION ESCALATION_MODEL FRONTIER_MODEL GITHUB_REPO INSTALL_DATE JIRA_SITE_URL KIT_VERSION LABEL_SYNTAX_VERSION LANGUAGES_FRAMEWORKS_DATASTORES LEVELS MICRO_MODEL MODEL_PROFILE MONOREPO_OR_SINGLE ONE_PARAGRAPH_PROJECT_FACTS ONE_SENTENCE_DESCRIPTION OWNER_ORG_OR_PERSON PERIOD_DAYS PM_TOOL PROJECT_BRIEF PROJECT_KEY PROJECT_KEY_OR_NA PROJECT_NAME PROJECT_SIZE SCOPE SCREENS_GUIDE TEAM_KEY TEAM_NAME TELEMETRY TRACKER_COORDINATES TRACKER_GUIDE_URL VISUAL_VALIDATION WORKER_MODEL "
 unknown=""
 for p in $(grep -rhoE '\{\{[A-Z_0-9]+' templates/ | sed 's/{{//' | sort -u); do
   case "$KNOWN" in *" $p "*) ;; *) unknown="$unknown $p";; esac
@@ -266,15 +266,62 @@ PY
 hr=$(python3 -c "$HR_PY" 2>&1)
 [ -z "$hr" ] && pass hooks-registered || fail hooks-registered "$(echo $hr)"
 
-# ── 19. profile-window: the hook lib's default context window is the model profile's orchestrator window
-pw=$(awk -F'|' '/^\| orchestrator \|/ { gsub(/ /, "", $4); print $4; exit }' "$MP")
-case "$pw" in *M) pw=${pw%M}; m=1000 ;; *K|*k) pw=${pw%[Kk]}; m=1 ;; *) pw=""; m=1 ;; esac
-case "$pw" in ""|*[!0-9]*) pw="" ;; *) pw=$(( pw * m )) ;; esac
+# ── 19. profile-window: the hook lib's default context window is the orchestrator window of EVERY
+# `## Profile:` table in the model profile (the hook cannot tell which profile a project runs)
 lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-lib.sh)
-if [ -n "$pw" ] && [ "$pw" = "$lw" ]; then pass profile-window
-else fail profile-window "model-profile.md orchestrator window '${pw:-unreadable}'k differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}'"; fi
+pwr=$(awk -F'|' '/^## / { p = ""; w = 0 } /^## Profile: / { p = $0; sub(/^## Profile: */, "", p); w = 1 }
+  w && /^\| orchestrator \|/ { v = $4; gsub(/ /, "", v); print p "\t" v; w = 0 }' "$MP")
+pwf=""
+[ -z "$pwr" ] && pwf="no '## Profile:' table with an orchestrator row in model-profile.md;"
+while IFS="$(printf '\t')" read -r pn pw; do
+  [ -n "$pn" ] || continue
+  raw=$pw
+  case "$pw" in *M) pw=${pw%M}; m=1000 ;; *K|*k) pw=${pw%[Kk]}; m=1 ;; *) pw=""; m=1 ;; esac
+  case "$pw" in ""|*[!0-9]*) pw="" ;; *) pw=$(( pw * m )) ;; esac
+  [ -n "$pw" ] && [ "$pw" = "$lw" ] || pwf="$pwf profile '$pn' orchestrator window '${raw:-unreadable}' (${pw:-unreadable}k) differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}';"
+done <<EOF
+$pwr
+EOF
+[ -z "$pwf" ] && pass profile-window || fail profile-window "${pwf# }"
 
-# ── 20. runs-layout: the briefing template carries the per-session run layout literal. The SessionStart
+# ── 20. profile-parity: every `## Profile:` table in the model profile has the same column header and the
+# same five tier rows, so a profile can never silently lack a tier (or a column) another one resolves
+PP_PY=$(cat <<'PY'
+import re, sys
+tiers = ["orchestrator", "heavy worker", "small worker", "micro", "frontier"]
+cells = lambda l: [c.strip() for c in l.strip().strip("|").split("|")]
+profs, cur = [], None
+for line in open(sys.argv[1], encoding="utf-8"):
+    if line.startswith("## "):
+        m = re.match(r"## Profile: *(.+?)\s*$", line)
+        cur = {"name": m.group(1), "header": None, "rows": []} if m else None
+        if cur: profs.append(cur)
+    elif cur is not None and line.startswith("|"):
+        c = cells(line)
+        if cur["header"] is None: cur["header"] = c
+        elif not all(re.fullmatch(r":?-+:?", x) for x in c): cur["rows"].append(c[0])
+out = []
+if len(profs) < 2: out.append("%d '## Profile:' table(s) in model-profile.md, need at least 2;" % len(profs))
+ref = profs[0]["header"] if profs else None
+for p in profs:
+    h = p["header"] or []
+    if ref is not None and h != ref:
+        miss = [c for c in ref if c not in h]; extra = [c for c in h if c not in ref]
+        out.append("profile '%s' column header differs from '%s'%s%s%s;" % (p["name"], profs[0]["name"],
+            " — missing column(s) " + ", ".join(miss) if miss else "", " — extra column(s) " + ", ".join(extra) if extra else "",
+            " — column order differs" if not miss and not extra else ""))
+    miss = [t for t in tiers if t not in p["rows"]]; extra = [r for r in p["rows"] if r not in tiers]
+    dup = sorted({r for r in p["rows"] if p["rows"].count(r) > 1})
+    if miss: out.append("profile '%s' lacks tier row(s) %s;" % (p["name"], ", ".join(miss)))
+    if extra: out.append("profile '%s' has unknown row(s) %s;" % (p["name"], ", ".join(extra)))
+    if dup: out.append("profile '%s' repeats row(s) %s;" % (p["name"], ", ".join(dup)))
+print(" ".join(out))
+PY
+)
+pp=$(python3 -c "$PP_PY" "$MP" 2>&1)
+[ -z "$pp" ] && pass profile-parity || fail profile-parity "$pp"
+
+# ── 21. runs-layout: the briefing template carries the per-session run layout literal. The SessionStart
 # run-state hook (marvin-runs-sync.sh --session-start) creates a project's session folder only when the
 # installed briefing.md carries it, so a template that lost it would silently switch every install back
 # to the flat, checkout-local layout (AOS-224).
@@ -282,7 +329,7 @@ BR=templates/marvin/agents/briefing.md
 if grep -qF '.marvin/runs/<session>/' "$BR" 2>/dev/null; then pass runs-layout
 else fail runs-layout "$BR lacks the per-session layout literal .marvin/runs/<session>/ (the run-state hook gates on it)"; fi
 
-# ── 21. run-patterns: the prune allowlist in briefing.md item 11 quotes the hook lib's session and key
+# ── 22. run-patterns: the prune allowlist in briefing.md item 11 quotes the hook lib's session and key
 # regexes verbatim. The orchestrator validates prune targets by the briefing's copy and the hooks carry by
 # the lib's, so a copy that drifted would prune what the hooks never carry, or refuse what they do (AOS-224).
 rp=""
@@ -293,7 +340,7 @@ for c in MH_SESSION_RE MH_KEY_RE; do
 done
 [ -z "$rp" ] && pass run-patterns || fail run-patterns "${rp# }"
 
-# ── 22. fleet-pairs: every routed fleet event has both halves — the child's sending half in
+# ── 23. fleet-pairs: every routed fleet event has both halves — the child's sending half in
 # fleet-child.md and the master's receiving half in fleet.md, each marked by its **E-<event>** tag
 # exactly once per guide (the kit's dominant defect is a rule written in one half and not the other)
 fp=""
@@ -313,7 +360,7 @@ for t in $tc; do
 done
 [ -z "$fp" ] && pass fleet-pairs || fail fleet-pairs "$fp"
 
-# ── 23. frontmatter-quoting: the free-text PROJECT-INFO keys are quoted scalars in the template, so a
+# ── 24. frontmatter-quoting: the free-text PROJECT-INFO keys are quoted scalars in the template, so a
 # value holding ": " or " #" cannot break the YAML frontmatter (the installer escapes \ and ")
 fq=""
 for k in project description brief owner tracker_coordinates stack dev_command; do
