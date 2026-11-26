@@ -153,7 +153,7 @@ else
 fi
 
 # ── 13. model-names: concrete model names live ONLY in the version's model profile
-# (templates/marvin/agents/model-profile.md — CLAUDE.md "The division"); every other template names
+# (templates/marvin/agents/model-profile.md and model-profile-codex.md — CLAUDE.md "The division"); every other template names
 # tiers and cites the profile. Whole-word, case-insensitive, so words that merely contain a name
 # (e.g. "spoofable") never match. No allowlist: a hit outside the profile moves into it. The Codex
 # names count too: astra|luna as whole words, and gpt-<digit> anywhere. The skill `/marvin:codex-astra`
@@ -166,7 +166,7 @@ mn=$( { printf '%s\n' "$mncand" | grep -iwE 'opus|sonnet|haiku|fable|astra|luna'
 if [ -z "$mn" ]; then
   pass model-names
 else
-  fail model-names "model name(s) outside $MP (name the tier and cite the profile):"
+  fail model-names "model name(s) outside $MP and $MPC (name the tier and cite the profile):"
   printf '%s\n' "$mn" | sed 's/^/       /'
 fi
 
