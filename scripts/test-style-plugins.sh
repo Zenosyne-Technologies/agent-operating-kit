@@ -63,10 +63,9 @@ so=$(bash "$d/s.sh" "$P" 2>"$WORK/nolib.err"); RC=$?; se=$(cat "$WORK/nolib.err"
 
 hd "M1 precedence reverted (first source wins) — P3 must catch it"
 d="$WORK/m1"; mkdir -p "$d/lib" "$d/../hooks" 2>/dev/null; cp "$LIB" "$d/lib/"; mkdir -p "$WORK/hooks"; cp "$SCRIPT_DIR/../hooks/style-plugins.txt" "$WORK/hooks/"
-A="merge='{ if (!(\$2 in r) || \$1 >= r[\$2]) { r[\$2] = \$1; v[\$2] = \$3 } } END { for (k in r) print r[k] \"\t\" k \"\t\" v[k] }'" \
-B="merge='{ if (!(\$2 in r)) { r[\$2] = \$1; v[\$2] = \$3 } } END { for (k in r) print r[k] \"\t\" k \"\t\" v[k] }'" \
-  awk '$0 == ENVIRON["A"] { print ENVIRON["B"]; next } { print }' "$SCRIPT" > "$d/s.sh"
-if [ ! -f "$SCRIPT" ] || cmp -s "$d/s.sh" "$SCRIPT"; then bad "mutation precedence: target line not found — harness is stale"; else
+cp "$SCRIPT" "$d/s.sh"   # the merge awk lives in the lib (mh_enabled_plugins); mutate the lib copy
+A=' || $1 >= r[$2]' awk '{ i = index($0, ENVIRON["A"]); if (i) $0 = substr($0, 1, i - 1) substr($0, i + length(ENVIRON["A"])); print }' "$LIB" > "$d/lib/marvin-hook-lib.sh"
+if cmp -s "$d/lib/marvin-hook-lib.sh" "$LIB"; then bad "mutation precedence: target line not found — harness is stale"; else
   reset; ep "$CFG/settings.json" "\"$EX\":true"; ep "$P/.claude/settings.local.json" "\"$EX\":false"
   S="$d/s.sh" run
   if [ "$RC" != 0 ]; then bad "mutation precedence: the mutant crashed (rc $RC) — harness is stale"

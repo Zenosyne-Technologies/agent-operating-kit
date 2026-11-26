@@ -1254,19 +1254,19 @@ grep -Fq 'class="gallery"' "$MR/docs/mods/index.html" && bad "the real Mods page
 grep -Fq 'href="../mods/index.html"' "$MR/docs/index.html" 2>/dev/null; grep -Fq 'mods/index.html' "$MR/docs/index.html" && ok "the nav links Mods" || bad "nav lacks Mods"
 
 # ---------------------------------------------------------------- concept pages (AOS-306)
-# The five Concepts pages are hand bodies in site/concepts/. Every tiered node in a diagram carries data-tier and a
+# The six Concepts pages are hand bodies in site/concepts/. Every tiered node in a diagram carries data-tier and a
 # mono tier chip (tier is never colour alone), the persona inspector reads #marvin-data (no model typed by hand), the
 # old single page's anchors redirect from the root, the sidebar lists the current concept page's h2s (so the
 # scroll-spy has targets), and every Around-the-loop card cites its guide on the Reference page.
-CONCEPTS="lifecycle sizing escalation around-the-loop fleet"
+CONCEPTS="lifecycle sizing escalation around-the-loop fleet codeguard"
 hd "concepts: pages"
-python3 - "$ROOT/site/pages.json" <<'PY' && ok "the five concept pages are registered in order, hand-written" || bad "concept registry entries"
+python3 - "$ROOT/site/pages.json" <<'PY' && ok "the six concept pages are registered in order, hand-written" || bad "concept registry entries"
 import json, sys
-want = ["concepts/lifecycle.html", "concepts/sizing.html", "concepts/escalation.html", "concepts/around-the-loop.html", "concepts/fleet.html"]
+want = ["concepts/lifecycle.html", "concepts/sizing.html", "concepts/escalation.html", "concepts/around-the-loop.html", "concepts/fleet.html", "concepts/codeguard.html"]
 e = sorted((p for p in json.load(open(sys.argv[1])) if p["section"] == "concepts"), key=lambda p: p["order"])
 assert [p["path"] for p in e] == want, [p["path"] for p in e]
 assert all(p["source"] == "hand" and "feature" not in p for p in e), e
-assert len({p["order"] for p in e}) == 5, "orders must be distinct"
+assert len({p["order"] for p in e}) == 6, "orders must be distinct"
 PY
 for c in $CONCEPTS; do
   [ -f "$ROOT/site/concepts/$c.html" ] && ok "site/concepts/$c.html exists" || bad "site/concepts/$c.html missing"
@@ -1344,7 +1344,7 @@ sys.exit(1 if bad else 0)
 '
 hd "concepts: tiers marked"
 OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$ROOT"/docs/concepts/*.html 2>&1); RC=$?; rc 0
-has 'lifecycle.html {'; has 'sizing.html {'; has 'escalation.html {'; has 'around-the-loop.html {'
+has 'lifecycle.html {'; has 'sizing.html {'; has 'escalation.html {'; has 'around-the-loop.html {'; has 'codeguard.html {'
 python3 - "$ROOT" <<'PY' && ok "lifecycle has >=10 keyboard SVG nodes; sizing, escalation, around have chips" || bad "concept pages lost their persona nodes"
 import re, sys, pathlib
 r = pathlib.Path(sys.argv[1]) / "docs/concepts"
@@ -1368,7 +1368,7 @@ OUT=$(python3 -c "$TIERS_PY" "$ROOT" "$WORK/tiers/good.html" 2>&1); [ "$?" = 0 ]
 hd "concepts: inspector data"
 OUT=$(cat "$ROOT/docs/concepts/lifecycle.html" 2>/dev/null)
 has '<script type="application/json" id="marvin-data">'; has 'id="insp"'; has 'aria-live="polite"'; has '<div class="tier-legend">'; has 'settings.html#model_profile'
-for f in lifecycle sizing escalation around-the-loop; do grep -Fq '<!-- data: profiles -->' "$ROOT/site/concepts/$f.html" 2>/dev/null && ok "$f carries the data marker" || bad "$f lacks <!-- data: profiles -->"; done
+for f in lifecycle sizing escalation around-the-loop codeguard; do grep -Fq '<!-- data: profiles -->' "$ROOT/site/concepts/$f.html" 2>/dev/null && ok "$f carries the data marker" || bad "$f lacks <!-- data: profiles -->"; done
 grep -Fq '<!-- table: profiles -->' "$ROOT/site/concepts/lifecycle.html" 2>/dev/null && ok "lifecycle carries the profiles table" || bad "lifecycle lacks <!-- table: profiles -->"
 grep -Fq '<!-- table: codex -->' "$ROOT/site/concepts/around-the-loop.html" 2>/dev/null && ok "around the loop carries the codex table" || bad "around-the-loop lacks <!-- table: codex -->"
 OUT=$(cat "$JS"); has 'function initInspector'; has 'getElementById("marvin-data")'; has 'JSON.parse'

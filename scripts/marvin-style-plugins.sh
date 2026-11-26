@@ -15,21 +15,10 @@ set -u
 [ "$#" -le 1 ] || { echo "usage: marvin-style-plugins.sh [<project-root>]" >&2; exit 2; }
 root="${1:-${CLAUDE_PROJECT_DIR:-$PWD}}"
 cfg="${CLAUDE_CONFIG_DIR:-${HOME:-}/.claude}"
-if [ -n "${MARVIN_MANAGED_SETTINGS:-}" ]; then managed="$MARVIN_MANAGED_SETTINGS"
-elif [ "$(uname)" = Darwin ]; then managed="/Library/Application Support/ClaudeCode/managed-settings.json"
-else managed=/etc/claude-code/managed-settings.json; fi
 registry="$(dirname "$0")/../hooks/style-plugins.txt"
 TAB=$(printf '\t')
 
-members() {  # members <rank> <file> — rank<TAB>id<TAB>value per enabledPlugins member; a malformed file counts as absent
-  local out
-  [ -f "$2" ] || return 0
-  out=$(head -c "$MH_MAX_IN" -- "$2" 2>/dev/null | mh_json members enabledPlugins) || return 0
-  printf '%s\n' "$out" | awk -v r="$1" -F'\t' 'NF == 2 { print r "\t" $1 "\t" $2 }'
-}
-merge='{ if (!($2 in r) || $1 >= r[$2]) { r[$2] = $1; v[$2] = $3 } } END { for (k in r) print r[k] "\t" k "\t" v[k] }'
-eff=$( { members 1 "$cfg/settings.json"; members 2 "$root/.claude/settings.json"
-         members 3 "$root/.claude/settings.local.json"; members 9 "$managed"; } | awk -F'\t' "$merge" | sort -t "$TAB" -k2,2)
+eff=$(mh_enabled_plugins "$root")
 
 printf '%s\n' "$eff" | while IFS="$TAB" read -r rank id val; do
   [ -n "$id" ] && [ "$val" = true ] || continue
