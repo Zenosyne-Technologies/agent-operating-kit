@@ -233,7 +233,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 |---|---|
 | `install-agent-os` | Installing Marvin into a repo for the first time. Resolves placeholders, merges rather than overwrites, selects and sensechecks the PM tool, asks the model profile (`model_profile`: `opus` or `fable`) and renders every model name from it, creates the intake structure. |
 | `upgrade-agent-os` | Bringing an existing install up to the plugin's current version — file migrations, new cascade docs, the kit core's refresh (model names re-rendered from `model_profile`, asked once where it is missing), tracker label re-sync; the one-time `CLAUDE.md` split and relabel sweeps each gated behind one confirmation. |
-| `project-info` | Creating the project meta page standalone — or, when it already exists, validating it against the repo and auto-fixing discrepancies without ever recreating it. |
+| `project-info` | Creating the project meta page standalone — or, when it already exists, validating it against the repo and auto-fixing discrepancies without ever recreating it; `model_profile` is validated, never auto-fixed (absent reads as `opus`; any value other than `opus` or `fable` is a must-act finding). |
 | `report` | Asking for an architect digest, a milestone close-out or a stakeholder page. Fills and dispatches the installed stats brief, then renders. |
 | `plan-docs` | Handbooks are missing or stale. The orchestrator surveys the project, collects the must-mention details per logical unit, creates a documentation epic carrying those findings, and dispatches documentation agents against it. |
 | `stress-test` | Verifying the project holds past demo scale — every growth dimension tested at 3-5× expected production scale, client-side costs included, findings filed as tracker bugs with repro scales. |
@@ -290,7 +290,7 @@ Which tool a project uses is always a **user selection, never inferred** — eve
 
 **Tags start at v0.22.0.** All 21 minor versions released through v0.21.0 shipped untagged — this repo has no git tags at all before that. Rather than fabricate history now (a tag's creation date can't be backdated honestly, and there is no `.docs/release-notes/` prose for those versions to serve as the tag message `git-strategy.md` requires — only the terse mechanical `upgrades/v*.md` deltas), tagging begins clean with the first release cut under this process. A retroactive backfill from `upgrades/v*.md` and the merge commits remains possible later, but deliberately isn't part of adopting gitflow — it would be its own tracked, reviewed piece of work, not a side effect of this one.
 
-Every PR must pass the static release gate and the seventeen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
+Every PR must pass the static release gate and the eighteen test suites, all of which CI runs on every push to `main`, `develop` and `release/**`, and on every pull request:
 
 ```
 bash scripts/validate-kit.sh
