@@ -269,16 +269,23 @@ hr=$(python3 -c "$HR_PY" 2>&1)
 # ── 19. profile-window: the hook lib's default context window is the orchestrator window of EVERY
 # `## Profile:` table in the model profile (the hook cannot tell which profile a project runs)
 lw=$(sed -nE 's/^MH_DEFAULT_WINDOW_K=([0-9]+).*/\1/p' scripts/lib/marvin-hook-lib.sh)
-pwr=$(awk -F'|' '/^## / { p = ""; w = 0 } /^## Profile: / { p = $0; sub(/^## Profile: */, "", p); w = 1 }
-  w && /^\| orchestrator \|/ { v = $4; gsub(/ /, "", v); print p "\t" v; w = 0 }' "$MP")
+# One line per `## Profile:` heading — the window is empty when the section has no orchestrator row, so
+# that profile fails as unreadable instead of going unchecked. Cells are trimmed, like profile-parity's.
+pwr=$(awk -F'|' 'function flush() { if (p != "") print p "\t" v; p = ""; v = "" }
+  /^## / { flush() } /^## Profile: / { p = $0; sub(/^## Profile: */, "", p); got = 0 }
+  p != "" && /^\|/ && !got { c = $2; gsub(/^[ \t]+|[ \t]+$/, "", c)
+    if (c == "orchestrator") { v = $4; gsub(/[ \t]/, "", v); got = 1 } }
+  END { flush() }' "$MP")
 pwf=""
-[ -z "$pwr" ] && pwf="no '## Profile:' table with an orchestrator row in model-profile.md;"
+[ -z "$pwr" ] && pwf="no '## Profile:' table in model-profile.md;"
 while IFS="$(printf '\t')" read -r pn pw; do
   [ -n "$pn" ] || continue
   raw=$pw
   case "$pw" in *M) pw=${pw%M}; m=1000 ;; *K|*k) pw=${pw%[Kk]}; m=1 ;; *) pw=""; m=1 ;; esac
   case "$pw" in ""|*[!0-9]*) pw="" ;; *) pw=$(( pw * m )) ;; esac
-  [ -n "$pw" ] && [ "$pw" = "$lw" ] || pwf="$pwf profile '$pn' orchestrator window '${raw:-unreadable}' (${pw:-unreadable}k) differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}';"
+  if [ -z "$raw" ]; then pwf="$pwf profile '$pn' has no orchestrator row with a readable window;"
+  elif [ -z "$pw" ] || [ "$pw" != "$lw" ]; then
+    pwf="$pwf profile '$pn' orchestrator window '$raw' (${pw:-unreadable}k) differs from marvin-hook-lib.sh MH_DEFAULT_WINDOW_K '${lw:-unreadable}';"; fi
 done <<EOF
 $pwr
 EOF
