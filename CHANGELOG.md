@@ -2,6 +2,28 @@
 
 What changed in each Marvin release, newest first, in fixed categories — Action needed is what you must do after upgrading. Ask Marvin "what's new" (`/marvin:whats-new`) for the changes between your project's version and the latest. Full release notes: `docs/release-notes/`.
 
+## [0.43.0] — 2026-11-26
+
+### Added
+- `model_profile: opus | fable` in `PROJECT-INFO.md`: install and upgrade ask once (no answer or unattended: `opus`), `project-info` validates it, `/marvin:info` reports it; the `fable` profile runs the main session on Fable 5.2 and its max gate offers `max` only.
+- `.marvin/agents/model-profile-codex.md`: the Codex table moves out of `model-profile.md` (the legacy section is still read until moved).
+- Placeholders `{{ORCHESTRATOR_MODEL}}`, `{{MODEL_PROFILE}}` and `{{FRONTIER_SWAP_OPTION}}`, rendered per profile.
+- `validate-kit` check `profile-parity` (25th) and a per-profile `profile-window`; `test-codex` fixtures for the split Codex table.
+
+### Changed
+- The frontier tier is Fable 5.2 (the `fable` alias already resolved to 5.2 on Claude Code v2.1.321 and later; gateway sessions resolve it to Fable 5); rule 1 is kept and re-dated, re-measure pending AOS-272.
+- The ceiling is the heavy tier's model, no longer the orchestrator's.
+- Factory: the kit-core line budget is raised from 55 to 100; `model-names` covers both profile files.
+- Factory (AOS-281): repo rule 10 — a release is cut only when its update instructions and documentation are committed.
+- Factory (AOS-296): repo rule 11 — the Pages guide gets updated visuals for workflow changes and screenshots for every new mod or visualization.
+
+### Fixed
+- The install skill's telemetry advice named the wrong marketplace repo (AOS-297); `validate-kit` check `marketplace` now guards it.
+
+### Action needed
+- Run `/marvin:upgrade-agent-os`: it asks once for `model_profile` (no answer: `opus`); an invalid held value stops the upgrade before any write.
+- Move a customised Codex table from `.marvin/backups/v0.43.0/` into `model-profile-codex.md`; token-telemetry users run `/token-telemetry:pricing-update` for `claude-fable-5-2`.
+
 ## [0.42.2] — 2026-11-26
 
 ### Added
