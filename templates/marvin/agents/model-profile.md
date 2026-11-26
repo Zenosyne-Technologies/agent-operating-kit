@@ -40,7 +40,7 @@ The install skill writes the active profile's row models wherever an installed f
 
 | Placeholder | opus | fable |
 |---|---|---|
-| `FRONTIER_SWAP_OPTION` | , marked recommended (`model-profile.md` rule 1); the second option is a swap of this task to the frontier tier (Fable 5.2, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb), dispatched only on an explicit frontier choice. | , and the only option: this profile has no frontier tier (`model-profile.md` rule 4), so the question asks consent to go to `max`. |
+| `FRONTIER_SWAP_OPTION` | , marked recommended (`.marvin/agents/model-profile.md` rule 1); the second option is a swap of this task to the frontier tier (Fable 5.2, `marvin:escalation-frontier` — a model change at the session's effort, not an effort climb; needs 30-day data retention, not ZDR — rule 6), dispatched only on an explicit frontier choice. | , and the only option: this profile has no frontier tier (`.marvin/agents/model-profile.md` rule 4), so the question asks consent to go to `max`. |
 
 ## Model-specific rules
 
@@ -49,7 +49,7 @@ The install skill writes the active profile's row models wherever an installed f
 3. **Fully-specified code is micro-tier work.** Haiku 5.5 handles focused coding and multi-step tool use (39.2% on Terminal-Bench 4.0, from 0.0% for Haiku 4.5), so a build or correction whose brief passes `briefing.md`'s fully-specified test runs on `marvin:developer-micro`; earlier versions kept every code edit off the micro tier because Haiku 4.5 could not do it. Work that needs judgement stays on the small tier, and a stuck micro-tier build tiers up to it (`escalation-ladder.md`).
 4. **No frontier in `fable`.** In the `fable` profile the max gate still asks its consent question, with `max` on the heavy tier's model as the only option — answers and recording as in `opus`; `marvin:escalation-frontier` is never dispatched.
 5. **Frontier briefs state outcomes.** A brief to `marvin:escalation-frontier` states the outcome, the DoD and the findings, not a step script (Fable 5.2 reads over-prescriptive prompts as lower-quality instructions).
-6. **Fable 5.2 needs data retention.** Fable 5.2 requires 30-day data retention; it is unavailable under zero data retention.
+6. **Fable 5.2 needs data retention.** Fable 5.2 requires 30-day data retention; it is unavailable under zero data retention (ZDR), and nothing detects ZDR — the architect decides: under ZDR, choose `max` at the `opus` max gate, and a ZDR project runs `opus`.
 
 ## Validated per profile
 
