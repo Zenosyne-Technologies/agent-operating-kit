@@ -125,6 +125,10 @@ His memory is his own to manage. Noteworthy findings — decisions, surprises, h
 
 Three loops carry most of the weight: the lifecycle every task walks, the router that decides who does the work, and the cost loop that prices all of it.
 
+<p align="center"><a href="https://zenosyne-technologies.github.io/agent-operating-kit/"><img src="assets/marvin-lifecycle.svg" alt="Marvin's task lifecycle: plan and brief, build by size tier, completion gate, security gate, optional visual validation, documentation gate, close-out. Each stage is marked with the agent persona and model tier that runs it, and a failed validation loops back to the build tier." width="100%"></a></p>
+
+*Which persona runs which stage, coloured by model tier. The [interactive map](https://zenosyne-technologies.github.io/agent-operating-kit/) lets you click any persona for its model, job and limits, and adds size routing and the escalation staircase.*
+
 <!-- Maintainers: the inventory check in scripts/validate-kit.sh scans lines that are exactly three backticks, so the fence style used in this README is load-bearing. Re-run the gate after adding or removing any code block here. -->
 
 ```mermaid
