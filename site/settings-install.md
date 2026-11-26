@@ -15,7 +15,7 @@
 - `screens_guide`: Where the UI screen catalog lives, the list of surfaces that design and visual review check against.
 - `visual_validation`: When a UI task gets a visual review: after every task, once per milestone, or never.
 - `model_profile`: The model profile the project runs, which decides the model behind each tier. Install asks which one.
-- `security_rules`: Whether the security advisor and validators add the Project CodeGuard rules on top of the kit's own checklist: `kit` (the default, also when absent or unknown) or `codeguard`. Install offers CodeGuard and sets `codeguard` only on a yes; see [CodeGuard rules](concepts/codeguard.html).
+- `security_rules`: Whether the security advisor and validators add the Project CodeGuard rules on top of the kit's own checklist: `kit` (the default, also when absent or unknown) or `codeguard`. Install sets `codeguard` when the plugin is ready after its CodeGuard step (already installed and enabled, or after a yes whose install or enable succeeded), otherwise `kit`; it offers the install or enable when the plugin is not ready, and a re-install keeps a committed value; see [CodeGuard rules](concepts/codeguard.html).
 - `docs_location`: The folder that holds the project's documentation estate. It is `.docs` unless you move it.
 - `issue_log_path`: The file where the running build's real bugs are logged, next to the tracker ticket.
 - `telemetry`: Whether the optional token-telemetry plugin records usage for this project (enabled or disabled).
