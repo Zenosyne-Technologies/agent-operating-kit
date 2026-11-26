@@ -384,6 +384,10 @@ mk=$(grep -rnoiE 'marketplace add +zenosyne-technologies/[A-Za-z0-9._-]+' skills
   | grep -vE ':marketplace add +Zenosyne-Technologies/emprove-marketplace$' | tr '\n' ' ')
 [ -z "$mk" ] && pass marketplace || fail marketplace "marketplace add must name Zenosyne-Technologies/emprove-marketplace: ${mk% }"
 
+# ── 26. docs-site: the GitHub Pages site in docs/ is exactly what site/ builds to (AOS-299) — no stale,
+# missing or orphan output. Fix by running `bash scripts/build-docs.sh` and committing docs/.
+ds=$(bash scripts/build-docs.sh --check 2>&1) && pass docs-site || fail docs-site "$(printf '%s' "$ds" | tr '\n' ' ')"
+
 echo "----"
 [ "$fails" -eq 0 ] && echo "validate-kit: ALL CHECKS PASSED" || echo "validate-kit: $fails check(s) FAILED"
 exit "$((fails>0))"

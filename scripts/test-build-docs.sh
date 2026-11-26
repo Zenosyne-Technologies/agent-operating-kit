@@ -3,7 +3,10 @@
 # AOS-300 pins the markdown subset renderer: headings with stable ids, inline markup, nested lists, tables, fences,
 # blockquotes and rules; HTML in a source is escaped, never passed through; any construct outside the subset fails with
 # file:line; a YAML header never leaks into a page; every real release note, upgrade note and the CHANGELOG renders;
-# CRLF input renders byte-identically. Mutations at the end: each `# GUARD:<name>` line in the module is neutralised in a
+# CRLF input renders byte-identically.
+# AOS-301 adds the site build and the --check gate: pages wrapped in the shell, links relative from nested pages, the
+# nav, determinism, stale/missing/orphan reporting that never touches docs/images|release-notes|decisions|superpowers|
+# .nojekyll, CRLF sources, registry validation. Mutations at the end: each `# GUARD:<name>` line in the module is neutralised in a
 # copy and the named fixture must then FAIL. Later tasks append `name:fixture` pairs to MUTATIONS.
 set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd); ROOT="$SCRIPT_DIR/.."
@@ -116,7 +119,7 @@ fx_md_raw_html && ok "block-level HTML exits 2" || bad "fx_md_raw_html"
 fx_md_link_scheme && ok "unsafe link schemes exit 2" || bad "fx_md_link_scheme"
 printf '%s\n' 'x' > "$WORK/none-ok.md"
 OUT=$(python3 "$MOD" --render "$WORK/missing.md" 2>&1); RC=$?; rc 2
-OUT=$(python3 "$MOD" 2>&1); RC=$?; rc 2; has "usage"
+OUT=$(python3 "$MOD" --bogus 2>&1); RC=$?; rc 2; has "usage"
 
 hd "render: line numbers survive a stripped header"
 printf '%s\n' '---' 'doc: x' 'summary: y' '---' '' '# T' '' '<div>' > "$WORK/ln.md"
@@ -161,6 +164,121 @@ grep -q $'\r' "$WORK/crlf.out" && bad "CR in output" || ok "output is LF only"
 python3 "$MOD" --render "$WORK/lf.md" > "$WORK/lf.out2"; python3 "$MOD" --render "$WORK/lf.md" > "$WORK/lf.out3"
 cmp -s "$WORK/lf.out2" "$WORK/lf.out3" && ok "deterministic" || bad "two runs differ"
 
+# ---------------------------------------------------------------- site fixtures (AOS-301)
+# mkrepo <dir>: a minimal repo tree - the real shell, a Home page and a nested concepts page - built into <dir>/docs.
+mkrepo() {
+  local d="$1"; rm -rf "$d"; mkdir -p "$d/site/assets" "$d/site/concepts"
+  cp "$ROOT/site/_shell.html" "$d/site/_shell.html"
+  printf 'body{}\n' > "$d/site/assets/site.css"; printf 'void 0;\n' > "$d/site/assets/site.js"
+  printf '<h1>Home body</h1>\n' > "$d/site/index.html"
+  printf '<h1>Lifecycle body</h1>\n' > "$d/site/concepts/x.html"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "concepts/x.html", "title": "Concept X", "section": "concepts", "order": 1, "source": "hand"}
+]
+JSON
+}
+sbuild() { python3 "$MOD" --root "$1" >/dev/null 2>&1; }          # sbuild <repo>: plain build
+scheck() { OUT=$(python3 "$MOD" --root "$1" --check 2>&1); RC=$?; } # scheck <repo>: sets OUT, RC
+fx_stale() {
+  local d="$WORK/fx-stale"; mkrepo "$d"; sbuild "$d" || return 1
+  printf '<h1>Changed</h1>\n' > "$d/site/index.html"
+  scheck "$d"; [ "$RC" = 1 ] && printf '%s' "$OUT" | grep -Fq 'STALE docs/index.html'
+}
+fx_missing() {
+  local d="$WORK/fx-missing"; mkrepo "$d"; sbuild "$d" || return 1
+  rm "$d/docs/concepts/x.html"
+  scheck "$d"; [ "$RC" = 1 ] && printf '%s' "$OUT" | grep -Fq 'MISSING docs/concepts/x.html'
+}
+fx_orphan() {
+  local d="$WORK/fx-orphan"; mkrepo "$d"; sbuild "$d" || return 1
+  printf 'x' > "$d/docs/old.html"; mkdir -p "$d/docs/assets/fonts"; printf 'x' > "$d/docs/assets/fonts/OFL.txt"
+  scheck "$d"; [ "$RC" = 1 ] && printf '%s' "$OUT" | grep -Fq 'ORPHAN docs/old.html' && printf '%s' "$OUT" | grep -Fq 'ORPHAN docs/assets/fonts/OFL.txt'
+}
+fx_abs_link() {
+  local d="$WORK/fx-abs"; mkrepo "$d"
+  printf '<p><a href="/elsewhere.html">x</a></p>\n' > "$d/site/index.html"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
+  printf '<img src="/a.png" alt="">\n' > "$d/site/index.html"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_registry_dup() {
+  local d="$WORK/fx-dup"; mkrepo "$d"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "index.html", "title": "Again", "section": "home", "order": 1, "source": "hand"}
+]
+JSON
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+fx_registry_section() {
+  local d="$WORK/fx-sec"; mkrepo "$d"
+  sed -i.bak 's/"section": "concepts"/"section": "nonsense"/' "$d/site/pages.json"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]
+}
+
+hd "build: wraps pages"
+R="$WORK/r1"; mkrepo "$R"; python3 "$MOD" --root "$R" >/dev/null 2>&1; RC=$?; rc 0
+OUT=$(cat "$R/docs/index.html"); has '<!doctype html>'; has '<html lang="en">'; has '<title>Home - Marvin</title>'; has '<h1>Home body</h1>'
+has '<main id="main">'; has 'class="skip-link"'; has 'href="assets/site.css"'; has 'src="assets/site.js"'; lacks '{{'
+[ -f "$R/docs/assets/site.css" ] && ok "assets copied" || bad "assets not copied"
+
+hd "build: links relative from nested pages"
+OUT=$(cat "$R/docs/concepts/x.html"); has 'href="../assets/site.css"'; has 'src="../assets/site.js"'; has 'href="../index.html"'; has '<h1>Lifecycle body</h1>'
+if grep -rqE '(href|src)="/' "$R/docs"; then bad "a root-absolute href/src in the output"; else ok "no root-absolute href/src anywhere"; fi
+fx_abs_link && ok "a root-absolute link in a source is a BuildError (exit 2)" || bad "fx_abs_link"
+
+hd "build: nav active"
+OUT=$(cat "$R/docs/index.html"); has '<a href="index.html" aria-current="page">Home</a>'; has '<a href="concepts/x.html">Concepts</a>'; lacks 'Settings'
+OUT=$(cat "$R/docs/concepts/x.html"); has '<a href="../concepts/x.html" aria-current="page">Concepts</a>'; has '<a href="../index.html">Home</a>'
+has '<aside class="sidebar">'; has '<li><a href="../concepts/x.html" aria-current="page">Concept X</a></li>'
+OUT=$(cat "$R/docs/index.html"); lacks '<aside'
+
+hd "build: deterministic"
+cp -R "$R/docs" "$WORK/r1-first"; sbuild "$R"
+diff -r "$WORK/r1-first" "$R/docs" >/dev/null && ok "two builds are byte-identical" || bad "builds differ"
+grep -rq $'\r' "$R/docs" && bad "CR in output" || ok "output is LF only"
+
+hd "check: fresh"
+scheck "$R"; rc 0
+
+hd "check: stale"
+fx_stale && ok "an edited source reports STALE (exit 1)" || bad "fx_stale"
+
+hd "check: missing"
+fx_missing && ok "a deleted output reports MISSING (exit 1)" || bad "fx_missing"
+
+hd "check: orphan output"
+fx_orphan && ok "an output the build does not write reports ORPHAN (exit 1)" || bad "fx_orphan"
+R2="$WORK/r2"; mkrepo "$R2"; sbuild "$R2"
+mkdir -p "$R2/docs/images/f" "$R2/docs/release-notes" "$R2/docs/decisions" "$R2/docs/superpowers/specs"
+for f in images/f/a.png release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do printf 'keep' > "$R2/docs/$f"; done
+scheck "$R2"; rc 0; lacks ORPHAN
+sbuild "$R2"; printf 'x' > "$R2/docs/old.html"; sbuild "$R2"
+[ ! -e "$R2/docs/old.html" ] && ok "a plain build removes its own stale output" || bad "old.html survived a build"
+n=0; for f in images/f/a.png release-notes/v1.md decisions/d.md superpowers/specs/s.md .nojekyll; do [ "$(cat "$R2/docs/$f" 2>/dev/null)" = keep ] && n=$((n+1)); done
+[ "$n" = 5 ] && ok "protected paths are never written or removed" || bad "protected paths touched ($n/5 intact)"
+
+hd "check: crlf input"
+R3="$WORK/r3"; mkrepo "$R3"; sbuild "$R3"
+for f in site/_shell.html site/index.html site/concepts/x.html site/pages.json site/assets/site.css; do sed 's/$/\r/' "$R3/$f" > "$R3/$f.tmp"; mv "$R3/$f.tmp" "$R3/$f"; done
+scheck "$R3"; rc 0
+
+hd "registry: duplicate path"
+fx_registry_dup && ok "a duplicate path exits 2" || bad "fx_registry_dup"
+hd "registry: unknown section"
+fx_registry_section && ok "an unknown section exits 2" || bad "fx_registry_section"
+R4="$WORK/r4"; mkrepo "$R4"; sed -i.bak 's/"source": "hand"}$/"source": "generated:nope"}/' "$R4/site/pages.json"
+OUT=$(python3 "$MOD" --root "$R4" 2>&1); RC=$?; rc 2; has "no generator named 'nope'"
+R5="$WORK/r5"; mkrepo "$R5"; rm "$R5/site/concepts/x.html"
+OUT=$(python3 "$MOD" --root "$R5" 2>&1); RC=$?; rc 2; has 'x.html'
+
+hd "site: the real repo is fresh and hand sources name no model"
+OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
+if grep -rniE '\b(opus|sonnet|haiku|fable|gpt-[0-9])' "$ROOT/site" --include='*.html' --include='*.json' --include='*.md' -l >/dev/null 2>&1; then bad "a model name is hand-typed in site/"; else ok "no model name in site/"; fi
+
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite
 # survives is a hole, not a pass. Later tasks append "guard-name:fixture_function" pairs.
@@ -169,6 +287,12 @@ MUTATIONS=(
   "md-raw-html:fx_md_raw_html"
   "md-link-scheme:fx_md_link_scheme"
   "md-header-leak:fx_md_header_leak"
+  "stale:fx_stale"
+  "missing:fx_missing"
+  "orphan-output:fx_orphan"
+  "abs-link:fx_abs_link"
+  "registry-dup:fx_registry_dup"
+  "registry-section:fx_registry_section"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

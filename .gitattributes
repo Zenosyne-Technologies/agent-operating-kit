@@ -1,2 +1,5 @@
 *.sh text eol=lf
 hooks/*.json text eol=lf
+docs/**/*.html text eol=lf
+docs/**/*.css text eol=lf
+docs/**/*.js text eol=lf
