@@ -41,7 +41,7 @@ Validated version: `1.5.0` (Project CodeGuard, plugin `codeguard-security@projec
 
 ## Codex security lane
 
-- Codex cannot load Claude skills. The orchestrator appends `### Rules` to the lane prompt (`codex/security.md`), holding the text of the named rule files read from the loaded skill's base directory.
+- Codex cannot load Claude skills. The orchestrator appends `### Rules` to the lane prompt (`codex/security.md`), holding the text of the rule files read from the loaded skill's base directory: the ones the brief names plus every changed-file language rule it missed, the set *Security validator* checks, so both lanes check the same rules.
 - That paste is a transient prompt, never committed, never filed.
 
 ## Precedence
