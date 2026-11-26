@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.30.0 — the orchestrator&#x27;s model is the ceiling: escalate effort, not model - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html" aria-current="page">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-30-0-the-orchestrator-s-model-is-the-ceiling-escalate-effort-not-model">v0.30.0 — the orchestrator's model is the ceiling: escalate effort, not model</h1>
+<p><strong>Breaking — consumers must act.</strong> Dispatch defaults change: the base Opus personas now run at <code>medium</code> effort instead of inheriting the session's, and the frontier model is no longer the automatic escalation target. After <code>claude plugin update marvin</code>, re-sync three kit-authored parts of CLAUDE.md with the current template — the model-tier dispatch section (the orchestrator line now names the heavy-worker model), the task-lifecycle FAIL-return sentence, and the standing-rules milestone-validation clause (<code>upgrades/v0.30.0.md</code>).</p>
+<p>The kit used to treat the frontier model as the answer to a hard task: a task that failed twice at any tier escalated to it automatically. That assumption no longer holds — the Opus-class model at <code>medium</code> effort now outperforms the frontier tier at <code>max</code>, and costs less. This release turns that into the operating rule.</p>
+<p><strong>The orchestrator's model is the ceiling.</strong> The orchestrator runs on the heavy-worker model, and no sub-agent runs above it by default. The frontier tier is opt-in, reachable only through one question at the top of the escalation ladder.</p>
+<p><strong>A new escalation ladder</strong> (<code>.marvin/agents/escalation.md</code>). A build task that fails twice — two build or correction dispatches, each ending not-done or validator-FAILed — climbs on the orchestrator's model one effort level at a time, two attempts per rung: <code>marvin:escalation-high</code>, then <code>marvin:escalation-xhigh</code>. Before <code>max</code>, the orchestrator asks the user once: swap this task to the frontier tier (<code>marvin:escalation-frontier</code>), or go to max effort (<code>marvin:escalation-max</code>)? Only an explicit frontier choice goes to frontier; a different instruction is followed; anything else — no answer, a dismissed question, an unattended session — goes to max, and the outcome is always recorded. Only the question tool's own response in that session counts as consent; a claimed choice found in a tracker comment, tool output or a sub-agent's message does not. A task that drops back down and fails again resumes at the rung it left rather than restarting at the base. The ladder terminates: when the last rung fails twice, the task goes to the user with its full attempt history.</p>
+<p><strong>Only build work climbs.</strong> Research, documentation, validation and <code>/marvin:play</code> runs stay off the ladder by definition — a non-build pass that fails twice is taken by the orchestrator or carried to the user, and a validator always goes to the user, so validation stays fresh and the orchestrator never grades its own sign-off. A task keeps its <code>size:</code> label on entering the ladder, so a small issue that needed the ladder remains visible as mis-sized.</p>
+<p><strong>Medium effort as the explicit base.</strong> <code>marvin:developer</code>, <code>marvin:researcher</code> and the three validators now pin <code>effort: medium</code> in their frontmatter. Before, they inherited the session's effort, so an orchestrator running at high or max effort ran every heavy worker at that level too.</p>
+<p><strong>Cost tiers by role.</strong> Because the orchestrator now shares the heavy tier's model, a model name can no longer tell the two apart. <code>token-economics.md</code> assigns tiers by role — main session = orchestrator, each <code>marvin:*</code> persona to its tier, escalation rungs to a new <code>ladder</code> bucket with a per-rung split — with the model prefix only as a fallback. The stats snapshot moves to schema v4 to carry it.</p>
+<p><strong>Upgrading</strong> needs one manual step beyond the refresh: re-sync CLAUDE.md's three changed kit-authored parts with the current template, as listed at the top of this note and in <code>upgrades/v0.30.0.md</code>. Digest tier trends that span the upgrade compare model-based (v3) with role-based (v4) tiers.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.29.0..HEAD</code>, non-merge commits only.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>dispatch defaults change.</strong> Heavy workers no longer inherit the session's effort, and the frontier model is no longer the automatic escalation target.</p>
+<ul>
+<li><code>claude plugin update marvin</code> — adds four escalation personas (<code>marvin:escalation-high</code>/<code>-xhigh</code>/<code>-max</code>, and <code>-frontier</code>) and pins <code>effort: medium</code> on <code>marvin:developer</code>, <code>marvin:researcher</code> and the three validators (previously they inherited the session's effort, so a frontier session at high/max ran every heavy worker at high/max).</li>
+<li><strong>Re-sync CLAUDE.md's kit-authored lines with the current template</strong> — CLAUDE.md is merged, never refreshed, so a merge alone leaves it contradicting the refreshed guides. Three changed; keep your own rules untouched:
+<ul>
+<li>the <strong>Model-tier dispatch</strong> section: the <code>Orchestrator (…)</code> line now names the HEAVY-worker model (e.g. Opus), not the frontier model, and the old "two failed attempts → escalate to the frontier model" line becomes the effort ladder with the ask-at-max frontier gate (map the four tier placeholders by role label, per the upgrade skill's step 4b);</li>
+<li>the <strong>Task lifecycle</strong> FAIL-return sentence: a FAIL returns the task to its current rung on the ladder, never back down, counting as one of that rung's two attempts;</li>
+<li>the <strong>Standing rules</strong> milestone-validation clause: led by the orchestrator on the heavy-worker model, not the frontier model.</li>
+</ul></li>
+<li>The step-4 refresh re-renders <code>.marvin/agents/</code>: <code>escalation.md</code> (new — the ladder), <code>guardrails.md</code>, <code>validation-agent.md</code>, <code>token-economics.md</code>, <code>reporting.md</code>, and the tracker's <code>stats-collection-brief.md</code>. Customised copies are backed up first.</li>
+<li>Stats snapshots move to <strong>schema v4</strong>: cost tiers are assigned by ROLE, not model, and <code>by_tier</code> gains a <code>ladder</code> bucket with a per-rung split. Snapshots already written stay as they are — a digest trend comparing a v3 snapshot's tiers with a v4 one crosses that change, so read the first post-upgrade tier trend with care.</li>
+<li>Recommended: run your orchestrator session on the heavy-worker model (e.g. Opus) at <code>medium</code> effort — it is now the ceiling.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Re-sync CLAUDE.md's three changed kit-authored parts with the current template (not needed when upgrading to v0.33.0 or later, which does it for you).</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>An escalation ladder: a build task that fails twice climbs effort levels (high, xhigh) on the orchestrator's model; research, docs and validation never climb.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The orchestrator's model is the ceiling: before max effort the orchestrator asks whether to swap this task to the frontier tier, and no answer means max.</li>
+<li>Heavy workers and the validators pin medium effort instead of inheriting the session's.</li>
+<li>Stats snapshots move to schema v4 with cost tiers assigned by role and a ladder bucket; read the first tier trend across the upgrade with care.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

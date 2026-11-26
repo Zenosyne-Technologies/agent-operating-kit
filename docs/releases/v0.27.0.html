@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.27.0 — a brief-first greenfield interview and a branded attribution option - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html" aria-current="page">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-27-0-a-brief-first-greenfield-interview-and-a-branded-attribution-option">v0.27.0 — a brief-first greenfield interview and a branded attribution option</h1>
+<p>Two install-flow improvements. Both affect <strong>new installs only</strong>; existing installs are untouched (the interview runs at install time, and PROJECT-INFO/settings are never overwritten on upgrade).</p>
+<p><strong>Brief-first greenfield interview (AOS-117).</strong> The greenfield interview used to ask target audience, size and app type, then propose a tech stack — with no idea what the user was building, so the stack was suggested blind. It now asks a short <strong>project brief ("what are you building?") FIRST</strong>, and the stack step reasons from that brief. The brief is persisted as a new <code>brief:</code> field in <code>.marvin/PROJECT-INFO.md</code> (18 frontmatter keys now), and the <code>project-info</code> skill knows the field on both create and validate. Only the greenfield path changes; brownfield discovery is unchanged.</p>
+<p><strong>A third attribution option (AOS-118).</strong> The install's attribution question was a two-way choice (keep the default AI attribution, or disable it). It now offers a <strong>third option — "Emprove Marvin (Claude)"</strong> — a branded commit/PR trailer, so agent-made commits can be attributed to the Marvin operating system. The three outcomes: keep-default skips the settings file (Claude Code's own default applies), disable writes empty attribution, and the branded option writes the "Emprove Marvin (Claude)" trailer into <code>settings.json</code> and the CLAUDE.md attribution line.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.26.1..HEAD</code>.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing, but only for <strong>new greenfield installs</strong>; existing installs are unaffected and there is nothing to do.</p>
+<ul>
+<li>The greenfield install interview now asks <strong>what you are building</strong> (a short project brief) as its FIRST question — before target audience, size, app type and tech stack — so the stack suggestion reasons from the brief instead of being offered blind. The brief is saved as <code>brief:</code> in <code>.marvin/PROJECT-INFO.md</code>.</li>
+<li>The install's attribution question now offers a <strong>third option, "Emprove Marvin (Claude)"</strong> — a branded commit/PR trailer — alongside keeping the default attribution and disabling it.</li>
+</ul>
+<p>Existing installs: <code>claude plugin update marvin</code> picks up the new templates, but nothing changes in an already-installed project — the interview runs only at install, and <code>PROJECT-INFO.md</code>/<code>settings.json</code> are never overwritten on upgrade.</p>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>The install's attribution question gains a third option, "Emprove Marvin (Claude)", a branded commit and PR trailer.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The greenfield install interview asks what you are building first, so the stack suggestion reasons from that brief. New installs only.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

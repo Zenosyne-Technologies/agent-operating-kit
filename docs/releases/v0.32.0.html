@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.32.0 — Marvin targets a declared model set - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html" aria-current="page">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-32-0-marvin-targets-a-declared-model-set">v0.32.0 — Marvin targets a declared model set</h1>
+<p><strong>Consumers must act.</strong> After <code>claude plugin update marvin</code>, first re-sync CLAUDE.md's <em>Model-tier dispatch</em> section — its concrete model names and two changed lines — with the new profile, and only then run <code>/marvin:upgrade-agent-os</code>, which renders the refreshed guides from those names (<code>upgrades/v0.32.0.md</code>).</p>
+<p>Marvin was written model-generic: tier names everywhere, concrete models chosen at install. That stopped holding with Opus 5.5, whose max effort now outperforms the frontier tier (Fable 5.1) for far less cost — a rule written for "any frontier model" gets that wrong. From this version on, each Marvin release is built and validated for a declared model set, and model-specific rules live in one place.</p>
+<p><strong>The model profile.</strong> <code>.marvin/agents/model-profile.md</code> is the single owner of the version's model set and its model-specific rules: orchestrator Opus 5.5 at medium effort (high when a task needs it), heavy worker Opus 5.5, small worker Sonnet 5, micro Haiku 4.5, frontier Fable 5.1 opt-in only. Every other guide keeps tier names and cites it. It is kit-owned: an upgrade replaces a customised copy (keeping a backup), and running other models is unsupported — Marvin shows one callout when the session's model differs, and never blocks.</p>
+<p><strong>The max gate recommends max.</strong> When a stuck build task reaches the top of the effort ladder, the question now offers max effort on the orchestrator's model first, as the recommended choice, and the frontier tier second, as the costlier alternative. Everything else about the gate is unchanged.</p>
+<p><strong>Install reads the profile.</strong> The install skill takes its tier-to-model names from the plugin's profile instead of re-checking at install time. A new <code>validate-kit</code> check (<code>model-names</code>, the 13th) fails any template other than the profile that names Opus, Sonnet, Haiku or Fable.</p>
+<p>Later versions will add profiles for other model sets.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.31.0..HEAD</code>, non-merge commits only; the container epic AOS-161 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>this version is built and validated for one model set</strong>, declared in the new <code>.marvin/agents/model-profile.md</code>: orchestrator Opus 5.5 at medium (high when needed), heavy worker Opus 5.5, small Sonnet 5, micro Haiku 4.5, frontier Fable 5.1 (opt-in only). Other models are unsupported.</p>
+<ul>
+<li><code>claude plugin update marvin</code> first (it changes no installed file).</li>
+<li><strong>Then, BEFORE running the upgrade skill, re-sync CLAUDE.md's <em>Model-tier dispatch</em> section by hand</strong> (merged, never refreshed): set its concrete model names to the profile's set (<code>${CLAUDE_PLUGIN_ROOT}/templates/marvin/agents/model-profile.md</code>), and re-sync the two changed lines — the persona paragraph (now cites <code>model-profile.md</code> and the session-model check) and the Escalate line (<strong>max first, recommended</strong>, frontier as the costlier alternative). Order matters: step 4b renders the refreshed guides from CLAUDE.md's model names (AOS-160), so re-syncing afterwards leaves the old names in them.</li>
+<li>Then run <code>/marvin:upgrade-agent-os</code> — step 4b adds <code>model-profile.md</code> and refreshes <code>escalation.md</code>, <code>escalation-ladder.md</code> and <code>token-economics.md</code>, plus every guide that renders a model name (<code>planning-research.md</code>, <code>reporting.md</code>, <code>validation-agent.md</code>) once CLAUDE.md's names changed (customised copies backed up first).</li>
+<li>The max-gate question now offers max (recommended) before frontier; its defaults are unchanged — no answer means max, only the question tool's answer counts.</li>
+<li>If your session runs a different orchestrator model, Marvin shows one callout that this version is validated for Opus 5.5; it never blocks.</li>
+</ul>
+<p>This note's scope was derived over <code>v0.31.0..HEAD</code>, non-merge commits only; the container epic AOS-161 is excluded.</p>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Before running the upgrade, re-sync CLAUDE.md's Model-tier dispatch section with the new model profile (skip this when upgrading to v0.33.0 or later).</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>A model profile declares the version's model set and its model-specific rules; other models are unsupported, with one callout when the session's model differs.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>This version targets Opus 5.5 as orchestrator (medium effort), Sonnet 5 and Haiku 4.5 as workers, and Fable 5.1 as the opt-in frontier tier.</li>
+<li>The max gate now recommends max effort on the orchestrator's model first and offers the frontier tier second, as the costlier alternative.</li>
+<li>Install reads tier-to-model names from the plugin's profile instead of re-checking at install time.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

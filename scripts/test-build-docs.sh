@@ -535,6 +535,142 @@ hd "site: the real repo is fresh and hand sources name no model"
 OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
 if grep -rniE '\b(opus|sonnet|haiku|fable|gpt-[0-9])' "$ROOT/site" --include='*.html' --include='*.json' --include='*.md' -l >/dev/null 2>&1; then bad "a model name is hand-typed in site/"; else ok "no model name in site/"; fi
 
+# ---------------------------------------------------------------- generated Releases (AOS-303)
+# mkrel <dir>: mkrepo plus a generated Releases entry and a CHANGELOG / upgrades / release-notes tree:
+#   0.42.0 in all three (note + upgrade + changes, with Action needed), 0.30.0 CHANGELOG only (Action needed: None),
+#   0.26.1 upgrades only, 0.10.0 and 0.9.0 pre-0.22 (string order would put 0.9.0 above 0.10.0), 0.25.0 in no source.
+mkrel() {
+  local d="$1"; mkrepo "$d"; mkdir -p "$d/upgrades" "$d/docs/release-notes"
+  cat > "$d/site/pages.json" <<'JSON'
+[
+  {"path": "index.html", "title": "Home", "section": "home", "order": 0, "source": "hand"},
+  {"path": "releases", "title": "Releases", "section": "releases", "order": 0, "source": "generated:releases"}
+]
+JSON
+  cat > "$d/CHANGELOG.md" <<'MD'
+# Changelog
+
+## [0.42.0] — 2026-10-20
+
+### Added
+- change-forty-two
+
+### Action needed
+- Run the upgrade.
+
+## [0.30.0] — 2026-09-01
+
+### Added
+- change-thirty
+
+### Action needed
+- None: nothing to do.
+
+## [0.10.0] — 2026-01-02
+
+### Added
+- change-ten
+
+## [0.9.0] — 2026-01-01
+
+### Added
+- change-nine
+
+## [≤0.21.x]
+
+- Releases before v0.22.0 carry no brief here.
+MD
+  printf '# Upgrade to v0.42.0\n\nupgrade-forty-two. Back to [why](#why). See `upgrades/v0.42.0.md` and [the script](scripts/migrate-v0.42.0.sh), [prior note](docs/release-notes/v0.41.0.md), [site](https://example.com/x).\n' > "$d/upgrades/v0.42.0.md"
+  printf '# Upgrade to v0.26.1\n\nupgrade-twenty-six-one\n' > "$d/upgrades/v0.26.1.md"
+  printf '# v0.10.0 - ten\n\nupgrade-ten\n' > "$d/upgrades/v0.10.0.md"
+  printf '# v0.9.0 - nine\n\nupgrade-nine\n' > "$d/upgrades/v0.9.0.md"
+  printf -- '---\ndoc: v0.42.0 release note\ntype: release-note\nstatus: active\nsummary: header-must-not-leak\ncreated: 2026-10-20\n---\n\n# v0.42.0 — Forty-two headline\n\nnote-forty-two. Next: [release notes](docs/release-notes/v0.42.0.md), [readme](README.md), [guide](#why).\n\n## Why\n\nbecause\n' > "$d/docs/release-notes/v0.42.0.md"
+}
+rel() { python3 "$MOD" --root "$1" >/dev/null 2>&1; }
+page() { cat "$1/docs/releases/$2" 2>/dev/null; }   # page <repo> <name>
+
+hd "releases: union"
+R6="$WORK/r6"; mkrel "$R6"; OUT=$(python3 "$MOD" --root "$R6" 2>&1); RC=$?; rc 0
+for f in index v0.42.0 v0.30.0 v0.26.1 v0.10.0 v0.9.0 earlier; do [ -f "$R6/docs/releases/$f.html" ] && ok "releases/$f.html exists" || bad "releases/$f.html missing"; done
+[ -f "$R6/docs/releases/v0.25.0.html" ] && bad "a version in no source got a page" || ok "no page for a version in no source (0.25.0)"
+OUT=$(ls "$R6/docs/releases" | wc -l | tr -d ' '); [ "$OUT" = 7 ] && ok "exactly seven releases pages" || bad "page count $OUT"
+OUT=$(python3 "$MOD" --root "$R6" --check 2>&1); RC=$?; rc 0
+
+hd "releases: blocks"
+OUT=$(page "$R6" v0.42.0.html)
+has 'note-forty-two'; has 'class="release-block release-block--upgrade"'; has 'upgrade-forty-two'
+has 'class="release-block release-block--changes"'; has 'change-forty-two'
+lacks 'header-must-not-leak'; lacks 'type: release-note'
+n=$(printf '%s' "$OUT" | grep -n -e 'note-forty-two' -e 'release-block--upgrade' -e 'release-block--changes' | cut -d: -f1 | tr '\n' ' ')
+set -- $n; [ "$#" = 3 ] && [ "$1" -lt "$2" ] && [ "$2" -lt "$3" ] && ok "order: note, upgrade, changes" || bad "block order wrong ($n)"
+OUT=$(page "$R6" v0.30.0.html); has 'release-block--changes'; has 'change-thirty'; lacks 'release-block--upgrade'; has '<h1>v0.30.0</h1>'
+OUT=$(page "$R6" v0.26.1.html); has 'release-block--upgrade'; lacks 'release-block--changes'; lacks 'upgrade-forty-two'
+OUT=$(page "$R6" v0.42.0.html); n=$(printf '%s' "$OUT" | grep -c '<h1')
+[ "$n" = 1 ] && ok "one h1 per page" || bad "h1 count $n"
+OUT=$(page "$R6" v0.42.0.html); n=$(printf '%s' "$OUT" | grep -o ' id="[^"]*"' | sort | uniq -d | wc -l | tr -d ' ')
+[ "$n" = 0 ] && ok "no duplicate ids across the blocks" || bad "$n duplicate ids"
+OUT=$(page "$R6" v0.42.0.html); has '<title>v0.42.0 — Forty-two headline'
+
+hd "releases: earlier"
+OUT=$(page "$R6" earlier.html | sed -n '/<main/,/<\/main>/p'); has 'carry no brief here'; has 'href="v0.10.0.html"'; has 'href="v0.9.0.html"'; lacks 'v0.26.1.html'; lacks 'v0.30.0.html'
+OUT=$(page "$R6" index.html); has 'href="earlier.html"'
+
+hd "releases: index"
+OUT=$(page "$R6" index.html)
+n=$(printf '%s' "$OUT" | grep -o 'href="v[0-9.]*html"' | sed 's/href="v//; s/.html"//' | tr '\n' ' ')
+[ "$n" = "0.42.0 0.30.0 0.26.1 0.10.0 0.9.0 " ] && ok "newest first by semver (0.10.0 above 0.9.0)" || bad "index order: $n"
+has '2026-10-20'; has 'Forty-two headline'; has '2026-09-01'
+printf '%s' "$OUT" | grep '0.42.0' | grep -q 'badge--action' && ok "Action needed content -> badge" || bad "no badge on 0.42.0"
+printf '%s' "$OUT" | grep '0.30.0' | grep -q 'badge--action' && bad "badge on 'None' action" || ok "no badge when Action needed starts with None"
+printf '%s' "$OUT" | grep '0.10.0' | grep -q 'badge--action' && bad "badge with no Action needed section" || ok "no badge without an Action needed section"
+fx_release_nav() { python3 "$MOD" --root "$R6" >/dev/null 2>&1; local f; f=$(grep -o 'releases/[^"]*' "$R6/docs/index.html" | head -1); [ "$f" = "releases/index.html" ]; }
+fx_release_nav && ok "the top-nav Releases item links the index (first page of the section)" || bad "nav does not reach releases/index.html"
+OUT=$(grep -o '<aside.*' "$R6/docs/releases/v0.42.0.html" | tr '<' '\n' | grep -o '>v[0-9.]*$' | tr '\n' ' ')
+[ "$OUT" = ">v0.42.0 >v0.30.0 >v0.26.1 >v0.10.0 >v0.9.0 " ] && ok "sidebar lists versions newest first, short labels" || bad "sidebar: $OUT"
+
+hd "releases: links"
+OUT=$(page "$R6" v0.42.0.html)
+has 'href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/scripts/migrate-v0.42.0.sh"'
+has 'href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/README.md"'
+has 'href="https://example.com/x"'
+has 'href="#upgrade-why"' ; has 'href="#why"' ; lacks 'docs/release-notes/v0.42.0.md"'
+has 'href="v0.42.0.html"'
+fx_release_links() {   # the two documented maps, with the sibling page existing for 0.41.0
+  local d="$WORK/fx-rl"; mkrel "$d"; printf '# Upgrade\n\n[a](upgrades/v0.42.0.md) [b](docs/release-notes/v0.42.0.md) [c](docs/release-notes/v9.9.9.md) [d](CLAUDE.md) [e](other/page.html)\n' > "$d/upgrades/v0.42.0.md"
+  rel "$d" || return 1
+  local f="$d/docs/releases/v0.42.0.html"
+  grep -Fq 'href="https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/upgrades/v0.42.0.md"' "$f" && grep -Fq 'href="v0.42.0.html"' "$f" \
+    && grep -Fq 'blob/main/docs/release-notes/v9.9.9.md' "$f" && grep -Fq 'blob/main/CLAUDE.md' "$f" && grep -Fq 'href="other/page.html"' "$f"
+}
+fx_release_links && ok "upgrades/ -> GitHub blob, docs/release-notes/v<x>.md -> v<x>.html (blob when no page), other relative links unchanged" || bad "fx_release_links"
+fx_release_scheme() { local d="$WORK/fx-rs"; mkrel "$d"; printf '# Upgrade\n\n[x](javascript:alert(1))\n' > "$d/upgrades/v0.42.0.md"; python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ]; }
+fx_release_scheme && ok "the renderer's link allowlist still applies after mapping" || bad "fx_release_scheme"
+
+hd "releases: output hygiene"
+OUT=$(grep -rhoE '/(Users|home)/[A-Za-z0-9._-]+' "$R6/docs/releases" | grep -vxE '/Users/me|/home/user' || true); [ -z "$OUT" ] && ok "no local path in releases pages" || bad "local path: $OUT"
+OUT=$(grep -rE '(href|src)="/' "$R6/docs/releases" || true); [ -z "$OUT" ] && ok "every link is relative" || bad "absolute link: $OUT"
+R6b="$WORK/r6b"; cp -R "$R6" "$R6b"; rel "$R6b"; diff -r "$R6/docs" "$R6b/docs" >/dev/null && ok "deterministic" || bad "two builds differ"
+
+hd "releases: a version no page could be built for"
+fx_release_missing() {   # a CHANGELOG header with no body and no other source: nothing to render -> BuildError, never a silent gap
+  local d="$WORK/fx-rm"; mkrel "$d"; printf '\n## [0.31.0] — 2026-09-02\n\n## [0.28.0] — 2026-08-01\n\n### Added\n- x\n' >> "$d/CHANGELOG.md"
+  python3 "$MOD" --root "$d" >/dev/null 2>&1; [ "$?" = 2 ] || return 1
+  scheck "$d"; [ "$RC" = 2 ] && printf '%s' "$OUT" | grep -Fq '0.31.0'
+}
+fx_release_missing && ok "release-missing: an empty-source version exits 2 naming it (build and --check)" || bad "fx_release_missing"
+
+hd "releases: real repo"
+OUT=$(python3 "$MOD" --check 2>&1); RC=$?; rc 0
+n_real=0
+for src in upgrades docs/release-notes; do for f in "$ROOT/$src"/v*.md; do v=$(basename "$f" .md); [ -f "$ROOT/docs/releases/$v.html" ] || bad "no page for $v ($src)"; done; done
+for v in $(grep -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' "$ROOT/CHANGELOG.md" | tr -d '#[] '); do [ -f "$ROOT/docs/releases/v$v.html" ] || bad "no page for CHANGELOG $v"; done
+n_real=$(ls "$ROOT"/docs/releases/v*.html | wc -l | tr -d ' ')
+[ "$n_real" -ge 53 ] && ok "$n_real version pages built from the real sources" || bad "only $n_real version pages"
+[ -f "$ROOT/docs/releases/index.html" ] && [ -f "$ROOT/docs/releases/earlier.html" ] && ok "index and earlier exist" || bad "index/earlier missing"
+[ -f "$ROOT/docs/releases/v0.25.0.html" ] && bad "a page for 0.25.0" || ok "no page for 0.25.0"
+OUT=$(grep -rhoE '/(Users|home)/[A-Za-z0-9._-]+' "$ROOT/docs/releases" | grep -vxE '/Users/me|/home/user' || true); [ -z "$OUT" ] && ok "no local path in the real pages" || bad "local path in real pages"
+n=$(grep -c 'badge--action' "$ROOT/docs/releases/index.html" || true); [ "$n" -ge 1 ] && ok "index carries Action-needed badges ($n)" || bad "no badge in the real index"
+
 # ---------------------------------------------------------------- mutations
 # Every guard is neutralised in a copy of the module, and its named fixture must then FAIL. A mutation the suite
 # survives is a hole, not a pass. Later tasks append "guard-name:fixture_function" pairs.
@@ -551,6 +687,7 @@ MUTATIONS=(
   "registry-section:fx_registry_section"
   "registry-protected:fx_registry_protected"
   "path-shape:fx_path_bypass"
+  "release-missing:fx_release_missing"
 )
 mutate() {  # mutate <guard> <fixture>
   local g="$1" fx="$2" d="$WORK/mut-$1"

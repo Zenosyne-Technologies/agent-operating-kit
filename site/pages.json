@@ -1,3 +1,4 @@
 [
-  {"path": "index.html", "title": "Marvin", "section": "home", "order": 0, "source": "hand"}
+  {"path": "index.html", "title": "Marvin", "section": "home", "order": 0, "source": "hand"},
+  {"path": "releases", "title": "Releases", "section": "releases", "order": 0, "source": "generated:releases"}
 ]

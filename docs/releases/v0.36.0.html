@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.36.0 — Claude 5.5 routing, safe updates, what&#x27;s new - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html" aria-current="page">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-36-0-claude-5-5-routing-safe-updates-what-s-new">v0.36.0 — Claude 5.5 routing, safe updates, what's new</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, follow the update procedure the SessionStart notice prints (<code>upgrades/v0.36.0.md</code>).</p>
+<p><strong>Routing for Claude 5.5.</strong> Opus 5.5 orchestrates; Sonnet 5.5 and Haiku 5.5 run their personas pinned to high effort. A new micro-tier developer, <code>marvin:developer-micro</code> (Haiku 5.5), builds anything whose brief passes the fully-specified test: a small task, a peripheral piece or a correction with an exact fix list. Work that needs judgement stays with <code>marvin:developer-small</code>, and <code>briefing.md</code> now says how to write a brief that qualifies.</p>
+<p><strong>The climb.</strong> A stuck build climbs effort within its tier, then tiers up toward the orchestrator's model, never above it by default: micro, small, a new <code>marvin:escalation-small-xhigh</code> rung (Sonnet 5.5 at xhigh), then the Opus rungs. A micro-tier stop on a choice the brief did not make is a mis-tiering, not a failed round.</p>
+<p><strong>The update procedure.</strong> The SessionStart notice for a newer Marvin now carries the safe update procedure (when to start a new session, when to upgrade); Marvin relays it as given and never starts an upgrade while agents are working on the project.</p>
+<p><strong>Context budget.</strong> Session length is governed by context size. A plugin hook advises, never blocks: past 400k tokens Marvin is told the work has grown big and suggests a fresh session at the next clean break; past 700k it starts no new task first. A project moves the budgets with <code>session_soft_ktokens</code> and <code>session_hard_ktokens</code> in <code>.marvin/PROJECT-INFO.md</code>. Without the hook, the kit core falls back to a fresh session at milestone close.</p>
+<p><strong>CHANGELOG and what's new.</strong> <code>CHANGELOG.md</code> is now categorised from v0.22.0 on (Action needed, Added, Changed, Fixed, Removed, Security), and <code>validate-kit.sh</code> refuses an uncategorised bullet. <code>/marvin:whats-new</code> aggregates the sections between your installed version and the latest, Action needed first.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.35.1..HEAD</code>, non-merge commits only; the container epic AOS-180 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>Marvin targets the Claude 5.5 family.</strong> Fully-specified small builds and corrections run on a new micro-tier developer (Haiku 5.5, high effort); judgement work stays on Sonnet 5.5; a stuck small-tier build gets one Sonnet xhigh rung before the Opus rungs. All Sonnet and Haiku personas (<code>marvin:developer-small</code>, <code>marvin:documenter</code>, <code>marvin:developer-micro</code>, <code>marvin:ponytail</code>) are now pinned to high effort.</p>
+<ul>
+<li>Update with the procedure the SessionStart notice prints (it states the order and when to start a new session); then run <code>/marvin:upgrade-agent-os</code>.</li>
+<li>No file moves — no migration script. Refreshed guides (customised copies backed up first): <code>model-profile.md</code>, <code>briefing.md</code>, <code>escalation.md</code>, <code>escalation-ladder.md</code>, <code>guardrails.md</code>, <code>planning-research.md</code>, <code>token-economics.md</code>, <code>information-guide.md</code>; the kit core <code>.marvin/CLAUDE.marvin.md</code> is refreshed too. No tracker or label change.</li>
+<li>Session breaks now follow context size (plugin hook, advisory, never blocks): 400k soft / 700k hard tokens. Override with <code>session_soft_ktokens</code> / <code>session_hard_ktokens</code> (integers, thousands, soft &lt; hard) in <code>.marvin/PROJECT-INFO.md</code> frontmatter. The kit core no longer asks for a fresh session at every milestone close; it does only when no plugin hook runs.</li>
+<li>If your <code>.docs/information/</code> files use <code>relevance:</code>, the new legal values are <code>developer-micro</code> and <code>escalation-small-xhigh</code>.</li>
+<li><strong>Start a new session after the upgrade</strong> so the new personas, rules and hooks load.</li>
+<li>Ask <code>/marvin:whats-new</code> for the categorised list of what changed since your version.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>A micro-tier developer (<code>marvin:developer-micro</code>, Haiku 5.5 at high effort) builds fully-specified small tasks, pieces and corrections.</li>
+<li>A small-tier escalation rung (<code>marvin:escalation-small-xhigh</code>, Sonnet 5.5 at xhigh) before a stuck small task reaches the Opus rungs.</li>
+<li><code>/marvin:whats-new</code> explains what changed between your version and the latest, Action needed first.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Marvin targets the Claude 5.5 family: Opus 5.5 orchestrates, Sonnet 5.5 and Haiku 5.5 run their personas at high effort.</li>
+<li>A stuck build climbs effort within its tier, then tiers up toward the orchestrator's model, never above it by default.</li>
+<li>The update notice now carries the safe update procedure: when to start a new session and when to upgrade.</li>
+<li>Session length follows context size: past 400k tokens Marvin suggests a fresh session at a clean break; past 700k it starts no new task first. Nothing blocks.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>After <code>/marvin:upgrade-agent-os</code>, start a new session so the refreshed rules, personas and hooks load.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.37.0 — agent worktree cleanup and push cadence - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html" aria-current="page">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-37-0-agent-worktree-cleanup-and-push-cadence">v0.37.0 — agent worktree cleanup and push cadence</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, follow the update procedure the SessionStart notice prints (<code>upgrades/v0.37.0.md</code>). Upgrade promptly: the personas and the sweep ship with the plugin, so they act as soon as it updates, even before <code>/marvin:upgrade-agent-os</code> installs <code>worktrees.md</code>.</p>
+<p><strong>The sweep and its guards.</strong> A plugin hook now removes finished agent worktrees under <code>.claude/worktrees/</code> at every session start, and <code>/marvin:clean-worktrees [--check]</code> does the same on demand. It keeps a worktree unless all seven guards hold: it is unlocked, no session stands in it, no other worktree or git repository lies inside it, nothing changed in it for 15 minutes, no merge or rebase is in progress, it is clean, and its commits are in a branch other than its own. Prunable entries are reported and left untouched. The local branch is deleted only when origin's copy contains the worktree's commits; otherwise it is kept and reported, and remote branches are never deleted. One accepted limit: a quiet interactive <code>--worktree</code> or desktop session standing in a clean, merged worktree under <code>.claude/worktrees/</code> can be swept by another session's sweep.</p>
+<p><strong>Push cadence.</strong> Every sub-agent that commits work, the documenter and ponytail included, pushes its own branch before its final message and never force-pushes or pushes <code>main</code>, <code>develop</code> or a tag. The orchestrator merges a passing branch into its parent and pushes the parent at once. <code>main</code> and tags still move only in the release cut. With no remote configured, or a push refused, the push is skipped and said so.</p>
+<p><strong>The handover line.</strong> A committing sub-agent ends its final message with a <code>WORKTREE:</code> line: pushed and safe to delete once merged, not pushed with the reason, or none. The orchestrator's handoff in <code>.marvin/MEMORY.md</code> lists every worktree it leaves as safe to delete or not safe with the reason, so the next orchestrator and the sweep act on facts. The rules live in the new <code>.marvin/agents/worktrees.md</code>, and <code>.claude/worktrees/</code> joins <code>.gitignore</code>.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.36.1..HEAD</code>, non-merge commits only; the container epic AOS-195 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>finished agent worktrees are removed automatically, and agents push done work often</strong> so no cleanup can lose it. Rules: the new <code>.marvin/agents/worktrees.md</code>.</p>
+<ul>
+<li>Update with the procedure the SessionStart notice prints. No file moves, so no migration script. Upgrade promptly: the personas and the sweep ship with the plugin, so they act as soon as it updates, even before <code>worktrees.md</code> is installed.</li>
+<li>The upgrade adds <code>.marvin/agents/worktrees.md</code> and refreshes <code>git-strategy.md</code>, <code>briefing.md</code>, <code>guardrails.md</code> and the kit core <code>.marvin/CLAUDE.marvin.md</code> (customised copies are backed up first). It also adds <code>.claude/worktrees/</code> to <code>.gitignore</code>.</li>
+<li>New plugin hook: at session start the sweep removes a worktree under <code>.claude/worktrees/</code> only when seven guards hold: unlocked, not in use, nothing else inside it, idle 15 minutes, no merge or rebase in progress, clean, and merged into another branch. Prunable entries are reported, never touched.</li>
+<li>It deletes the local branch only when origin's copy contains the worktree's commits; otherwise the branch is kept and reported. <code>/marvin:clean-worktrees [--check]</code> runs it on demand.</li>
+<li>Every sub-agent that commits work, the documenter and ponytail included, pushes its own branch and ends with a <code>WORKTREE:</code> line; the orchestrator pushes the parent after each merge. With no remote configured, pushes are skipped and reported.</li>
+<li>Accepted limit: a quiet interactive <code>--worktree</code> or desktop session standing in a clean, merged worktree under <code>.claude/worktrees/</code> can be swept by another session's sweep.</li>
+<li><strong>Start a new session after the upgrade</strong> so the hook, the skill and the rules load.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>Finished agent worktrees under <code>.claude/worktrees/</code> are removed at session start and by <code>/marvin:clean-worktrees</code>, and only when seven guards all hold.</li>
+<li>The sweep keeps any worktree that is locked, in use, holding another worktree or repository, active in the last 15 minutes, mid-merge or rebase, dirty, or not yet merged into another branch.</li>
+<li>A local branch is deleted only when origin's copy contains the worktree's commits; otherwise it is kept and reported.</li>
+<li>Every sub-agent that commits work ends with a <code>WORKTREE:</code> line saying whether its worktree is safe to delete; the session handoff lists the ones left.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Agents push done work often: each committing sub-agent pushes its own branch, the orchestrator merges it and pushes the parent at once; main and tags still move only at a release.</li>
+<li><code>.gitignore</code> now also ignores <code>.claude/worktrees/</code>.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Update promptly: the personas and the sweep ship with the plugin and act at once, before <code>/marvin:upgrade-agent-os</code> installs <code>worktrees.md</code>.</li>
+<li>After <code>/marvin:upgrade-agent-os</code>, start a new session so the new hook, skill and rules load.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

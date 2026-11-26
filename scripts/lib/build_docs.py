@@ -464,7 +464,9 @@ class Page:
 
 
 # Generator dispatch: "generated:<name>" registry entries expand to the pages GENERATORS[name](root) returns,
-# {relpath: (title, body_html)}. Later tasks register `releases`, `settings`, `skills`, `reference` here.
+# {relpath: (title, body_html)}; the generator's own insertion order is the page order inside its section (the
+# first entry sorts first, so a generator that returns its index first gets the section's nav link). AOS-303
+# registers `releases`; later tasks register `settings`, `skills`, `reference` here.
 GENERATORS: dict[str, Callable[[Path], dict[str, tuple[str, str]]]] = {}
 
 
@@ -531,9 +533,9 @@ def _expand(root: Path) -> list[tuple[Page, str]]:
             name = pg.source[len("generated:"):]
             if name not in GENERATORS:
                 raise BuildError(f"site/pages.json: no generator named '{name}' ({pg.path})")
-            for rel, (title, body) in sorted(GENERATORS[name](root).items()):
+            for k, (rel, (title, body)) in enumerate(GENERATORS[name](root).items()):
                 _claim(seen, rel)
-                out.append((Page(rel, title, pg.section, pg.order, pg.source, pg.feature), body))
+                out.append((Page(rel, title, pg.section, pg.order + k, pg.source, pg.feature), body))
         else:
             raise BuildError(f"site/pages.json: source must be 'hand' or 'generated:<name>': {pg.source}")
     out.sort(key=lambda t: (SECTIONS.index(t[0].section), t[0].order, t[0].path))
@@ -581,7 +583,8 @@ def _sidebar(pages: list[Page], cur: Page, prefix: str) -> str:
         if p.section != cur.section:
             continue
         mark = ' aria-current="page"' if p.path == cur.path else ""
-        rows.append(f'<li><a href="{prefix}{html.escape(p.path)}"{mark}>{html.escape(p.title)}</a></li>')
+        label = p.title.split(" — ", 1)[0] if cur.section == "releases" else p.title  # 55 entries: the version, not the headline
+        rows.append(f'<li><a href="{prefix}{html.escape(p.path)}"{mark}>{html.escape(label)}</a></li>')
     return '<aside class="sidebar"><nav aria-label="In this section"><ul>' + "".join(rows) + "</ul></nav></aside>"
 
 
@@ -676,6 +679,169 @@ def check(root: Path) -> int:
     if problems:
         print("docs/ is out of date: run `bash scripts/build-docs.sh` and commit the result", file=sys.stderr)
     return 1 if problems else 0
+
+
+# ---------------------------------------------------------------- generated Releases (AOS-303)
+# releases/index.html, releases/v<ver>.html per version found in ANY of docs/release-notes/v<ver>.md (header stripped),
+# upgrades/v<ver>.md and the CHANGELOG `## [<ver>]` sections, and releases/earlier.html for the `## [≤0.21.x]` catch-all.
+
+GH_BLOB = "https://github.com/Zenosyne-Technologies/agent-operating-kit/blob/main/"
+_REPO_DIRS = ("upgrades/", "templates/", "scripts/", "skills/", "agents/", "commands/", "hooks/", ".claude-plugin/")
+_ROOT_FILES = ("CHANGELOG.md", "README.md", "CLAUDE.md", "AGENTS.md", "BOOTSTRAP.md", "LICENSE")
+_REL_NOTE = re.compile(r"^docs/release-notes/v(\d+\.\d+\.\d+)\.md(#.*)?$")
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+_VER_FILE = re.compile(r"^v(\d+\.\d+\.\d+)\.md$")
+_VER = re.compile(r"^\d+\.\d+\.\d+$")
+_CL_HEAD = re.compile(r"^## \[([^\]]+)\](?:[ \t]+—[ \t]+(\S.*?))?[ \t]*$")
+_EARLIER = "≤0.21.x"
+_H1 = re.compile(r'<h1 id="[^"]*">(.*?)</h1>', re.S)
+
+
+def _semver(v: str) -> tuple[int, int, int]:
+    a, b, c = v.split(".")
+    return int(a), int(b), int(c)
+
+
+def _release_link_map(known: set[str], frag_prefix: str) -> Callable[[str], str]:
+    """Repo paths -> the GitHub blob on main; a note link -> its sibling page; fragments land on the block's ids."""
+    def mapper(href: str) -> str:
+        if href.startswith("#"):
+            return "#" + frag_prefix + href[1:]
+        if not href or _SCHEME.match(href):
+            return href
+        m = _REL_NOTE.match(href)
+        if m and m.group(1) in known:
+            return f"v{m.group(1)}.html{m.group(2) or ''}"
+        if href.startswith(_REPO_DIRS) or href.split("#", 1)[0] in _ROOT_FILES or m:
+            return GH_BLOB + href
+        return href
+    return mapper
+
+
+def _scope_ids(h: str, prefix: str) -> str:
+    return re.sub(r'(<h[1-6] id=")', lambda m: m.group(1) + prefix, h)
+
+
+def _changelog(root: Path) -> dict[str, tuple[str | None, str]]:
+    """{version-or-'≤0.21.x': (date, body)}; the body is left-padded with blank lines so render errors cite CHANGELOG.md lines."""
+    p = root / "CHANGELOG.md"
+    if not p.is_file():
+        return {}
+    out: dict[str, tuple[str | None, str]] = {}
+    cur: tuple[str, str | None, int] | None = None
+    buf: list[str] = []
+
+    def flush() -> None:
+        if cur is not None:
+            out[cur[0]] = (cur[1], "\n" * cur[2] + "\n".join(buf))
+    for no, line in enumerate(_read_text(p).split("\n")):
+        m = _CL_HEAD.match(line)
+        if m or line.startswith("## "):
+            flush()
+            cur, buf = ((m.group(1), m.group(2), no + 1) if m else None), []
+        elif cur is not None:
+            buf.append(line)
+    flush()
+    return out
+
+
+def _action_needed(body: str) -> bool:
+    """True when the `### Action needed` category holds something other than a line starting 'None'."""
+    lines, on = [], False
+    for ln in body.split("\n"):
+        if ln.startswith("### "):
+            on = ln[4:].strip().lower() == "action needed"
+        elif on and ln.strip():
+            lines.append(re.sub(r"^\s*(?:[-*+]|\d+[.)])\s+", "", ln).strip())
+    return any(not t.startswith("None") for t in lines)
+
+
+def _strip_h1(text: str) -> str:
+    """Blank the leading H1 (the block heading replaces it); line numbers stay put."""
+    _, body = split_front_matter(text)
+    lines = _norm(text).split("\n")
+    start = len(lines) - len(body.split("\n"))
+    for k in range(start, len(lines)):
+        if lines[k].strip():
+            if re.match(r"^# \S", lines[k]):
+                lines[k] = ""
+            break
+    return "\n".join(lines)
+
+
+def gen_releases(root: Path) -> dict[str, tuple[str, str]]:
+    cl = _changelog(root)
+    ups: dict[str, Path] = {}
+    notes: dict[str, Path] = {}
+    for d, into in ((root / "upgrades", ups), (root / "docs" / "release-notes", notes)):
+        if d.is_dir():
+            for f in sorted(d.iterdir()):
+                m = _VER_FILE.match(f.name)
+                if m and f.is_file():
+                    into[m.group(1)] = f
+    versions = {v for v in cl if _VER.match(v)} | set(ups) | set(notes)
+    order = sorted(versions, key=_semver, reverse=True)
+    pages: dict[str, tuple[str, str]] = {}
+    info: dict[str, dict[str, object]] = {}
+    known = set(order)
+    built: set[str] = set()
+    for ver in order:
+        date, cbody = cl.get(ver, (None, ""))
+        blocks: list[str] = []
+        note_h1, note_html = "", ""
+        if ver in notes:
+            hdr, _ = split_front_matter(_read_text(notes[ver]))
+            date = date or hdr.get("date") or hdr.get("created")
+            note_html = render_markdown(_read_text(notes[ver]), f"docs/release-notes/{notes[ver].name}", _release_link_map(known, ""))
+            m = _H1.search(note_html)
+            note_h1 = html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() if m else ""
+        if ver in ups:
+            up = render_markdown(_strip_h1(_read_text(ups[ver])), f"upgrades/{ups[ver].name}", _release_link_map(known, "upgrade-"))
+            if up.strip():
+                blocks.append('<section class="release-block release-block--upgrade">\n<h2 id="release-upgrade">Upgrade</h2>\n'
+                              + _scope_ids(up, "upgrade-") + "</section>\n")
+        if cbody.strip():
+            ch = render_markdown(cbody, "CHANGELOG.md", _release_link_map(known, "changes-"))
+            if ch.strip():
+                blocks.append('<section class="release-block release-block--changes">\n<h2 id="release-changes">Changes</h2>\n'
+                              + _scope_ids(ch, "changes-") + "</section>\n")
+        if not note_html.strip() and not blocks:
+            continue  # nothing to show; the release-missing guard below reports it
+        head = "" if _H1.search(note_html) else f"<h1>v{html.escape(ver)}</h1>\n"
+        title = f"v{ver}" if not note_h1 else (note_h1 if note_h1.startswith(f"v{ver}") else f"v{ver} — {note_h1}")
+        pages[f"releases/v{ver}.html"] = (title, head + note_html + "".join(blocks))
+        built.add(ver)
+        sub = note_h1[len(f"v{ver}"):].lstrip(" —-:") if note_h1.startswith(f"v{ver}") else note_h1
+        info[ver] = {"date": date, "sub": sub, "action": _action_needed(cbody)}
+    missing = sorted(versions - built, key=_semver)
+    if missing:
+        raise BuildError(f"release(s) found in a source but no page could be built: {', '.join(missing)}")  # GUARD:release-missing
+    old = [v for v in order if _semver(v) < (0, 22, 0)]
+    rows = []
+    for ver in order:
+        i = info[ver]
+        badge = ' <span class="badge badge--action">Action needed</span>' if i["action"] else ""
+        rows.append(f'<tr><td><a href="v{ver}.html">v{ver}</a></td><td>{html.escape(str(i["date"] or ""))}</td>'
+                    f'<td>{html.escape(str(i["sub"]))}{badge}</td></tr>')
+    has_earlier = bool(old) or _EARLIER in cl
+    index = ('<h1>Releases</h1>\n<p>Every Marvin release, newest first. A release page carries its release note, the upgrade steps and its '
+             'changelog entry. A badge marks a release with an action to take after upgrading.</p>\n'
+             '<table>\n<thead><tr><th>Version</th><th>Date</th><th>Release</th></tr></thead>\n<tbody>\n' + "\n".join(rows) + "\n</tbody>\n</table>\n")
+    if has_earlier:
+        index += '<p><a href="earlier.html">Earlier releases (before v0.22.0)</a></p>\n'
+    out = {"releases/index.html": ("Releases", index)}
+    out.update(pages)
+    if has_earlier:
+        body = "<h1>Earlier releases</h1>\n"
+        if _EARLIER in cl and cl[_EARLIER][1].strip():
+            body += render_markdown(cl[_EARLIER][1], "CHANGELOG.md", _release_link_map(known, ""))
+        if old:
+            body += "<ul>\n" + "\n".join(f'<li><a href="v{v}.html">v{v}</a></li>' for v in old) + "\n</ul>\n"
+        out["releases/earlier.html"] = ("Earlier releases (≤0.21.x)", body)
+    return out
+
+
+GENERATORS["releases"] = gen_releases
 
 
 # ---------------------------------------------------------------- CLI

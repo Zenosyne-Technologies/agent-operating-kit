@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.33.0 — kit rules stay current on every upgrade - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html" aria-current="page">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-33-0-kit-rules-stay-current-on-every-upgrade">v0.33.0 — kit rules stay current on every upgrade</h1>
+<p><strong>Consumers must act once.</strong> Run <code>claude plugin update marvin</code>, restart Claude Code, then run <code>/marvin:upgrade-agent-os</code> and confirm the one-time split of your <code>CLAUDE.md</code> when it asks (<code>upgrades/v0.33.0.md</code>). After that, no upgrade ever needs a hand edit of <code>CLAUDE.md</code> again.</p>
+<p>Until now the kit's rules were merged into each project's <code>CLAUDE.md</code>, and that file is never refreshed — so every always-on rule change needed a manual re-sync, and a plugin update without the upgrade skill left a project silently running old rules. That is how the v0.31.0 user-update formats went unseen in an upgraded project.</p>
+<p><strong>Kit rules live in a kit-owned file.</strong> <code>.marvin/CLAUDE.marvin.md</code> holds the kit's core rules; your <code>CLAUDE.md</code> keeps your project facts, conventions, attribution line and own rules, and ends with <code>@.marvin/CLAUDE.marvin.md</code>, which Claude Code loads at session start. Every upgrade refreshes the kit file like any other guide, backing up a customised copy. Model names come straight from the plugin's model profile; the issue-log path from <code>.marvin/PROJECT-INFO.md</code>.</p>
+<p><strong>A one-time, confirmed split.</strong> The first upgrade to this version separates kit lines from yours with a read-only planner, tells you how many lines of each it found and asks you before writing anything, shows near-copies of kit lines for you to keep or drop, replaces labelled kit lines you had edited with the current rule unless unsure (your version kept in the backup and the report either way), and backs up your <code>CLAUDE.md</code>. Declining writes nothing but the report. Older notes' "re-sync CLAUDE.md" steps are skipped automatically.</p>
+<p><strong>Your rules win, gates excepted.</strong> A rule in your own <code>CLAUDE.md</code> overrides a kit rule, and Marvin names the conflict once — except the safety gates, which a project file cannot switch off: the completion and security validators, every consent question, destructive-operation guards, and the secrets and commit-hygiene rules.</p>
+<p><strong>Stale installs announce themselves.</strong> A new plugin SessionStart hook runs in Marvin projects only: it warns when the project's install is older (run the upgrade skill) or newer (update the plugin) than the plugin, and injects the short user-update rules every session, after compaction too. It never writes and never blocks.</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.32.0..HEAD</code>, non-merge commits only; the container epic AOS-164 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>no more hand re-syncing CLAUDE.md.</strong> The kit's rules move out of your <code>CLAUDE.md</code> into a kit-owned <code>.marvin/CLAUDE.marvin.md</code> that <code>CLAUDE.md</code> imports; every future upgrade refreshes it for you.</p>
+<ul>
+<li><code>claude plugin update marvin</code>, then <strong>restart Claude Code</strong> (loads the new SessionStart hook), then run <code>/marvin:upgrade-agent-os</code>.</li>
+<li><strong>Confirm the one-time split when asked</strong> — before it writes anything, the upgrade tells you how many <code>CLAUDE.md</code> lines are kit rules (moved into <code>.marvin/CLAUDE.marvin.md</code>) and how many are yours (kept), and lists any near-copy of a kit line without its label for you to keep or drop; a labelled kit line you had edited is replaced by the current rule unless the agent is unsure, either way your version stays in the backup and the report. It backs up your <code>CLAUDE.md</code> under <code>.marvin/backups/v0.33.0/</code>, ends it with the line <code>@.marvin/CLAUDE.marvin.md</code>, and keeps your attribution line. Declining or not answering stops the upgrade having written only its report.</li>
+<li><strong>Skip every older note's "re-sync CLAUDE.md" step</strong> — including v0.32.0's hand-edit of model names; the upgrade skill does this for you and edits <code>CLAUDE.md</code> only in the split (and to re-add the import line if you removed it).</li>
+<li><code>.marvin/PROJECT-INFO.md</code> gains <code>issue_log_path</code>; model names now always come from the plugin's model profile.</li>
+<li>Your own <code>CLAUDE.md</code> rules override kit rules, except the kit's safety gates (validators, consent questions, destructive-operation guards, secrets and commit-hygiene rules).</li>
+<li>New SessionStart hook: in a Marvin project it warns when the install and plugin versions differ, and injects the short update-format rules each session. Disable with <code>/plugin disable marvin</code> or <code>"disableAllHooks": true</code>.</li>
+<li>If <code>.marvin/</code> is gitignored, the upgrade flags it — the import would load nothing in other clones.</li>
+<li>A fresh install in an AGENTS.md-only repo writes a <code>CLAUDE.md</code> that imports <code>@AGENTS.md</code>; the kit never writes AGENTS.md.</li>
+</ul>
+<p>This note's scope was derived over <code>v0.32.0..HEAD</code>, non-merge commits only; the container epic AOS-164 is excluded.</p>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Restart Claude Code after updating the plugin, then run <code>/marvin:upgrade-agent-os</code> and confirm the one-time CLAUDE.md split when it asks.</li>
+<li>Skip the "re-sync CLAUDE.md" step of any older release note, including the hand edit of model names; the upgrade now does it for you.</li>
+<li>Keep <code>.marvin/</code> tracked, not gitignored: otherwise the CLAUDE.md import loads nothing in other clones (the upgrade flags it).</li>
+</ul>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>A session hook warns when a project's install and the plugin differ in version and injects the user-update rules every session, after compaction too.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>Kit rules move out of your CLAUDE.md into a kit-owned file it imports, so every upgrade refreshes them with no hand edit.</li>
+<li>The split asks before writing, shows near-copies of kit lines to keep or drop, and backs up your CLAUDE.md; declining writes only the report.</li>
+<li>Your own CLAUDE.md rules override kit rules, except the safety gates: validators, consent questions, destructive-operation guards, secrets and commit hygiene.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

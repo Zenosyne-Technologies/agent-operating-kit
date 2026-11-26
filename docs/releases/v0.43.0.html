@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.43.0 — Fable 5.2 profile and the model_profile setting - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html" aria-current="page">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-43-0-fable-5-2-profile-and-the-model-profile-setting">v0.43.0 — Fable 5.2 profile and the model_profile setting</h1>
+<p><strong>Consumers act once:</strong> run <code>/marvin:upgrade-agent-os</code>. It asks once for <code>model_profile: opus | fable</code>; no answer writes <code>opus</code>. See <code>upgrades/v0.43.0.md</code>.</p>
+<p><strong>Why.</strong> Fable 5.2 can run the main session, but it costs about twice the orchestrator per-token price and needs 30-day data retention, so it must be a choice. The kit also hard-wired the orchestrator to the heavy tier's model; the two now move independently.</p>
+<p><strong>What changed.</strong></p>
+<ul>
+<li><code>model-profile.md</code> carries two declared sets, <code>opus</code> (default) and <code>fable</code>. In <code>opus</code> the frontier tier moves to Fable 5.2. Under <code>fable</code> the orchestrator runs Fable 5.2, heavy/small/micro are unchanged, there is no frontier tier, and the max gate offers <code>max</code> only.</li>
+<li><code>model_profile</code> is a PROJECT-INFO key: install and upgrade ask once (no answer or unattended: <code>opus</code>), project-info validates it, <code>/marvin:info</code> reports it, and switching re-renders the kit core, ladder, <code>escalation.md</code>, <code>validation-agent.md</code> and <code>model-profile.md</code>.</li>
+<li>New placeholders <code>{{ORCHESTRATOR_MODEL}}</code>, <code>{{MODEL_PROFILE}}</code>, <code>{{FRONTIER_SWAP_OPTION}}</code>; the ceiling is the heavy tier's model, rule 1 is kept and re-dated (re-measure pending AOS-272).</li>
+<li>The Codex table moves to <code>.marvin/agents/model-profile-codex.md</code>; the legacy section is still read until moved.</li>
+<li>Factory: kit-core budget 55 → 100 (AOS-266); <code>validate-kit</code> gains <code>profile-parity</code>, a per-profile <code>profile-window</code> and <code>model-names</code> over both profile files (25 checks), plus test-codex fixtures; repo rule 10 (AOS-281) and rule 11 (AOS-296); the install skill's telemetry advice named the wrong marketplace, now fixed with a <code>marketplace</code> check (AOS-297).</li>
+</ul>
+<p><strong>Acceptance.</strong> Documentation, checked (repo rule 10):</p>
+<ul>
+<li>README: inventory, gate count (25) and list, suite count (18), skills table, feature section and portability bullet.</li>
+<li><code>docs/index.html</code>: both profiles in the escalation staircase, tier legend Fable 5.2, <code>model_profile</code> mentioned; no screenshots (no mod change).</li>
+<li><code>CLAUDE.md</code> / <code>AGENTS.md</code>: budget, model-names clause, declared profiles.</li>
+<li>PROJECT-INFO template, install, upgrade and project-info skills, <code>/marvin:info</code>.</li>
+<li><code>upgrades/v0.43.0.md</code> and the <code>CHANGELOG.md</code> section.</li>
+</ul>
+<p>Behaviour (AOS-271), on the Local tracker only (the render is tracker-independent; no Jira scratch install):</p>
+<ul>
+<li>Scratch installs for <code>opus</code> and <code>fable</code>: PASS. <code>ORCHESTRATOR_MODEL</code> renders Opus 5.5 / Fable 5.2; the fable max gate is max-only; the placeholder check exits 0; <code>model-profile.md</code> names the profile.</li>
+<li>v0.42.2 → v0.43.0 upgrade with no key and no answer: asked once, <code>opus</code> written, and <code>.marvin/</code> identical to a fresh opus render except the consumer-owned PROJECT-INFO body bullet.</li>
+<li><strong>Pending:</strong> the Fable-orchestrated real <code>size:s</code> run (architect). AOS-271 stays in Testing, and the <code>fable</code> set's validation line stays "pending AOS-271".</li>
+</ul>
+<p>This note's <code>scope:</code> was derived over <code>v0.42.2..HEAD</code> (<code>git log --no-merges</code>), <code>AOS-</code> prefixes deduplicated, container epic AOS-265 dropped.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>a new <code>model_profile: opus | fable</code> setting picks the model set; the frontier tier is now Fable 5.2.</strong></p>
+<ul>
+<li>Run <code>/marvin:upgrade-agent-os</code>. It asks ONCE for <code>model_profile</code> when the key is missing; no answer or an unattended run writes <code>opus</code> (today's set, no spend change). <code>fable</code> runs the main session on Fable 5.2 (about 2x orchestrator per-token cost; needs 30-day data retention, not ZDR); heavy, small and micro tiers are unchanged and its max gate offers <code>max</code> only.</li>
+<li>An invalid held value (<code>Fable</code>, <code>sonnet</code>, empty) STOPs the upgrade before any write: correct the key and re-run.</li>
+<li>To switch later, edit <code>model_profile</code> and run <code>/marvin:upgrade-agent-os</code> (re-renders the kit core, ladder, <code>escalation.md</code>, <code>validation-agent.md</code>, <code>model-profile.md</code>).</li>
+<li>Step 4a adds <code>.marvin/agents/model-profile-codex.md</code>. Step 4b refreshes <code>model-profile.md</code> without its Codex section, and refreshes (with backups) <code>CLAUDE.marvin.md</code>, <code>escalation-ladder.md</code>, <code>escalation.md</code>, <code>validation-agent.md</code>, <code>token-economics.md</code>, <code>fleet.md</code>, <code>codex.md</code>.</li>
+<li>A customised Codex table lands in <code>.marvin/backups/v0.43.0/</code>: move it into <code>model-profile-codex.md</code> by hand (until then <code>marvin-codex.sh</code> still reads the legacy section).</li>
+<li>The <code>model_profile</code> bullet in the <code>PROJECT-INFO.md</code> body is not added (consumer-owned file); its meaning is in <code>model-profile.md</code>.</li>
+<li>Token-telemetry users: run <code>/token-telemetry:pricing-update</code> for <code>claude-fable-5-2</code> pricing.</li>
+<li>No migration script.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li><code>model_profile: opus | fable</code> in <code>PROJECT-INFO.md</code>: install and upgrade ask once (no answer or unattended: <code>opus</code>), <code>project-info</code> validates it, <code>/marvin:info</code> reports it; the <code>fable</code> profile runs the main session on Fable 5.2 and its max gate offers <code>max</code> only.</li>
+<li><code>.marvin/agents/model-profile-codex.md</code>: the Codex table moves out of <code>model-profile.md</code> (the legacy section is still read until moved).</li>
+<li>Placeholders <code>{{ORCHESTRATOR_MODEL}}</code>, <code>{{MODEL_PROFILE}}</code> and <code>{{FRONTIER_SWAP_OPTION}}</code>, rendered per profile.</li>
+<li><code>validate-kit</code> check <code>profile-parity</code> (25th) and a per-profile <code>profile-window</code>; <code>test-codex</code> fixtures for the split Codex table.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li>The frontier tier is Fable 5.2 (the <code>fable</code> alias already resolved to 5.2 on Claude Code v2.1.321 and later; gateway sessions resolve it to Fable 5); rule 1 is kept and re-dated, re-measure pending AOS-272.</li>
+<li>The ceiling is the heavy tier's model, no longer the orchestrator's.</li>
+<li>Factory: the kit-core line budget is raised from 55 to 100; <code>model-names</code> covers both profile files.</li>
+<li>Factory (AOS-281): repo rule 10 — a release is cut only when its update instructions and documentation are committed.</li>
+<li>Factory (AOS-296): repo rule 11 — the Pages guide gets updated visuals for workflow changes and screenshots for every new mod or visualization.</li>
+</ul>
+<h3 id="changes-fixed">Fixed</h3>
+<ul>
+<li>The install skill's telemetry advice named the wrong marketplace repo (AOS-297); <code>validate-kit</code> check <code>marketplace</code> now guards it.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Run <code>/marvin:upgrade-agent-os</code>: it asks once for <code>model_profile</code> (no answer: <code>opus</code>); an invalid held value stops the upgrade before any write.</li>
+<li>Move a customised Codex table from <code>.marvin/backups/v0.43.0/</code> into <code>model-profile-codex.md</code>; token-telemetry users run <code>/token-telemetry:pricing-update</code> for <code>claude-fable-5-2</code>.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

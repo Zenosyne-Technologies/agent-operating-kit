@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>v0.40.0 — Codex (ChatGPT) third-party validation - Marvin</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="brand" href="../index.html">Marvin</a>
+<nav class="top-nav" aria-label="Primary"><a href="../index.html">Home</a><a href="../releases/index.html" aria-current="page">Releases</a></nav>
+</header>
+<div class="layout">
+<aside class="sidebar"><nav aria-label="In this section"><ul><li><a href="../releases/index.html">Releases</a></li><li><a href="../releases/v0.43.0.html">v0.43.0</a></li><li><a href="../releases/v0.42.2.html">v0.42.2</a></li><li><a href="../releases/v0.42.1.html">v0.42.1</a></li><li><a href="../releases/v0.42.0.html">v0.42.0</a></li><li><a href="../releases/v0.41.0.html">v0.41.0</a></li><li><a href="../releases/v0.40.0.html" aria-current="page">v0.40.0</a></li><li><a href="../releases/v0.39.0.html">v0.39.0</a></li><li><a href="../releases/v0.38.0.html">v0.38.0</a></li><li><a href="../releases/v0.37.0.html">v0.37.0</a></li><li><a href="../releases/v0.36.1.html">v0.36.1</a></li><li><a href="../releases/v0.36.0.html">v0.36.0</a></li><li><a href="../releases/v0.35.1.html">v0.35.1</a></li><li><a href="../releases/v0.35.0.html">v0.35.0</a></li><li><a href="../releases/v0.34.0.html">v0.34.0</a></li><li><a href="../releases/v0.33.0.html">v0.33.0</a></li><li><a href="../releases/v0.32.0.html">v0.32.0</a></li><li><a href="../releases/v0.31.0.html">v0.31.0</a></li><li><a href="../releases/v0.30.0.html">v0.30.0</a></li><li><a href="../releases/v0.29.0.html">v0.29.0</a></li><li><a href="../releases/v0.28.0.html">v0.28.0</a></li><li><a href="../releases/v0.27.0.html">v0.27.0</a></li><li><a href="../releases/v0.26.1.html">v0.26.1</a></li><li><a href="../releases/v0.26.0.html">v0.26.0</a></li><li><a href="../releases/v0.24.0.html">v0.24.0</a></li><li><a href="../releases/v0.23.0.html">v0.23.0</a></li><li><a href="../releases/v0.22.0.html">v0.22.0</a></li><li><a href="../releases/v0.21.0.html">v0.21.0</a></li><li><a href="../releases/v0.20.0.html">v0.20.0</a></li><li><a href="../releases/v0.19.0.html">v0.19.0</a></li><li><a href="../releases/v0.18.1.html">v0.18.1</a></li><li><a href="../releases/v0.18.0.html">v0.18.0</a></li><li><a href="../releases/v0.17.1.html">v0.17.1</a></li><li><a href="../releases/v0.17.0.html">v0.17.0</a></li><li><a href="../releases/v0.16.2.html">v0.16.2</a></li><li><a href="../releases/v0.16.1.html">v0.16.1</a></li><li><a href="../releases/v0.16.0.html">v0.16.0</a></li><li><a href="../releases/v0.15.1.html">v0.15.1</a></li><li><a href="../releases/v0.15.0.html">v0.15.0</a></li><li><a href="../releases/v0.14.0.html">v0.14.0</a></li><li><a href="../releases/v0.13.0.html">v0.13.0</a></li><li><a href="../releases/v0.12.0.html">v0.12.0</a></li><li><a href="../releases/v0.11.0.html">v0.11.0</a></li><li><a href="../releases/v0.10.0.html">v0.10.0</a></li><li><a href="../releases/v0.9.0.html">v0.9.0</a></li><li><a href="../releases/v0.8.0.html">v0.8.0</a></li><li><a href="../releases/v0.7.0.html">v0.7.0</a></li><li><a href="../releases/v0.6.1.html">v0.6.1</a></li><li><a href="../releases/v0.6.0.html">v0.6.0</a></li><li><a href="../releases/v0.5.0.html">v0.5.0</a></li><li><a href="../releases/v0.4.0.html">v0.4.0</a></li><li><a href="../releases/v0.3.0.html">v0.3.0</a></li><li><a href="../releases/v0.2.0.html">v0.2.0</a></li><li><a href="../releases/v0.1.0.html">v0.1.0</a></li><li><a href="../releases/earlier.html">Earlier releases (≤0.21.x)</a></li></ul></nav></aside>
+<main id="main">
+<h1 id="v0-40-0-codex-chatgpt-third-party-validation">v0.40.0 — Codex (ChatGPT) third-party validation</h1>
+<p><strong>Consumers act once:</strong> run <code>claude plugin update marvin</code>, follow the update procedure the SessionStart notice prints (<code>upgrades/v0.40.0.md</code>), and answer the upgrade's Codex question — or leave it unanswered, which keeps Codex off.</p>
+<p><strong>Why.</strong> Marvin's validators are fresh Claude agents; a second vendor sees what one model family systematically misses. Marvin now hands work to OpenAI Codex through the <code>codex</code> Claude Code plugin. A project that never opts in sees no change and no Codex call.</p>
+<p><strong>Settings.</strong> Four <code>PROJECT-INFO</code> keys, owned by <code>.marvin/agents/codex.md</code>:</p>
+<ul>
+<li><code>codex_handover: off | ask | auto</code> is the consent for every automatic handover. Under <code>ask</code>, only the question tool's own answer counts; no answer means no handover.</li>
+<li><code>validation_strategy: claude | codex | four-eye | claude+lanes</code> picks which validation lanes run on Codex, and <code>codex_lanes</code> lists them for <code>claude+lanes</code>. In four-eye, Claude runs first and Codex tags each finding <code>new</code>, <code>recurring</code>, <code>regression</code> or <code>dup</code>; a stage passes when both pass; otherwise each FAIL-grade finding is judged against the DoD and the brief, and one outside both is overruled with a follow-up. A security FAIL is never overruled by the orchestrator.</li>
+<li><code>codex_evidence: claude | codex</code> decides who runs the real checks. Codex's default sandbox has no network, browser or Docker, so a <code>codex</code> evidence run that needs them falls back to Claude evidence for that run.</li>
+</ul>
+<p><strong>Auto debug.</strong> Three tollgates hand the situation to a read-only Codex diagnosis: a Stuck signal and the max gate on the Claude escalation ladder, and an off-ladder validator failing twice. Each fires at most once per task.</p>
+<p><strong>Codex builds</strong> run only on the architect's command (<code>/marvin:codex build</code>), on their own ladder:</p>
+<ul>
+<li>rungs: the fast Codex tier at <code>high</code>, then the workhorse at <code>medium</code>, <code>high</code>, <code>xhigh</code>, then a user gate (hand back to the Claude ladder, <code>/marvin:codex-astra</code>, or stop);</li>
+<li>a Codex-built round is always validated by Claude;</li>
+<li>the <code>marvin:codex</code> forwarder works in its own worktree and commits for Codex.</li>
+</ul>
+<p>The frontier Codex model is never routed by a rule; <code>/marvin:codex-astra</code> is the only path to it.</p>
+<p><strong>Mechanics.</strong></p>
+<ul>
+<li><code>scripts/marvin-codex.sh</code> is the only thing that touches the companion: <code>check</code>, <code>run</code> and <code>result</code> with guards (handover off, frontier without <code>--astra</code>, effort above <code>xhigh</code>, write access only for builds and review/security evidence runs) and a whole-run budget that returns <code>pending &lt;id&gt;</code> before the tool limit.</li>
+<li>A Codex run with no usable verdict counts as unavailable, never as a FAIL; the lane falls back to Claude, and work never stalls.</li>
+<li>Install step 6c and upgrade step 4a ask the settings; <code>/marvin:codex-setup</code> checks availability and walks the install, asking before each step. Marvin never logs in for you.</li>
+</ul>
+<p><strong>Models.</strong> On a ChatGPT login the Codex service rejected <code>gpt-6.1-sol</code> and <code>gpt-6-luna</code> (HTTP 400) in a live probe on 2026-10-16. The Codex profile therefore uses <code>gpt-5.6-sol</code> and <code>gpt-5.6-luna</code>, which completed; the frontier row keeps <code>gpt-6-astra</code>, unverified on that login.</p>
+<p><strong>Acceptance.</strong></p>
+<ul>
+<li>Rule-5 scratch install from the branch (<code>claude -p --model haiku</code>, Local tracker, 2026-10-16): the answers <code>ask</code>, <code>claude+lanes</code>, <code>[review, security]</code> and <code>claude</code> landed in PROJECT-INFO after <code>ticket_lint</code>, the Codex rules and six lane briefs were installed, and the kit core stayed at 55 lines.</li>
+<li>Live replay in that repo:
+<ul>
+<li>with <code>codex_handover: off</code>, an orchestrator-path run was refused (exit 3);</li>
+<li><code>/marvin:codex review --base main</code> still ran, because the architect's command is the consent. Real Codex (<code>gpt-5.6-sol</code>, <code>high</code>, read-only) found both seeded defects, the result mapped to <code>CODEX: FAIL (review)</code>, and the forwarder's final message passed the SubagentStop gate.</li>
+</ul></li>
+<li>The install report omitted the 6c availability line, and the haiku install again left unrelated placeholders (AOS-221); both are follow-ups (AOS-241, AOS-221).</li>
+</ul>
+<p>Follow-ups: AOS-238 (test hardening), AOS-239 (robustness edge cases), AOS-240 (wording polish), AOS-241 (install report check line).</p>
+<p>This note's <code>scope:</code> was derived over <code>v0.39.0..HEAD</code>, non-merge commits only; the container epic AOS-232 is excluded.</p>
+<section class="release-block release-block--upgrade">
+<h2 id="release-upgrade">Upgrade</h2>
+<p>Consumer-facing: <strong>Marvin can hand validation, diagnosis and architect-commanded builds to OpenAI Codex through the <code>codex</code> plugin — opt-in, off until you choose.</strong> Rules: <code>.marvin/agents/codex.md</code>.</p>
+<ul>
+<li>Update with the procedure the SessionStart notice prints. No file moves, so no migration script.</li>
+<li>The upgrade adds <code>.marvin/agents/codex.md</code> and the six Codex lane briefs in <code>.marvin/agents/codex/</code>; refreshes <code>model-profile.md</code> (new Codex profile), <code>escalation.md</code>, <code>escalation-ladder.md</code>, <code>validation-agent.md</code>, <code>visual-validation.md</code>, <code>planning-research.md</code>, <code>guardrails.md</code>, <code>token-economics.md</code>, <code>information-guide.md</code> and the kit core <code>.marvin/CLAUDE.marvin.md</code> (customised copies are backed up first).</li>
+<li>Do NOT write the Codex keys in this step. The upgrade's step 4a ASKS the Codex round once (<code>codex_handover</code>, ask recommended; the validation strategy and lanes; <code>codex_evidence</code>) and writes the four keys into <code>.marvin/PROJECT-INFO.md</code> right after <code>ticket_lint</code>; <code>codex_handover</code> already present suppresses the question, and any other missing Codex key is added at its default. No answer → <code>off</code> / <code>claude</code> / <code>[]</code> / <code>claude</code>, which changes nothing.</li>
+<li>New plugin pieces: the <code>marvin:codex</code> persona, <code>/marvin:codex</code>, <code>/marvin:codex-astra</code> (the only path to the frontier Codex model) and <code>/marvin:codex-setup</code>; <code>/marvin:info</code> shows the Codex state.</li>
+<li>To use Codex: install the <code>codex</code> plugin and log in (<code>/marvin:codex-setup</code> walks it; you run <code>!codex login</code> yourself).</li>
+<li><strong>Start a new session after the upgrade</strong> so the rules and persona load.</li>
+</ul>
+</section>
+<section class="release-block release-block--changes">
+<h2 id="release-changes">Changes</h2>
+<h3 id="changes-added">Added</h3>
+<ul>
+<li>Codex (ChatGPT) handover through the <code>codex</code> plugin, opt-in per project: a consent switch (<code>codex_handover: off | ask | auto</code>), a validation strategy (<code>claude</code>, <code>codex</code>, <code>four-eye</code> or <code>claude+lanes</code> with chosen lanes) and an evidence setting (<code>codex_evidence</code>), owned by <code>.marvin/agents/codex.md</code>.</li>
+<li>Six Codex lane briefs (plan, review, security, design, diagnose, build) in <code>.marvin/agents/codex/</code>, and a Codex profile in <code>model-profile.md</code> with each lane's model and effort.</li>
+<li>Auto-debug tollgates: a Stuck signal and the max gate on the Claude escalation ladder, and an off-ladder validator failing twice, ask Codex for a read-only diagnosis.</li>
+<li><code>/marvin:codex &lt;lane&gt;</code> (architect-commanded handover; <code>build</code> runs the Codex build ladder), <code>/marvin:codex-astra</code> (the only path to the frontier Codex model) and <code>/marvin:codex-setup</code> (availability check and an install runbook that asks before each step).</li>
+<li>The <code>marvin:codex</code> forwarder persona and the guarded runner <code>scripts/marvin-codex.sh</code>.</li>
+</ul>
+<h3 id="changes-changed">Changed</h3>
+<ul>
+<li><code>/marvin:info</code> shows the Codex status and the four Codex settings.</li>
+<li>Install asks the Codex round in step 6c, and upgrade asks it once in step 4a; with no answer, the defaults change nothing.</li>
+</ul>
+<h3 id="changes-security">Security</h3>
+<ul>
+<li>Codex runs read-only except for an architect-commanded build or a review/security evidence run. Effort is capped at <code>xhigh</code>, the frontier model is reachable only via <code>/marvin:codex-astra</code>, a security FAIL is never overruled by the orchestrator, and an evidence run that changes tracked code is discarded.</li>
+</ul>
+<h3 id="changes-action-needed">Action needed</h3>
+<ul>
+<li>Answer the upgrade's Codex question (or leave it unanswered to keep Codex off); to use Codex, run <code>/marvin:codex-setup</code> and log in yourself (<code>!codex login</code>).</li>
+<li>After <code>/marvin:upgrade-agent-os</code>, start a new session so the rules and persona load.</li>
+</ul>
+</section>
+
+</main>
+</div>
+<footer class="site-footer"><p>Marvin, the Agentic Operating System.</p></footer>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>
