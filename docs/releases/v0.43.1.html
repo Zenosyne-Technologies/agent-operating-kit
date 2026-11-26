@@ -39,7 +39,12 @@
 <li><code>upgrades/v0.43.1.md</code> and the <code>CHANGELOG.md</code> section.</li>
 <li>Gates: <code>validate-kit.sh</code> all checks, every <code>scripts/test-*.sh</code>, and <code>build-docs.sh --check</code>, run on <code>release/0.43.1</code>. Each <code>--check</code> guard is mutation-tested inside <code>test-build-docs.sh</code>; no migration script changed, so <code>mutate-migrations.sh</code> does not apply.</li>
 <li>Visual validation (<code>marvin:validator-visual</code>) of Home, Lifecycle, Settings, a release page and Mods at 1280 and 375: NOTES, 0 blocking. Self-hosted fonts load with no third-party request; there is no page-level sideways scroll; contrast meets AA; focus is visible; the inspector works by mouse and keyboard; <code>#ladder</code> and <code>#insp</code> redirect; there are no console errors. Seven advisory sev3/sev4 layout notes (the release sidebar at 375, the nav scroll cue, lifecycle diagram width and text size, and Settings code wrapping) are tracked in AOS-326.</li>
-<li><strong>Pending:</strong> live acceptance after Pages rebuilds <code>main</code> — the live root, every generated page and <code>…/#ladder</code> landing on Escalation.</li>
+<li>Live acceptance, 2026-11-26, after Pages deployed <code>main</code> 149e8a5: PASS.
+<ul>
+<li>The root and all 67 generated pages return 200, and each is byte-identical to <code>docs/</code> at 149e8a5.</li>
+<li>The stylesheet, script and fonts are served from the site itself.</li>
+<li>In a browser, <code>…/#ladder</code> lands on <code>concepts/escalation.html#ladder</code>. <code>#stair</code>, <code>#signals</code>, <code>#lanes</code>, <code>#around</code> and <code>#insp</code> land on their concept pages.</li>
+</ul></li>
 </ul>
 <p>Hand-offs: the queued epics' Pages work (AOS-295, AOS-287, AOS-273 and AOS-257) now targets <code>site/</code> pages. Follow-ups: AOS-325, AOS-326, AOS-327.</p>
 <p>This note's <code>scope:</code> was derived over <code>v0.43.0..HEAD</code> (<code>git log --no-merges</code>), <code>AOS-</code> prefixes deduplicated. The epic AOS-299 stays in scope because the whole-branch review fixes were committed under its key.</p>
